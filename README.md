@@ -60,12 +60,12 @@ Each arrow is a **quality gate**. You can't promote a build that fails its tests
 
 ```bash
 # Option A — start a brand-new project from this kit
-git clone <this-repo> my-new-project
+git clone https://github.com/dinhnguyenngoc/spec-driven-claude-code.git my-new-project
 cd my-new-project
 rm -rf .git && git init        # make it your own
 
 # Option B — copy the kit into an existing project
-cp -r path/to/this-repo/.claude  my-existing-project/.claude
+cp -r path/to/spec-driven-claude-code/.claude  my-existing-project/.claude
 ```
 
 The only thing that matters is that the **`.claude/`** folder sits at your project root. Open the folder in Claude Code (CLI, VS Code, or JetBrains) and you're ready.
@@ -267,4 +267,6 @@ Yes — the kit has Node.js / TypeScript overrides today, and the architecture i
 
 ## License
 
-See the repository for license details. The workflow philosophy draws inspiration from [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD).
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
+The workflow philosophy draws inspiration from [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD).

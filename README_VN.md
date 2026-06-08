@@ -60,12 +60,12 @@ Mỗi mũi tên là một **quality gate**. Bạn không thể promote một bui
 
 ```bash
 # Cách A — tạo dự án mới hoàn toàn từ kit này
-git clone <repo-này> my-new-project
+git clone https://github.com/dinhnguyenngoc/spec-driven-claude-code.git my-new-project
 cd my-new-project
 rm -rf .git && git init        # biến nó thành của bạn
 
 # Cách B — copy kit vào dự án có sẵn
-cp -r path/to/repo-này/.claude  my-existing-project/.claude
+cp -r path/to/spec-driven-claude-code/.claude  my-existing-project/.claude
 ```
 
 Điều duy nhất quan trọng là thư mục **`.claude/`** phải nằm ở gốc dự án. Mở thư mục đó trong Claude Code (CLI, VS Code, hoặc JetBrains) là bạn đã sẵn sàng.
@@ -267,4 +267,6 @@ Có — kit hiện đã có override Node.js / TypeScript, và kiến trúc đư
 
 ## License
 
-Xem repository để biết chi tiết license. Triết lý workflow lấy cảm hứng từ [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD).
+Dự án này được cấp phép theo **MIT License** — xem file [LICENSE](LICENSE) để biết chi tiết.
+
+Triết lý workflow lấy cảm hứng từ [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD).
