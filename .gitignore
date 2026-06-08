@@ -1,66 +1,62 @@
-# .NET build output
+# ─── Build output ───────────────────────────────────────────────
+# .NET
 bin/
 obj/
 *.user
 *.suo
+artifacts/
+
+# ─── IDE / editor ────────────────────────────────────────────────
 .vs/
 .vscode/
 .idea/
 
-# Logs
+# ─── Logs & test results ─────────────────────────────────────────
 logs/
 *.log
-
-# Test results
 TestResults/
 coverage/
 *.coverage
 *.trx
 
-# /verify artifacts — canonical layout (.claude/commands/verify.md → Phase 6).
-# Ignore heavy binaries (runner/ traces+videos+screenshots, report/html/, run metadata)
-# but TRACK the durable text: report/results.json, evidence/**, and any top-level *.txt.
-# The 3 primary deliverables (VERIFY_REPORT.md, VERIFY_MATRIX.md, verify-artifact.lock)
-# live directly under reports/ and stay tracked.
-reports/verify-artifacts/*
-!reports/verify-artifacts/*.txt
-!reports/verify-artifacts/report/
-!reports/verify-artifacts/evidence/
-reports/verify-artifacts/report/html/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Secrets — only Development settings are tracked
+# ─── Secrets & local environment ─────────────────────────────────
+# Only Development/Testing settings are tracked
 appsettings.*.json
 !appsettings.Development.json
 !appsettings.Testing.json
-
-# Local environment files
 .env
 .env.local
 
-# Tooling
+# ─── Tooling caches ──────────────────────────────────────────────
 .dotnet/
 .nuget/
-artifacts/
-
-# Claude Code — local/personal settings (settings.json is the shared one)
-.claude/settings.local.json
-
 # Python cache (hooks)
 __pycache__/
 *.pyc
 
-# Backup
+# ─── Claude Code ─────────────────────────────────────────────────
+# settings.json is shared; local/personal settings are not tracked
+.claude/settings.local.json
+
+# ─── OS noise ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Backups ─────────────────────────────────────────────────────
 *.bak
 *.orig
 
-# /verify run artifacts — track text deliverables, ignore heavy binaries
+# ─── /verify run artifacts (.claude/commands/verify.md → Phase 6) ─
+# Ignore heavy binaries (runner/ traces+videos+screenshots, report/html/,
+# run metadata) but TRACK the durable text: top-level *.txt,
+# report/results.json, and everything under evidence/.
+# The 3 primary deliverables (VERIFY_REPORT.md, VERIFY_MATRIX.md,
+# verify-artifact.lock) live directly under reports/ and stay tracked.
 reports/verify-artifacts/**
 !reports/verify-artifacts/
+!reports/verify-artifacts/*.txt
 !reports/verify-artifacts/report/
 !reports/verify-artifacts/report/results.json
 !reports/verify-artifacts/evidence/
 !reports/verify-artifacts/evidence/**
+reports/verify-artifacts/report/html/
