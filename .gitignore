@@ -1,0 +1,66 @@
+# .NET build output
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Test results
+TestResults/
+coverage/
+*.coverage
+*.trx
+
+# /verify artifacts — canonical layout (.claude/commands/verify.md → Phase 6).
+# Ignore heavy binaries (runner/ traces+videos+screenshots, report/html/, run metadata)
+# but TRACK the durable text: report/results.json, evidence/**, and any top-level *.txt.
+# The 3 primary deliverables (VERIFY_REPORT.md, VERIFY_MATRIX.md, verify-artifact.lock)
+# live directly under reports/ and stay tracked.
+reports/verify-artifacts/*
+!reports/verify-artifacts/*.txt
+!reports/verify-artifacts/report/
+!reports/verify-artifacts/evidence/
+reports/verify-artifacts/report/html/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets — only Development settings are tracked
+appsettings.*.json
+!appsettings.Development.json
+!appsettings.Testing.json
+
+# Local environment files
+.env
+.env.local
+
+# Tooling
+.dotnet/
+.nuget/
+artifacts/
+
+# Claude Code — local/personal settings (settings.json is the shared one)
+.claude/settings.local.json
+
+# Python cache (hooks)
+__pycache__/
+*.pyc
+
+# Backup
+*.bak
+*.orig
+
+# /verify run artifacts — track text deliverables, ignore heavy binaries
+reports/verify-artifacts/**
+!reports/verify-artifacts/
+!reports/verify-artifacts/report/
+!reports/verify-artifacts/report/results.json
+!reports/verify-artifacts/evidence/
+!reports/verify-artifacts/evidence/**

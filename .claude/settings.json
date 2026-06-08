@@ -1,0 +1,18 @@
+{
+  "model": "claude-opus-4-8",
+  "permissions": {
+    "defaultMode": "acceptEdits"
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/log-command-stats.py"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,289 @@
+---
+name: simplify
+description: Reduce complexity without changing behavior — code simplification
+---
+
+# /simplify — Code Simplification
+
+> "Complexity is the enemy of execution."
+
+## Purpose
+
+Simplify code for clarity and maintainability. Reduce complexity **without changing behavior**.
+
+## When to Use
+
+- After `/review` identifies complexity issues
+- When code is hard to understand
+- Before adding new features to tangled code
+- During tech debt cleanup sprints
+
+## Principles
+
+### Chesterton's Fence
+
+> Before removing something, understand why it exists.
+
+Don't delete code just because it looks unnecessary. Investigate:
+- Git history: `git log -p -- path/to/file`
+- Related tests
+- Comments or documentation
+- Ask team members if unsure
+
+### Rule of 500
+
+If a function, file, or class exceeds ~500 lines, it likely needs splitting.
+
+---
+
+## Workflow
+
+### Step 1: Identify Target
+
+```bash
+# Recently modified complex code
+git diff --stat HEAD~10
+
+# Or specify scope
+# "Simplify the OrderService class"
+```
+
+### Step 2: Understand Before Changing
+
+1. **Read the code** — What does it do?
+2. **Check tests** — What behaviors are verified?
+3. **Trace callers** — Who uses this code?
+4. **Note edge cases** — Any special handling?
+
+### Step 3: Identify Opportunities
+
+| Pattern | Simplification |
+|---------|---------------|
+| Deep nesting (> 3 levels) | Guard clauses, extract helpers |
+| Long methods (> 30 lines) | Split by responsibility |
+| Nested ternaries | `if/else` or `switch` expression |
+| Unclear names | Rename for clarity |
+| Duplicated code | Extract shared method |
+| Dead code | Remove entirely |
+| Complex conditionals | Extract to named method |
+| Magic numbers | Named constants |
+
+### Step 4: Apply Incrementally
+
+**One change at a time:**
+
+```csharp
+// Before: Deep nesting
+public async Task ProcessOrderAsync(Order order)
+{
+    if (order != null)
+    {
+        if (order.Items.Count > 0)
+        {
+            if (order.Status == OrderStatus.Pending)
+            {
+                // ... actual logic buried here
+            }
+        }
+    }
+}
+
+// After: Guard clauses
+public async Task ProcessOrderAsync(Order order)
+{
+    if (order is null) return;
+    if (order.Items.Count == 0) return;
+    if (order.Status != OrderStatus.Pending) return;
+
+    // ... actual logic at top level
+}
+```
+
+**Run tests after each change.**
+
+### Step 5: Validate
+
+```bash
+# All tests pass
+dotnet test
+
+# Build succeeds
+dotnet build
+
+# Behavior unchanged (manual check if needed)
+```
+
+### Step 6: If Tests Fail
+
+**Revert immediately.** Don't debug while mid-simplification.
+
+```bash
+git checkout -- .
+```
+
+Then:
+1. Reassess the change
+2. Make a smaller change
+3. Or add missing tests first
+
+---
+
+## Common Simplifications
+
+### Extract Guard Clauses
+
+```csharp
+// Before
+public decimal GetDiscount(User user)
+{
+    if (user != null)
+    {
+        if (user.Membership == MembershipType.Premium)
+        {
+            return 0.2m;
+        }
+        else
+        {
+            return 0.1m;
+        }
+    }
+    return 0m;
+}
+
+// After
+public decimal GetDiscount(User user)
+{
+    if (user is null) return 0m;
+    if (user.Membership == MembershipType.Premium) return 0.2m;
+    return 0.1m;
+}
+```
+
+### Extract Named Methods
+
+```csharp
+// Before
+var eligibleUsers = users.Where(u => 
+    u.Age >= 18 && u.IsVerified && !u.IsBanned && u.SubscriptionType != SubscriptionType.Free
+);
+
+// After
+private static bool IsEligible(User user) =>
+    user.Age >= 18 && 
+    user.IsVerified && 
+    !user.IsBanned && 
+    user.SubscriptionType != SubscriptionType.Free;
+
+var eligibleUsers = users.Where(IsEligible);
+```
+
+### Use Switch Expressions
+
+```csharp
+// Before
+public string GetOrderStatus(bool isPaid, bool isShipped)
+{
+    if (!isPaid)
+        return "pending";
+    else if (!isShipped)
+        return "processing";
+    else
+        return "complete";
+}
+
+// After
+public string GetOrderStatus(bool isPaid, bool isShipped) => (isPaid, isShipped) switch
+{
+    (false, _) => "pending",
+    (true, false) => "processing",
+    (true, true) => "complete"
+};
+```
+
+### Use Pattern Matching
+
+```csharp
+// Before
+public decimal CalculateShipping(object item)
+{
+    if (item is Book)
+        return 2.99m;
+    else if (item is Electronics electronics)
+        return electronics.Weight * 0.5m;
+    else if (item is null)
+        return 0m;
+    else
+        return 5.99m;
+}
+
+// After
+public decimal CalculateShipping(object item) => item switch
+{
+    null => 0m,
+    Book => 2.99m,
+    Electronics e => e.Weight * 0.5m,
+    _ => 5.99m
+};
+```
+
+### Remove Dead Code
+
+```csharp
+// Before
+public decimal Calculate(decimal a, decimal b)
+{
+    // var oldResult = LegacyCalculate(a, b);  // Commented out
+    var result = a + b;
+    // Debug.WriteLine($"Debug: {result}");  // Debug log
+    return result;
+}
+
+// After
+public decimal Calculate(decimal a, decimal b) => a + b;
+```
+
+### Use Expression-Bodied Members
+
+```csharp
+// Before
+public string FullName
+{
+    get
+    {
+        return $"{FirstName} {LastName}";
+    }
+}
+
+// After
+public string FullName => $"{FirstName} {LastName}";
+```
+
+---
+
+## Red Flags
+
+Stop if you find yourself:
+
+- Changing behavior while "simplifying"
+- Unable to explain why code exists
+- Simplifying without tests
+- Making changes across unrelated files
+- Creating new abstractions
+
+---
+
+## Output
+
+- Simpler, clearer code
+- All tests still passing
+- Atomic commits with clear messages
+
+## Agent
+
+Invoke: **Code Reviewer** (simplification mode)
+
+The Code Reviewer agent applies the same quality lens used in `/review`, but focuses specifically on reducing complexity while preserving behavior.
+
+## Next Step
+
+Run `/review` to verify improvements.
