@@ -19,6 +19,8 @@ Instead of asking the AI to "build me an app" and hoping for the best, you drive
 
 The result is the same discipline you'd expect from a real software team — requirements before code, tests before implementation, security before deploy — but executed by AI agents you orchestrate with a single slash command.
 
+In short, the kit is a **[harness](https://walkinglabs.github.io/learn-harness-engineering/en/)** — a layer of explicit rules and verification loops that forces every SDLC command to follow the same standards and stay reproducible, instead of the model improvising differently on each run.
+
 > 💡 **Inspired by** the agentic-workflow philosophy of [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD), adapted into a strict, gate-driven SDLC for **C# / ASP.NET Core 8** (with first-class **Node.js / Next.js** overrides).
 
 ---

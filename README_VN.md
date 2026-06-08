@@ -19,6 +19,8 @@ Thay vì bảo AI "xây cho tôi một app" rồi cầu may, bạn điều phố
 
 Kết quả là tuân thủ đúng trình tự và kỷ luật bạn mong đợi ở một đội ngũ thực thụ — requirements trước code, test trước implementation, security trước deploy — nhưng được thực thi bởi các AI agent mà bạn điều phối chỉ bằng một slash command.
 
+Nói ngắn gọn, kit đóng vai trò một **[harness](https://walkinglabs.github.io/learn-harness-engineering/en/)** — một lớp quy tắc tường minh và vòng lặp kiểm chứng, buộc mọi lệnh SDLC tuân theo cùng một chuẩn và cho kết quả có thể tái lập, thay vì để model tự ứng biến khác nhau mỗi lần chạy.
+
 > 💡 **Lấy cảm hứng từ** triết lý agentic-workflow của [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD), nhưng được xây dựng để trở thành một SDLC chặt chẽ, gate-driven cho **C# / ASP.NET Core 8** (kèm các override **Node.js / Next.js** được hỗ trợ đầy đủ).
 
 ---
