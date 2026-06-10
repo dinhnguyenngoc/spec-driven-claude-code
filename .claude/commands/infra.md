@@ -37,8 +37,8 @@ Create Docker infrastructure for local development and deployment on Docker Desk
 
 ```dockerfile
 # docker/Dockerfile
-# Base images pinned to exact patch tags — carries F-L1 from /scan ("no :latest,
-# no floating tags"). Bump deliberately during dependency upkeep, not implicitly.
+# Base images pinned to exact patch tags — standing /scan rule: no :latest,
+# no floating tags. Bump deliberately during dependency upkeep, not implicitly.
 FROM mcr.microsoft.com/dotnet/aspnet:8.0.10-alpine3.20 AS base
 WORKDIR /app
 EXPOSE 8080
@@ -92,8 +92,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=MyApp;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=true
-      # Include the Redis line only if an ADR keeps Redis in scope. See ADR-009 for the
-      # explicit-rejection pattern when an MVP intentionally drops it.
+      # Include the Redis line only if an ADR keeps Redis in scope. See the Rejection
+      # ADR pattern (arch.md §2.4) when an MVP intentionally drops it.
       # - ConnectionStrings__Redis=redis:6379
     depends_on:
       sqlserver:
@@ -103,6 +103,13 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    # Resource limits — Docker baseline must-have §4.2.7 (noisy-neighbor prevention).
+    # Compose v2 applies deploy.resources.limits in plain `docker compose up` (non-swarm).
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
 
   sqlserver:
     # NOTE — Apple Silicon / arm64: `mcr.microsoft.com/mssql/server` has NO arm64
@@ -155,7 +162,7 @@ Serilog__MinimumLevel__Default=Debug
 
 > **MUST live at the repo root** (`.dockerignore`), NOT in `docker/`. Docker reads `.dockerignore` from the **build context root** — which is the repo root since compose builds use `context: ..`. A file at `docker/.dockerignore` is silently ignored. (BuildKit's per-Dockerfile variant `docker/Dockerfile.api.dockerignore` exists but is non-obvious; default to the root file.)
 
-```
+```gitignore
 # .dockerignore (at repo root)
 **/.git
 **/.vs
@@ -187,7 +194,7 @@ docs
 
 ## Output Structure
 
-```
+```text
 docker/
 └── Dockerfile               # Multi-stage production build
 
@@ -205,6 +212,8 @@ docker-compose.deploy.yml    # Optional: release-tag pin overlay
 
 ## Checklist
 
+> **Authoritative baseline:** [`rules/principles-and-practices.md`](../rules/principles-and-practices.md) §4 — Docker baseline **20 must-haves**. Must-haves 1–14 (image construction, runtime safety, health & observability hooks) are `/infra`'s responsibility — reject artifacts missing any. Must-haves 15–20 (timeout/retry/circuit-breaker/rate-limit, audit columns, optimistic concurrency) land in code during `/build` and are verified at `/review`. The checklist below is the quick view.
+
 ### Dockerfile
 - [ ] Multi-stage build (smaller images)
 - [ ] Non-root user for security
@@ -212,8 +221,9 @@ docker-compose.deploy.yml    # Optional: release-tag pin overlay
 - [ ] Alpine-based images (smaller size)
 
 ### Docker Compose
-- [ ] All services required by the architecture are defined (at minimum: `api`, a SQL engine; add `redis`/`kafka`/etc. only if an ADR keeps them in scope — see ADR-009 template for an explicit-rejection record)
+- [ ] All services required by the architecture are defined (at minimum: `api`, a SQL engine; add `redis`/`kafka`/etc. only if an ADR keeps them in scope — see the Rejection ADR pattern in `arch.md` §2.4 for an explicit-rejection record)
 - [ ] Health checks configured
+- [ ] Resource limits set (cpus/memory) on app services — must-have §4.2.7
 - [ ] Volumes for data persistence
 - [ ] Environment variables via .env file
 - [ ] Correct port mappings
@@ -224,7 +234,7 @@ docker-compose.deploy.yml    # Optional: release-tag pin overlay
 - [ ] All required variables documented
 - [ ] Passwords meet complexity requirements
 
-### Quality Gate 9 — Verification
+## Quality Gate 9 — Verification
 
 Before proceeding to `/docs`:
 - [ ] `docker compose build` succeeds without warnings
@@ -233,7 +243,7 @@ Before proceeding to `/docs`:
 - [ ] **EF Core migrations apply on first run** (verified by hitting a DB-backed endpoint, not just `/health`)
 - [ ] **No secrets committed** — only `.env.example` shipped; `.env` is gitignored
 - [ ] **Image runs as non-root** (`USER appuser` in Dockerfile; verify with `docker exec <c> whoami`)
-- [ ] **All images pinned** to specific tags or digests — NO `:latest` anywhere (carry F-L1 from `/scan`)
+- [ ] **All images pinned** to specific tags or digests — NO `:latest` anywhere (standing `/scan` rule)
 
 ---
 
@@ -331,8 +341,10 @@ When the codebase already exists, `/infra` **auto-detects** behavior based on th
 
 Invoke: **Backend Developer** (DevOps mode)
 
-```
-"Setup Docker infrastructure for the project"
+```text
+"Setup Docker infrastructure for the project.
+Output language: Vietnamese for prose/artifacts, English for code and technical identifiers
+(see .claude/CLAUDE.md → Output Language)."
 ```
 
 ## Next Step

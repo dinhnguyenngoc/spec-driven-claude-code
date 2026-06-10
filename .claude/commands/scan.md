@@ -20,6 +20,8 @@ Comprehensive security scan of completed code **before deployment**. Detect vuln
 **Optional (if available):**
 - Code review approved (`reports/CODE_REVIEW.md` from `/review`)
 
+**Quick reference:** [`references/security-checklist.md`](../references/security-checklist.md) — pre-deploy security verification checklist (cross-check before composing SCAN_REPORT).
+
 **Automation script (đã chuẩn bị sẵn — agent KHÔNG chạy thủ công từng tool):**
 - [`.claude/scripts/scan-all.sh`](../scripts/scan-all.sh) — chạy mọi scanner có sẵn, fallback nếu missing
 - [`.claude/scripts/scan-summarize.py`](../scripts/scan-summarize.py) — merge output → `security/SCAN_SUMMARY.json`
@@ -52,7 +54,7 @@ Script tự làm:
 
 **Output files:**
 
-```
+```text
 security/
 ├── SCAN_SUMMARY.json                    # ← agent đọc file NÀY trước tiên
 ├── sast-results/
@@ -226,8 +228,13 @@ Template ở §Scan Report Template phía dưới.
 
 ## Recommendations
 
-1. <từ findings có severity Medium/Low — top 3>
-2. ...
+> Priority vocabulary — `/deploy` cross-references chính các tag này (RELEASE_NOTES §3 "Hardening landed", DEPLOY_RUNBOOK §1 "/scan P0 items implemented"):
+> **[P0]** = must implement BEFORE promote · **[P1]** = next release · **[P2]** = backlog.
+
+1. **[P0]** <finding bắt buộc xử lý trước khi promote — cross-ref F-###>
+2. **[P1]** <finding cho release kế tiếp — cross-ref F-###>
+3. **[P2]** <từ findings Medium/Low — backlog>
+
 
 ## Approval
 
@@ -238,7 +245,9 @@ Template ở §Scan Report Template phía dưới.
 
 ---
 
-## Quality Gate 8 ⛔ BLOCKING
+## Quality Gate 8 — Security Scan ⛔ BLOCKING
+
+> Step optional per CLAUDE.md §Quality Gates — **BLOCKING if run**.
 
 **Deployment CANNOT proceed** if:
 
@@ -264,7 +273,7 @@ Template ở §Scan Report Template phía dưới.
 
 Invoke: **Security Auditor**
 
-```
+```text
 "As Security Auditor, perform security scan.
 1. Chạy: bash .claude/scripts/scan-all.sh
 2. Đọc: security/SCAN_SUMMARY.json

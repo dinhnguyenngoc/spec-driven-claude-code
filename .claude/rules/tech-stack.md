@@ -10,13 +10,14 @@ The stack is divided into 2 groups. **Core is fixed** for every project using th
 
 | Group | Components | Rule |
 |-------|-----------|------|
-| **CORE (fixed)** | Language **C# 12**, framework **ASP.NET Core 8**, ORM **EF Core 8** | Do not change. All code rules (`code-style`, `clean-code`, `error-handling`, `api-conventions`, `naming-conventions`) apply as-is |
+| **CORE (fixed per project)** | Language **C# 12**, framework **ASP.NET Core 8**, ORM **EF Core 8** (default) | Do not change mid-project. Default = C#/.NET — all code rules (`code-style`, `clean-code`, `error-handling`, `api-conventions`, `naming-conventions`) apply as-is. If the Profile declares a **Node.js** core → apply the 3 Node overrides (see table below) |
 | **PERIPHERAL (per-project)** | Database engine, cache, message broker, **observability backend**, file storage, search | Default = Quick Reference table below. If the Profile declares otherwise → follow `rules/overrides/*` |
 
 **Available overrides:**
 
 | Peripheral | Default | Override when Profile declares otherwise |
 |-----------|---------|------------------------------------------|
+| Core language | C# 12 + ASP.NET Core 8 + EF Core 8 | Node.js → [`overrides/lang-nodejs.md`](overrides/lang-nodejs.md) + [`overrides/framework-nodejs-web.md`](overrides/framework-nodejs-web.md) + [`overrides/test-nodejs.md`](overrides/test-nodejs.md) |
 | Database | SQL Server 2022 | Oracle → [`overrides/database-oracle.md`](overrides/database-oracle.md) · MySQL → [`overrides/database-mysql.md`](overrides/database-mysql.md) · PostgreSQL → [`overrides/database-postgres.md`](overrides/database-postgres.md) · MongoDB (NoSQL) → [`overrides/database-mongodb.md`](overrides/database-mongodb.md) |
 | Observability | Grafana + Prometheus + Serilog | ELK → [`overrides/monitoring-elk.md`](overrides/monitoring-elk.md) |
 

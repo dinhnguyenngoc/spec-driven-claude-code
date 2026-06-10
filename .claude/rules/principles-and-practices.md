@@ -175,7 +175,7 @@ Trigger ADR + redesign when **any 2 of the following** become true:
 
 ## 5. NFR-Dependent Infrastructure
 
-> Each item below is **opt-in** based on a measured NFR trigger. **Design the interface from day 1** (see ADR-007 `ICacheService` pattern), implement only when the trigger fires.
+> Each item below is **opt-in** based on a measured NFR trigger. **Design the interface from day 1** (the `ICacheService` seam pattern — record the decision in an ADR), implement only when the trigger fires.
 
 | Component | Interface to plan day 1 | Trigger to implement |
 |-----------|------------------------|----------------------|

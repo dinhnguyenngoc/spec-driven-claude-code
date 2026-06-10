@@ -39,7 +39,7 @@ Transform a specification into an ordered list of small, verifiable tasks. Each 
 
 Break work into **vertical slices** — each slice delivers complete functionality through all layers:
 
-```
+```text
 ❌ Horizontal (anti-pattern):
    Task 1: Create all DB models
    Task 2: Create all API routes
@@ -60,7 +60,7 @@ Each task must include:
 
 **User stories**: US-XXX, US-YYY  *(traceability back to specs/SPEC.md — every task must map to at least one story or be flagged as "Foundation" with justification)*
 
-**Scenarios covered**: `@US-XXX-S01`, `@US-XXX-S03`, …  *(scenario-level traceability — list the exact scenario IDs from the spec this task delivers. Story-level mapping is NOT enough: a task that "covers a story" must enumerate which scenario IDs it implements, so a sub-behavior — e.g. a delete button, a favorite toggle — cannot hide inside a bundled task. Every `@US-XXX-Snn` in the spec must appear under some task, or in the plan's Deferred/Waived table with reason + owner.)*
+**Scenarios covered**: `@US-XXX-S01`, `@US-XXX-S03`, …  *(list the exact scenario IDs this task delivers — story-level mapping is NOT enough; a sub-behavior cannot hide inside a bundled task. Every `@US-XXX-Snn` must appear under some task or in the Deferred/Waived table — rule: [`references/scenario-traceability.md`](../references/scenario-traceability.md))*
 
 **References**: ADR-NNN (if a decision drives this task), `architecture/api/openapi.yaml#OperationId` (if API task)
 
@@ -82,7 +82,7 @@ Each task must include:
 
 > AC describes the **observable behavior**; Tests to add lists the **specific test files/names** that prove each AC. Keep them in 1-to-1 (or 1-to-many) correspondence — every AC should be backed by at least one named test.
 >
-> **One scenario : its own effect-asserting test.** Each scenario ID listed under "Scenarios covered" maps to a test that asserts **that scenario's observable *Then*** — never conflate two scenarios into one test (e.g. a "favorite filter" test does NOT cover the "click-favorite-to-mark" action). A **UI-observable** scenario requires a **UI / E2E-layer** test that asserts the outcome **after a round-trip** (reload / re-fetch); an API-layer test alone does not satisfy it (it proves the endpoint, not that the user can reach the behaviour).
+> **One scenario : its own effect-asserting test** — per [`references/scenario-traceability.md`](../references/scenario-traceability.md) §3–4: each scenario ID maps to a test asserting **that scenario's observable *Then*** (never conflate two scenarios into one test); a UI-observable scenario requires a UI/E2E-layer test, not an API test alone.
 
 **Dependencies**: [Task IDs this depends on]
 
@@ -189,7 +189,7 @@ The plan document MUST include the following sections, in this order:
 
 > Per CLAUDE.md rule 11: downstream phases (`/build`, `/test`) MUST tick `- [x]` immediately on task completion. When work is delegated to a sub-agent, the orchestrator owns the tick and applies it after the sub-agent's success report.
 
-## Quality Gate 3
+## Quality Gate 3 — Task Breakdown
 
 Before proceeding to `/secure`:
 - [ ] Tasks broken into vertical slices (no horizontal "all DB → all API → all UI" tasks)
@@ -219,6 +219,8 @@ Planning on legacy differs from greenfield in that it must **protect what is alr
 ## Agent
 
 Invoke: **Project Manager**
+
+> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 
 ## Next Step
 

@@ -40,7 +40,7 @@ Security Auditor owns two phases:
 - **`/secure`** — threat modeling (STRIDE) before code is written. Output: `security/PRE_DEV_REVIEW.md`.
 - **`/scan`** — vulnerability assessment after `/review`. Output: `security/SCAN_REPORT.md`.
 
-Both gates are **blocking** — no deploy without sign-off.
+Both steps are **optional per CLAUDE.md §Quality Gates — BLOCKING if run**: when executed, no deploy without sign-off.
 
 ---
 
@@ -57,6 +57,7 @@ Both gates are **blocking** — no deploy without sign-off.
 - Document threat vectors (STRIDE)
 - Risk assessment
 - Mitigation recommendations
+- **Use the fixed boilerplates** in [`.claude/templates/STRIDE_TEMPLATE.md`](../templates/STRIDE_TEMPLATE.md) + [`OWASP_TEMPLATE.md`](../templates/OWASP_TEMPLATE.md) — fill feature-specific data only, never re-author template structure
 
 ### Security Standards
 - Authentication best practices (JWT, refresh tokens)
@@ -67,6 +68,8 @@ Both gates are **blocking** — no deploy without sign-off.
 ---
 
 ## OWASP Top 10 Checklist
+
+> **Quick question-view only.** The **canonical** compliance table (A01–A10 codes, Status/Evidence columns, fill-only discipline) lives in [`.claude/templates/OWASP_TEMPLATE.md`](../templates/OWASP_TEMPLATE.md) §A — copy that into `PRE_DEV_REVIEW.md`; do not re-author.
 
 | # | Vulnerability | Check |
 |---|--------------|-------|
@@ -160,6 +163,8 @@ grep -rn --include="*.cs" "\[HttpGet\]\|\[HttpPost\]" src/MyApp.Api/Controllers/
 
 ## Output Format
 
+> **Pipeline outputs are defined by the commands** — `/secure` → `THREAT_MODEL.md` + `SECURITY_REQUIREMENTS.md` + `PRE_DEV_REVIEW.md` (from `templates/`); `/scan` → `security/SCAN_REPORT.md` (per `commands/scan.md`). The format below is for **ad-hoc audits** (e.g., the `security-review` skill).
+
 ```markdown
 ## Security Audit Report
 
@@ -195,8 +200,8 @@ grep -rn --include="*.cs" "\[HttpGet\]\|\[HttpPost\]" src/MyApp.Api/Controllers/
 
 | Severity | Description | Response |
 |----------|-------------|----------|
-| **Critical** | Immediate exploitation risk | Fix before deploy |
-| **High** | Significant vulnerability | Fix within 24h |
+| **Critical** | Immediate exploitation risk | Block deploy, fix immediately |
+| **High** | Significant vulnerability | Fix before deploy (blocks Gate 8) |
 | **Medium** | Moderate risk | Fix within sprint |
 | **Low** | Minor issue | Fix when convenient |
 | **Info** | Best practice suggestion | Consider |

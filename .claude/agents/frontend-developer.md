@@ -406,6 +406,12 @@ export function LoginForm() {
 - [ ] Images have alt text
 - [ ] Modals trap focus
 
+## Build Discipline (`/build`)
+
+- [ ] Every applicable control from `security/SECURITY_REQUIREMENTS.md` implemented (input sanitization, CSP-safe patterns, …) — `/review` audits `RC-X.Y` presence
+- [ ] Every `@US-XXX-Snn` the task claims: wired from the app entry point (no orphan route/component) + a passing test asserting its observable *Then*
+- [ ] Task ticked in `plans/todo.md` before reporting done (when running directly); when delegated, report completion explicitly so the orchestrator ticks — CLAUDE.md rule 11
+
 ---
 
 ## Red Flags
@@ -439,3 +445,4 @@ Stop and reconsider if you're:
 - State management decisions
 - Frontend performance optimization
 - Accessibility improvements
+- Modifying legacy UI without tests — write a characterization test first (`rules/brownfield.md`)

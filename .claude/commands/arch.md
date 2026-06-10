@@ -22,6 +22,7 @@ The following rules provide detailed standards — refer to them during architec
 
 | Rule | Purpose |
 |------|---------|
+| [principles-and-practices.md](../rules/principles-and-practices.md) | **Master reference** — architecture default (§3 Modular Monolith + Clean Architecture; ADR required for any deviation), NFR-dependent infrastructure (§5 opt-in triggers) |
 | [tech-stack.md](../rules/tech-stack.md) | Approved technologies & decision criteria |
 | [system-design.md](../rules/system-design.md) | CAP theorem, scaling, caching patterns |
 | [project-structure.md](../rules/project-structure.md) | Clean Architecture layers |
@@ -42,7 +43,7 @@ The following rules provide detailed standards — refer to them during architec
 
 #### 2.1 System Context Diagram
 
-```
+```text
                          ┌──────────┐
                          │   User   │
                          └────┬─────┘
@@ -62,7 +63,7 @@ The following rules provide detailed standards — refer to them during architec
 
 #### 2.2 Container Diagram
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        System Boundary                           │
 │                                                                  │
@@ -99,7 +100,7 @@ The following rules provide detailed standards — refer to them during architec
 
 Create component diagrams when a service has **> 5 internal components** or complex dependencies:
 
-```
+```text
 ┌─────────────────────────────────────────────────────┐
 │                    API Service                       │
 │                                                      │
@@ -169,7 +170,7 @@ Create sequence diagrams for:
 - **Multi-service interactions** — When > 2 services coordinate
 - **Error handling flows** — Retry logic, circuit breaker behavior
 
-```
+```text
 ┌────────┐      ┌─────────┐      ┌────────┐      ┌────────┐
 │ Client │      │ Gateway │      │  Auth  │      │  User  │
 └───┬────┘      └────┬────┘      └───┬────┘      └───┬────┘
@@ -232,7 +233,7 @@ Honors `.claude/rules/error-handling.md` (`AppException` + ProblemDetails RFC 78
 
 ### Phase 4: Output Structure
 
-```
+```text
 architecture/
 ├── ARCHITECTURE.md           # Main architecture document
 ├── adr/                      # Architecture Decision Records (filename: ADR-NNN-kebab-title.md)
@@ -298,7 +299,7 @@ architecture/
 - [ADR-001](adr/001-database-choice.md)
 ```
 
-## Quality Gate 2
+## Quality Gate 2 — Architecture Review
 
 Before proceeding to `/plan`:
 - [ ] Architecture document reviewed
@@ -335,8 +336,12 @@ Before proceeding to `/plan`:
 
 Invoke: **Systems Architect**
 
-```
-"As Systems Architect, design the architecture for [feature]"
+For UI-heavy features, also consult: **UI/UX Designer** (design system, tokens, key user flows)
+
+```text
+"As Systems Architect, design the architecture for [feature].
+Output language: Vietnamese for prose/artifacts, English for code and technical identifiers
+(see .claude/CLAUDE.md → Output Language)."
 ```
 
 ## Next Step

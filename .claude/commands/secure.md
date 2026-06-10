@@ -114,7 +114,7 @@ Một deep table hơn 15 paragraph shallow.
 
 ### Phase 6: Output Structure
 
-```
+```text
 security/
 ├── THREAT_MODEL.md              # Sinh từ STRIDE_TEMPLATE §F skeleton (Asset + STRIDE block + Highest-Risk Surface)
 ├── SECURITY_REQUIREMENTS.md     # Sinh từ OWASP_TEMPLATE §B checklist
@@ -131,7 +131,9 @@ security/
 
 ---
 
-## Quality Gate 4 ⛔ BLOCKING
+## Quality Gate 4 — Pre-Dev Security Review ⛔ BLOCKING
+
+> Step optional per CLAUDE.md §Quality Gates — **BLOCKING if run**.
 
 **Development CANNOT proceed** without:
 
@@ -152,7 +154,7 @@ security/
 
 Invoke: **Security Auditor**
 
-```
+```text
 "As Security Auditor, perform pre-development security review for [feature].
 Use .claude/templates/STRIDE_TEMPLATE.md and .claude/templates/OWASP_TEMPLATE.md
 as boilerplate — fill feature-specific data, do NOT re-author template structure.

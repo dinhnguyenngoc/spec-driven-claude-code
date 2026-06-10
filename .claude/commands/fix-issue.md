@@ -17,12 +17,13 @@ Analyze and fix a **reported** bug or issue systematically. This command handles
 |-----------|---------|
 | Bug report from QA/Production/Users | → `/fix-issue` |
 | Jira/Linear ticket or issue tracker | → `/fix-issue` |
+| `BUG-###` filed in `reports/TEST_REPORT.md` §8, or a failure in `reports/VERIFY_REPORT.md` §3 | → `/fix-issue` |
 | `/build` or `/test` fails unexpectedly | → `/debug` |
 | Error occurs during development | → `/debug` |
 
 ## Usage
 
-```
+```text
 /fix-issue JIRA-456               # Fix Jira ticket
 /fix-issue LIN-123                # Fix Linear ticket
 /fix-issue "Users cannot login"   # Fix bug from description
@@ -52,8 +53,11 @@ git log --grep="LIN-123" --oneline
 | Source | Action |
 |--------|--------|
 | Jira/Linear ticket | Link ticket, check acceptance criteria, extract reproduction steps |
+| `BUG-###` (TEST_REPORT §8) / VERIFY_REPORT §3 | **Reuse the already-written failing regression test + root cause `file:line` + proposed fix from the report** — do not re-author from scratch |
 | Production logs | Identify stack trace, affected users |
 | User report | Clarify steps to reproduce |
+
+> **Brownfield (Mode: brownfield — flow B3):** if the area being fixed has no tests, write a **characterization test first** (capture current behavior, PASS) before touching the code — per `rules/brownfield.md`. The bug's regression test then documents the *intended* behavior change.
 
 ### 3. Root Cause Analysis
 
@@ -104,7 +108,7 @@ dotnet format --verify-no-changes
 
 Follow `.claude/rules/git-workflow.md`:
 
-```
+```text
 fix(orders): correct total calculation with percentage discounts
 
 - Fixed rounding issue when applying percentage discounts
@@ -145,7 +149,7 @@ git bisect good <last-known-good-commit>
 ## Bug Fix Checklist
 
 - [ ] Issue reproduced locally
-- [ ] Root cause identified
+- [ ] Root cause identified (`file:line`)
 - [ ] Regression test written (fails before fix)
 - [ ] Fix implemented
 - [ ] All tests pass
@@ -221,6 +225,8 @@ public async Task<Order> CreateOrderAsync(CreateOrderRequest request)
 ## Agent
 
 Invoke: **Backend Developer** or **Frontend Developer** depending on the issue location.
+
+> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 
 ## Next Step
 

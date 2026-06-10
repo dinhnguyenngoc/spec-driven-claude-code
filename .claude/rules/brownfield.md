@@ -38,6 +38,8 @@ Cùng một lệnh làm hai việc khác nhau tùy ngữ cảnh:
 | Health snapshot nhẹ + red-flag | `/test` verify cho thay đổi cụ thể |
 
 > Đừng viết characterization test cho cả codebase, đừng review toàn repo. Chỉ làm cho vùng thay đổi chạm tới — đúng lúc, đúng chỗ.
+>
+> **VIẾT theo delta — CHẠY toàn bộ:** quy tắc trên giới hạn phần *viết mới* (test, characterization, review effort); còn suite/verify-suite **đã automated** thì CHẠY full mỗi vòng — regression net xanh mới chứng minh phần không đổi không bị ảnh hưởng. Bảng tra cho `/test` · `/review` · `/verify` + cây quyết định 9 tình huống: [`../references/brownfield-pipeline.md`](../references/brownfield-pipeline.md) §Scope per-change.
 
 ### 3. Backward compatibility mặc định
 
@@ -92,7 +94,7 @@ Khi nâng cấp/thay công nghệ, **không big-bang rewrite**:
 3. Đo, mở rộng dần; bản cũ co lại tới khi bỏ được.
 4. Backward-compat suốt quá trình — cache miss / path mới lỗi → fallthrough bản cũ.
 
-> LinkVault ví dụ: `ICacheService` đã được thiết kế sẵn (ADR-007) để sau này cắm Redis vào mà không đụng caller — đó là seam cho strangler-fig.
+> Ví dụ (LinkVault): `ICacheService` được thiết kế sẵn từ ngày đầu (ghi nhận bằng ADR khi chạy `/arch`) để sau này cắm Redis vào mà không đụng caller — đó là seam cho strangler-fig.
 
 ---
 

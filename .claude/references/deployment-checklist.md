@@ -19,6 +19,10 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
+> **Note:** the 6 categories above are internal pre-deploy groupings — NOT the pipeline's Quality Gates 1–11 (see `CLAUDE.md` §Quality Gates).
+>
+> **If `/verify` was run (Gate 11 — BLOCKING if run):** promote only the digest with a passing `reports/VERIFY_REPORT.md` — digest in `reports/verify-artifact.lock` must match the digest being deployed.
+
 ---
 
 ## 1. Code Readiness
@@ -145,6 +149,7 @@ dotnet ef migrations script --idempotent -o migrations.sql
 - [ ] `/health` endpoint returns 200
 - [ ] `/health/ready` checks all dependencies
 - [ ] `/health/live` for liveness probe
+- [ ] **Every service in compose reaches `Up (healthy)`** — or is explicitly whitelisted with a note (per `commands/deploy.md` Step 4; any unhealthy service blocks tag/release)
 
 ---
 
@@ -196,7 +201,7 @@ dotnet ef migrations script --idempotent -o migrations.sql
 # --- docker compose (default for early-stage deployments) ---
 
 # Pin to previous image tag and roll back
-VERSION=v1.2.2 docker compose -f docker-compose.prod.yml up -d
+VERSION=v1.2.2 docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
 
 # Verify rollback
 docker compose ps
@@ -298,14 +303,14 @@ docker build -t registry/myapp:v1.2.3 -f docker/Dockerfile .
 docker push registry/myapp:v1.2.3
 
 # --- docker compose (default — see tech-stack.md) ---
-VERSION=v1.2.3 docker compose -f docker-compose.prod.yml pull
-VERSION=v1.2.3 docker compose -f docker-compose.prod.yml up -d
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs -f --tail=100 api
+VERSION=v1.2.3 docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull
+VERSION=v1.2.3 docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.deploy.yml ps
+docker compose -f docker-compose.yml -f docker-compose.deploy.yml logs -f --tail=100 api
 curl https://api.example.com/health
 
 # Quick rollback if needed
-VERSION=v1.2.2 docker compose -f docker-compose.prod.yml up -d
+VERSION=v1.2.2 docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
 
 # --- Kubernetes (once migrated) ---
 kubectl apply -f k8s/deployment.yaml

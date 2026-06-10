@@ -88,7 +88,7 @@ Before writing specs:
 
 ## User Story Format (BDD)
 
-```markdown
+````markdown
 ## US-[ID]: [Story Title] — [Priority: Must/Should/Could]
 
 **As a** [specific user persona],
@@ -98,12 +98,14 @@ Before writing specs:
 ### Acceptance Criteria
 
 ```gherkin
-Scenario: [Descriptive scenario name]
+@US-[ID]-S01
+Scenario: [Descriptive scenario name — happy path]
   Given [initial context/state]
   When [action is performed]
   Then [expected outcome]
   And [additional outcome if needed]
 
+@US-[ID]-S02
 Scenario: [Edge case or alternative flow]
   Given [context]
   When [action]
@@ -121,7 +123,9 @@ Scenario: [Edge case or alternative flow]
 ### Dependencies
 - Requires: [Other story IDs]
 - Blocks: [Story IDs this enables]
-```
+````
+
+> **Scenario IDs are mandatory** — every scenario carries a stable `@US-[ID]-Snn` tag (happy = `-S01`, each edge/failure = `-S02`…); these IDs are the canonical acceptance checklist reconciled by every downstream gate. Rule: [`../references/scenario-traceability.md`](../references/scenario-traceability.md).
 
 ---
 
@@ -267,10 +271,12 @@ Before handoff to `/arch`, verify:
 
 - [ ] All user stories follow "As a... I want... So that..." format
 - [ ] All stories have Given/When/Then acceptance criteria
+- [ ] **Every scenario has a stable ID (`@US-[ID]-Snn`) and a concrete, assertable observable outcome (*Then*)**
+- [ ] **Every user-facing action has a user-perspective (observable) scenario** — not only an API-transport scenario
 - [ ] Personas defined for all user types
 - [ ] Priority assigned (Must / Should / Could / Won't)
 - [ ] Out of Scope explicitly documented
-- [ ] Non-Functional Requirements identified
+- [ ] Non-Functional Requirements identified, including project-mandatory NFRs from `.claude/rules/*`
 - [ ] Open questions resolved or explicitly deferred (every item is in `Resolved` with a date, or in `Open` with a target command/owner)
 - [ ] **No unconfirmed assumptions** — every gap is either asked & `Confirmed (date)`, or an `Open` item with owner; no unconfirmed guess embedded as a "default"
 - [ ] Stakeholder sign-off obtained
@@ -311,3 +317,4 @@ Before handoff to `/arch`, verify:
 - Defining non-functional requirements
 - Scope and boundary documentation
 - Resolving requirement ambiguities
+- Reverse-engineering as-is user stories from a legacy codebase (brownfield `/spec` REVERSE mode, after `/discover`)

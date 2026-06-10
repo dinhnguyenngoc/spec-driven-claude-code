@@ -180,6 +180,8 @@ Use the canonical four labels (see *Comment Severity Labels* above):
 
 ## Review Output Format
 
+> **Note:** the format below is the **inline PR-comment digest**. When running the `/review` pipeline, the official report is `reports/CODE_REVIEW.md` — 7 sections including a **Five-Axis Scores table (numerical 1–5 per axis + one-line justification)**, per `commands/review.md` §Output File. This digest does not replace it.
+
 ```markdown
 ## Review: [PR Title]
 

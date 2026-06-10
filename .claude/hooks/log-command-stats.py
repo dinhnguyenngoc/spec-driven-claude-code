@@ -284,9 +284,13 @@ def main():
     if not transcript_path:
         sys.exit(0)
 
-    # Xác định project dir để biết log file ở đâu
-    cwd = payload.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or "."
-    log_file = Path(cwd) / ".claude" / "logs" / "command-stats.log"
+    # Xác định project dir để biết log file ở đâu.
+    # CLAUDE_PROJECT_DIR luôn là project root (Claude Code export cho hook process);
+    # payload["cwd"] là thư mục làm việc HIỆN TẠI của phiên — thay đổi khi user/agent
+    # `cd` đi nơi khác → từng gây ra log file lồng nhầm (.claude/rules/.claude/logs/…).
+    # Chỉ dùng cwd làm fallback khi env var vắng mặt.
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR") or payload.get("cwd") or "."
+    log_file = Path(project_dir) / ".claude" / "logs" / "command-stats.log"
 
     stats = parse_transcript(transcript_path)
     if stats:

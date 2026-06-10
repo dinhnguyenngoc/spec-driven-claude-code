@@ -8,6 +8,8 @@ description: Skill to perform a thorough security audit of the codebase
 ## Purpose
 Systematically scan the codebase for security vulnerabilities and produce a prioritized report.
 
+> **Boundary vs `/scan`:** inside the `/scan` pipeline, do NOT run these tools manually — use the automation script `.claude/scripts/scan-all.sh` (per `commands/scan.md` Phase 0). This skill is the **manual / ad-hoc variant** for quick audits outside the pipeline.
+
 ## Checklist
 
 ### 🔴 Critical (Check First)

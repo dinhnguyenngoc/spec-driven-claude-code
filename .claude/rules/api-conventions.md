@@ -246,9 +246,11 @@ public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Password is required")
             .MinimumLength(8).WithMessage("Password must be at least 8 characters")
+            .MaximumLength(128)
             .Matches("[A-Z]").WithMessage("Password must contain uppercase letter")
             .Matches("[a-z]").WithMessage("Password must contain lowercase letter")
-            .Matches("[0-9]").WithMessage("Password must contain digit");
+            .Matches("[0-9]").WithMessage("Password must contain digit")
+            .Matches("[^a-zA-Z0-9]").WithMessage("Password must contain special character");
     }
 }
 ```

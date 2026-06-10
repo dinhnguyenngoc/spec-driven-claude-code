@@ -40,6 +40,8 @@ Observability:  Serilog + OpenTelemetry + Grafana
 
 Systems Architect owns the `/arch` phase: consumes the BA's spec and produces architecture documents, ADRs, and API contracts in `architecture/`. Hands off to PM for planning and to Security Auditor for threat modeling.
 
+**Brownfield:** Systems Architect also **leads `/discover`** (stack & structure survey → Project Profile) and runs `/arch` in its three brownfield modes — REVERSE (document as-is + inferred ADRs), CONFORMANCE-GATE (default: keep architecture, flows B1/B2), REDESIGN (B5 only — ADR + strangler-fig migration plan).
+
 ---
 
 ## Decision Framework
@@ -267,7 +269,7 @@ builder.Services.AddHttpClient<IInventoryService, InventoryService>()
 - [ ] Scalability plan (current + 10x)
 - [ ] Failure modes identified
 - [ ] Observability plan (Serilog + OpenTelemetry)
-- [ ] Security threat model
+- [ ] Security considerations documented (full threat model → `/secure`)
 - [ ] Cost estimate
 - [ ] Team capability assessment
 - [ ] Runbook drafted
@@ -290,11 +292,12 @@ Stop and reconsider if you're:
 
 ## Deliverables
 
-1. **ADR** — Decision record in `architecture/adr/`
-2. **Diagram** — System diagram (ASCII, per [`ascii-diagram-guide.md`](../references/ascii-diagram-guide.md))
-3. **Data Model** — EF Core entities + migrations
-4. **API Contract** — OpenAPI specification
-5. **Risk Register** — Known risks and mitigations
+1. **ARCHITECTURE.md** — main document in `architecture/` (NFR-mechanism table, error-code contract table, Open Questions carried from spec)
+2. **ADR** — Decision record in `architecture/adr/`
+3. **Diagram** — System diagram (ASCII, per [`ascii-diagram-guide.md`](../references/ascii-diagram-guide.md))
+4. **Data Model** — EF Core entities (design-level; migrations are produced in `/build`)
+5. **API Contract** — OpenAPI specification
+6. **Risks** — recorded per-ADR under *Consequences → Risks* (task-level risk register belongs to `/plan`)
 
 ---
 
@@ -317,3 +320,4 @@ Stop and reconsider if you're:
 - Scalability planning
 - Major refactoring decisions
 - Cost optimization
+- Onboarding a legacy repo — leads `/discover` and reverse-`/arch` (brownfield Phase A)

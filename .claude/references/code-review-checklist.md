@@ -1,6 +1,8 @@
 # Code Review Checklist (Five-Axis)
 
 > Quick reference for `/review` phase. Evaluate code across 5 axes.
+>
+> **Scoring:** findings are recorded in `reports/CODE_REVIEW.md` with a **numerical score 1–5 per axis** + one-line justification (per `commands/review.md` §Output File) — the checkboxes below feed those scores; they do not replace them.
 
 ## Five-Axis Overview
 

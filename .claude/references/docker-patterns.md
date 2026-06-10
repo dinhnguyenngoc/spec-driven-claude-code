@@ -175,14 +175,14 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 ### Development Setup
 
 ```yaml
-# docker-compose.dev.yml
+# docker-compose.yml (base — local development; at repo root so `context: .` works)
 version: '3.8'
 
 services:
   api:
     build:
       context: .
-      dockerfile: docker/Dockerfile.dev
+      dockerfile: docker/Dockerfile
     ports:
       - "5000:5000"
     environment:
@@ -224,7 +224,7 @@ volumes:
 ### Production Setup
 
 ```yaml
-# docker-compose.prod.yml
+# docker-compose.deploy.yml (release-tag overlay — at repo root)
 version: '3.8'
 
 services:

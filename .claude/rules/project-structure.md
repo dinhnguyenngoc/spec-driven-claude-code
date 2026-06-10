@@ -126,20 +126,25 @@ MyApp.sln
 │       │   └── UserRegistrationTests.cs
 │       └── MyApp.E2ETests.csproj
 │
-├── docker/
-│   ├── Dockerfile
-│   ├── Dockerfile.dev
-│   ├── docker-compose.yml
-│   ├── docker-compose.dev.yml
-│   └── docker-compose.prod.yml
+├── docker/                          # /infra output — Dockerfile only
+│   └── Dockerfile
+├── docker-compose.yml               # at repo root so `context: .` works
+├── docker-compose.test.yml          # optional E2E overlay
+├── docker-compose.deploy.yml        # optional release-tag overlay
+├── .dockerignore                    # MUST be at repo root (build context)
 │
-├── docs/
+├── architecture/                    # /arch output
+│   ├── ARCHITECTURE.md
+│   ├── adr/
+│   ├── diagrams/
+│   └── api/
+│       └── openapi.yaml
+│
+├── docs/                            # /docs output
+│   ├── getting-started.md
 │   ├── api/
-│   │   └── openapi.yaml
-│   ├── architecture/
-│   │   ├── ARCHITECTURE.md
-│   │   └── diagrams/
-│   └── getting-started.md
+│   ├── deployment.md
+│   └── troubleshooting.md
 │
 ├── scripts/
 │   ├── setup.sh

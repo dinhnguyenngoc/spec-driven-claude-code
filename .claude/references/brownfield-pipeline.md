@@ -27,6 +27,9 @@ Mỗi luồng B chỉ khác ở **cửa vào spine**. Memorize spine 1 lần, nh
 | Bug phát hiện lúc dev (chưa release) | **B3** |
 | Lỗi trên production đang LIVE | **B4** |
 | Đổi / nâng cấp kiến trúc / công nghệ | **B5** |
+| Nâng cấp dependency/runtime (.NET bump, vá CVE) — behavior giữ nguyên | **B5-lite** — ADR nhẹ, không cần strangler-fig; **full regression bắt buộc** (blast radius = cả app) |
+| Trả nợ kỹ thuật / refactor không đổi behavior | **`/simplify`** (kênh riêng — characterization test làm lưới "behavior unchanged") |
+| Gỡ bỏ / deprecate tính năng | **B2 + ADR** (breaking by design — deprecation window + migration path, per backward-compat rule) |
 
 ---
 
@@ -63,6 +66,7 @@ Mỗi luồng B chỉ khác ở **cửa vào spine**. Memorize spine 1 lần, nh
 - `/spec(delta)`: chỉ đặc tả tính năng mới, reference story cũ — KHÔNG viết lại.
 - `/arch(conformance)`: mặc định **no-op**; ADR nhẹ chỉ nếu có quyết định nhỏ mới.
 - `/build`: TDD bình thường (code mới); characterization test **chỉ khi** đụng vùng legacy chưa test.
+- Tính năng mới mở **surface ngoài** (payment, SSO, webhook, URL-fetch) → **nên chạy `/secure`** — surface mới chính là ứng viên "Highest-Risk Active Surface" (Phase 3.5).
 
 ### B2 — Sửa tính năng ĐÃ CÓ
 
@@ -127,6 +131,20 @@ Mỗi luồng B chỉ khác ở **cửa vào spine**. Memorize spine 1 lần, nh
 
 1. **Characterization test trước khi sửa** code legacy chưa có test (đặc biệt B2)
 2. **Backward-compat mặc định** — không phá API/contract/data/schema đang chạy (phá vỡ → ADR + migration)
+
+---
+
+## Scope per-change — VIẾT theo delta, CHẠY toàn bộ
+
+> Trả lời câu *"`/test`, `/review`, `/verify` thực hiện trên toàn bộ source hay chỉ phần thay đổi?"* — nguyên tắc gốc: [`../rules/brownfield.md`](../rules/brownfield.md) §Upfront-vs-Per-change. Phân biệt then chốt: **VIẾT (đắt) ≠ CHẠY (rẻ)**.
+
+| Lệnh | VIẾT mới — CHỈ phần thay đổi | CHẠY — TOÀN BỘ những gì đã automated |
+|------|------------------------------|----------------------------------------|
+| `/test` | Test cho delta + characterization vùng đụng + backward-compat test cho contract kề cận | **Toàn bộ suite hiện có** — suite cũ xanh mới chứng minh "phần không đổi không bị ảnh hưởng" |
+| `/review` | — | **Chỉ diff/slice của thay đổi** (Five-Axis trên phần sửa; trục Architecture đối chiếu conformance với baseline — KHÔNG re-review toàn repo) |
+| `/verify` | Verify test cho scenario thay đổi/thêm (cập nhật VERIFY_MATRIX phần delta) | **Toàn bộ verify suite** (gồm zero-seed golden journey — lưới hệ thống rẻ nhất). Ngoại lệ duy nhất: **B4 hotfix** = scoped minimum (liveness + contract vùng bug + scenarios của story liên quan + test tái hiện incident) |
+
+> Lưới lớn dần theo từng vòng B: vòng đầu sau Phase A build suite (ưu tiên golden journey + vùng sắp đụng), các vòng sau chỉ thêm delta. KHÔNG retrofit test toàn bộ upfront.
 
 ---
 

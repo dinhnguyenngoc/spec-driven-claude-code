@@ -22,15 +22,17 @@ Invoke based on the layer where the error occurs:
 | Test failure (flaky, intermittent) | 🧪 **Test Engineer** |
 | Security-related error | 🔒 **Security Auditor** |
 
+> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+
 ---
 
-## When to Invoke
+## When to Use
 
 | Situation | Action |
 |-----------|--------|
 | `/build` fails with unclear error | → Invoke `/debug` |
 | `/test` fails with flaky or intermittent test | → Invoke `/debug` |
-| Runtime error hard to trace in dev/staging | → Invoke `/debug` |
+| Runtime error hard to trace in dev/local | → Invoke `/debug` |
 | Simple error with obvious cause | → Fix directly |
 | CI/CD pipeline fails unexpectedly | → Invoke `/debug` |
 
@@ -167,7 +169,7 @@ dotnet build --configuration Release
 
 ### Test Failure
 
-```
+```text
 Test fails
 ├── Assertion error
 │   ├── Expected value wrong → Check test expectation
@@ -183,7 +185,7 @@ Test fails
 
 ### Build Error
 
-```
+```text
 Build fails
 ├── CS error (Compilation)
 │   ├── Type mismatch → Fix types or add cast
@@ -198,7 +200,7 @@ Build fails
 
 ### Runtime Error
 
-```
+```text
 Runtime error
 ├── API returns error
 │   ├── 4xx → Client issue, check request
@@ -356,7 +358,7 @@ catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx)
 | **Root cause fix** | Code fixed at the source |
 | **Regression test** | New test in `tests/` to guard against recurrence |
 | **Commit** | Format: `fix(<scope>): <description>` |
-| **DEBUG_REPORT.md** | (Optional) For complex bugs, record root cause analysis |
+| **`reports/DEBUG_REPORT.md`** | (Optional) For complex bugs, record root cause analysis |
 
 **Verification checklist:**
 - [ ] Root cause identified (not a workaround)
@@ -371,6 +373,8 @@ catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx)
 | Context | Next |
 |---------|------|
 | Debug during `/build` phase | → Resume `/build` |
-| Debug during `/test` phase | → Re-run `/test` |
+| Debug during `/test` phase | → Re-run `/test` (**test-code fixes only** — see boundary note below) |
 | Debug critical/security bug | → `/review` to verify fix |
-| Debug production issue | → `/scan` after fix |
+| Debug production issue (live artifact) | → escalate to `/hotfix` (incident flow: triage rollback vs fix-forward, re-verify, redeploy) |
+
+> **Boundary when invoked during `/test`:** `/test` is read-only on production code. `/debug` may fix **test code** (flaky test, wrong assertion, racy fixture); a **production** bug found during `/test` is filed as BUG-### (Prove-It, per `test.md` §8) and fixed in `/review` / `/fix-issue` — `/debug` does not override that boundary.

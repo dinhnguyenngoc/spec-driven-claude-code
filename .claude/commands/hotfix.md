@@ -32,11 +32,13 @@ Use `/hotfix` only when **all three** conditions are true: (a) the artifact is *
 
 ## Usage
 
-```
+```text
 /hotfix "Users get Network error on register"   # from production symptom
 /hotfix INC-204                                  # from incident ticket
 /hotfix JIRA-456 --severity=critical             # with severity level
 ```
+
+> `--severity` (critical / high / medium) = **incident priority** — recorded in the incident note (Step 6) and drives triage urgency (how fast Step 1 must decide rollback-vs-fix-forward). It does NOT change the 6-step flow itself.
 
 ## Scope Clarification — thin orchestrator
 
@@ -123,7 +125,7 @@ The patch must have its own **identity** for audit & rollback:
 
 ---
 
-## Exit Criteria (Quality Gate)
+## Quality Gate — Exit Criteria
 
 - [ ] **Deliberate triage** — rollback-vs-fix-forward decided and recorded (do not default to fix-forward)
 - [ ] If fix-forward: regression test **fails before fix, passes after fix**; root cause `file:line` identified
@@ -150,7 +152,9 @@ Invoke: **Release Manager** (incident commander — owns triage, version, rollba
 - **Backend / Frontend Developer** — implements the fix via `/fix-issue`.
 - **Test Engineer** — re-verifies the patch via `/verify`.
 
+> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+
 ## Next Step
 
-- Service restored + patch verified & promoted → close the incident, write the post-mortem.
+- Service restored + patch verified & promoted → close the incident, write the post-mortem (blameless — per `rules/principles-and-practices.md` §2.4).
 - If Step 1 chose rollback-only → open a high-priority `/fix-issue` to fix-forward properly for the next release.

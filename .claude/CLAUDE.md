@@ -83,7 +83,7 @@ This kit supports **two modes**. The mode + peripheral technologies are declared
 ```markdown
 ## Project Profile
 - Mode: greenfield | brownfield
-- Core: C# 12 + ASP.NET Core 8 + EF Core 8
+- Core: C# 12 + ASP.NET Core 8 + EF Core 8 (base) | Node.js → rules/overrides/lang-nodejs.md + framework-nodejs-web.md + test-nodejs.md
 - Database: SQL Server (base) | Oracle → rules/overrides/database-oracle.md | MySQL → rules/overrides/database-mysql.md | PostgreSQL → rules/overrides/database-postgres.md | MongoDB → rules/overrides/database-mongodb.md
 - Observability: Serilog/Grafana (base) | ELK → rules/overrides/monitoring-elk.md
 - Structure: Clean Architecture | N-tier | monolith
@@ -93,7 +93,22 @@ This kit supports **two modes**. The mode + peripheral technologies are declared
 > **Brownfield pipeline summary:**
 > - **Phase A (one-time):** `/discover` → `/spec` (reverse) → `/arch` (reverse) → `/infra` (reverse-bootstrap). `/scan` is recommended, independent. `/verify` and `/deploy` are **not part of Phase A** — they are execution commands for per-change work in Phase B (production deploy = touches production state, not baseline documentation).
 > - **Phase B (iterative):** B1 new feature · B2 modify feature (characterization test first) · B3 `/fix-issue` · B4 `/hotfix` · B5 architecture upgrade (`/arch` redesign + ADR).
+> - **Scope per-change:** `/test`/`/verify` **VIẾT theo delta, CHẠY toàn bộ** suite đã automated (regression net); `/review` chỉ review diff/slice của thay đổi. Bảng chi tiết + cây quyết định 9 tình huống: [`references/brownfield-pipeline.md`](references/brownfield-pipeline.md) §Scope per-change.
 > - **Quick lookup of command order per flow:** [`references/brownfield-pipeline.md`](references/brownfield-pipeline.md). Detailed discipline: [`rules/brownfield.md`](rules/brownfield.md).
+
+---
+
+## Natural-Language Task Routing (entry point)
+
+Khi user mô tả một việc bằng **ngôn ngữ thường** ("thêm tính năng X", "sửa tính năng Y", "fix bug Z", "có sự cố trên production", "nâng cấp <dependency/kiến trúc>", "dọn nợ kỹ thuật chỗ W"…), **TRƯỚC KHI làm bất kỳ việc gì khác**, trả lời theo format 3 phần:
+
+1. **Mode** — greenfield hay brownfield: xác định từ `Project Profile → Mode` + tín hiệu thực tế của repo (đã có source code business chưa), **nêu rõ căn cứ**. Profile lệch hiện trạng → cảnh báo và dừng, không tự đi tiếp.
+2. **Luồng** — gọi tên: greenfield 12 bước, hoặc B1 / B2 / B3 / B4 / B5 / B5-lite / `/simplify` (cây quyết định: [`references/brownfield-pipeline.md`](references/brownfield-pipeline.md)).
+3. **Checklist lệnh theo thứ tự** + kỷ luật then chốt của luồng (vd: B2 → characterization test TRƯỚC khi sửa · B1 mở surface ngoài → nên chạy `/secure` · B5 → ADR + strangler-fig · scope: VIẾT theo delta, CHẠY toàn bộ suite).
+
+Sau đó **hỏi user chọn chế độ thực thi** (mặc định KHÔNG tự chạy khi chưa hỏi):
+- **User-driven** — user tự chạy từng lệnh, tự duyệt từng gate.
+- **Claude-driven** — Claude chạy tuần tự các lệnh nhưng **dừng ở mỗi Quality Gate** chờ duyệt; các điểm cần sign-off của con người (Gate 1 stakeholder approval, review verdict, promote production) **luôn** chờ — bất kể chế độ nào.
 
 ---
 
@@ -397,7 +412,8 @@ project-root/
 │   ├── CODE_REVIEW.md
 │   ├── VERIFY_REPORT.md            # /verify — gate verdict for /deploy
 │   ├── VERIFY_MATRIX.md            # /verify — acceptance-criteria → test traceability
-│   └── verify-artifact.lock        # /verify — digest tested == digest promoted
+│   ├── verify-artifact.lock        # /verify — digest tested == digest promoted
+│   └── incidents/                  # /hotfix — incident notes (INC-<id>.md: timeline, MTTR, prevention)
 │
 ├── docker/                         # /infra output — Dockerfile only
 │   └── Dockerfile
@@ -418,6 +434,8 @@ project-root/
     ├── rules/
     ├── skills/
     ├── references/
+    ├── templates/                  # fill-only boilerplates: STRIDE/OWASP (/secure,/scan) · TEST_REPORT (/test) · VERIFY_REPORT (/verify) · CODE_REVIEW (/review) · RUNBOOK_RELEASE (/deploy)
+    ├── scripts/                    # scan-all.sh + scan-summarize.py for /scan
     └── CLAUDE.md
 ```
 
@@ -452,6 +470,8 @@ Quick references in `.claude/references/`:
 | `code-review-checklist.md` | Five-axis code review framework |
 | `deployment-checklist.md` | Pre-deployment verification gates |
 | `docker-patterns.md` | Dockerfile and docker-compose best practices |
+| `scenario-traceability.md` | Scenario-level traceability rule (`@US-XXX-Snn` → task/test mapping across all gates) |
+| `brownfield-pipeline.md` | Brownfield quick lookup — Phase A discovery order + Phase B flows (B1–B5) |
 
 ---
 

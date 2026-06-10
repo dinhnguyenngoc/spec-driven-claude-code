@@ -38,7 +38,7 @@ Before creating new docs, review what already exists from previous phases:
 | `reports/RELEASE_NOTES_*.md` | Per-release scope + smoke results | `CHANGELOG.md` |
 | `reports/DEPLOY_RUNBOOK.md` | Operator procedures | Link from `docs/deployment.md` |
 | `plans/todo.md` | Bug + hotfix audit trail, backlog | `docs/troubleshooting.md`, `CHANGELOG.md` |
-| `docker/docker-compose.yml` | Service dependencies | `docs/deployment.md` |
+| `docker-compose.yml` (repo root) | Service dependencies | `docs/deployment.md` |
 | Existing root `README.md` / `CHANGELOG.md` | Pre-existing? Framework-level? | **PRESERVE** if it serves a wider scope (monorepo / framework parent) — author product-level `docs/README.md` instead. Never blindly overwrite. |
 
 ### Phase 1: Documentation Inventory
@@ -129,7 +129,7 @@ MIT
 
 ### Phase 3: Documentation Structure
 
-```
+```text
 docs/
 ├── getting-started.md       # Quick start guide
 ├── architecture.md          # Links to architecture/ARCHITECTURE.md
@@ -232,7 +232,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Phase 6: Deployment Guide Template
 
-> **Template — example only.** Replace topology, env vars, and observability surface with the project's actual setup. If a component is intentionally absent per an ADR (e.g., no Prometheus per ADR-009, no Kubernetes for MVP), state that explicitly with the ADR reference — don't carry forward placeholder sections.
+> **Template — example only.** Replace topology, env vars, and observability surface with the project's actual setup. If a component is intentionally absent per an ADR (e.g., no Prometheus per its Rejection ADR, no Kubernetes for MVP), state that explicitly with the actual ADR reference — don't carry forward placeholder sections.
 
 ```markdown
 # Deployment Guide
@@ -356,10 +356,12 @@ docfx docfx.json --serve
 
 Invoke: **Technical Writer**
 
-```
-"As Technical Writer, generate documentation for the project"
+```text
+"As Technical Writer, generate documentation for the project.
+Output language: Vietnamese for prose/artifacts, English for code and technical identifiers
+(see .claude/CLAUDE.md → Output Language)."
 ```
 
 ## Next Step
 
-After documentation complete, run `/verify` (Gate 11 BLOCKING — exercise every feature against the real deployed artifact), then `/deploy` to promote the verified digest.
+After documentation complete, run `/verify` (Gate 11 — **step optional · BLOCKING if run**; required inside `/hotfix` — exercise every feature against the real deployed artifact), then `/deploy` to promote (with the verified digest if `/verify` was run).

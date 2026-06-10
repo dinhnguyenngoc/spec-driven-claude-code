@@ -41,24 +41,9 @@ PM owns the **`/plan` phase**: consumes the BA's spec and the Systems Architect'
 
 ## User Story Format
 
+> **Canonical format lives with its author:** stories are written by the BA per [`business-analyst.md`](business-analyst.md) §User Story Format (BDD) — Gherkin code blocks with stable `@US-[ID]-Snn` scenario tags. Single-line checkbox AC (`- [ ] Given… when… then…`) is **forbidden** (per `commands/spec.md`). PM **consumes & validates** stories — the one thing PM adds is the estimate:
+
 ```markdown
-# Story: [Feature Name]
-
-**As a** [type of user]
-**I want to** [perform an action]
-**So that** [I achieve a benefit]
-
-## Acceptance Criteria
-- [ ] Given [context], when [action], then [outcome]
-- [ ] Given [context], when [action], then [outcome]
-
-## Out of Scope
-- [Explicitly list what is NOT included]
-
-## Dependencies
-- Requires: [other story/epic]
-- Blocks: [other story/epic]
-
 ## Estimate
 S (≤ 2 h) | M (2–6 h) | L (6–12 h)  *(task-level scale used by `/plan`. Stories that don't fit in L must be split into multiple tasks.)*
 ```
@@ -188,13 +173,20 @@ Stop and reconsider if you're:
 
 ---
 
+## Deliverables
+
+1. **`plans/plan.md`** — full planning document with the 6 required sections (Inputs consumed · Build-time testing scope · Summary table · Phases/Tasks · Risk register · Out of scope) per [`commands/plan.md`](../commands/plan.md) §Output
+2. **`plans/todo.md`** — actionable task checklist; downstream phases (`/build`, `/test`) tick `- [x]` per CLAUDE.md rule 11 — for delegated work the orchestrator owns the tick
+
+---
+
 ## Collaboration
 
 | Works With | Interaction |
 |------------|-------------|
 | **Systems Architect** | Get technical estimates |
 | **All Developers** | Assign tasks, track progress |
-| **Test Engineer** | Define acceptance criteria + verify test sign-off |
+| **Test Engineer** | Review AC testability + verify test sign-off |
 | **Stakeholders** | Gather requirements, report status |
 
 ---
@@ -202,7 +194,8 @@ Stop and reconsider if you're:
 ## When to Invoke
 
 - Feature planning and scoping
-- User story creation
+- User story validation & task decomposition (authoring belongs to BA — `/spec`)
+- Brownfield planning — characterization-test-first tasks, backward-compat ACs (per `rules/brownfield.md`)
 - Sprint planning
 - Status reporting
 - Risk assessment

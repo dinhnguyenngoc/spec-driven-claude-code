@@ -28,7 +28,7 @@ Verifies **every user-observable feature** works correctly on **the exact artifa
 
 `/verify` does NOT re-run the full unit/integration suite (wrong layer, slow, pointless). It runs a **black-box test set anchored to the spec's acceptance criteria**:
 
-> The Gherkin scenarios (happy + edge) in `specs/SPEC.md` / `specs/user-stories/*` **are** the definition of "every feature must work in production". 100% scenario coverage = full feature coverage.
+> The Gherkin scenarios (happy + edge) in `specs/SPEC.md` / `specs/user-stories/*` **are** the definition of "every feature must work in production". 100% scenario coverage = full feature coverage — traceability rule: [`references/scenario-traceability.md`](../references/scenario-traceability.md).
 
 Completeness is **machine-enforced** in Phase 5: any scenario without a mapped verify test → gate FAIL.
 
@@ -45,7 +45,7 @@ Completeness is **machine-enforced** in Phase 5: any scenario without a mapped v
 
 ---
 
-## Workflow — 6 Phases
+## Workflow — Phase 0 + 6 phases
 
 ### Phase 0 — Pre-flight: artifact lock
 
@@ -78,7 +78,7 @@ If this phase fails → stop immediately, do not proceed (avoid wasting time run
 Run the contract test set against the **real base URL** of the artifact (not an in-process host). Cover **every endpoint × every status code** the API contract promises:
 
 - Happy path: every resource × {create, read, update, delete, list}.
-- Error contract: 400 / 401 / 403 / 404 / 409 / 422 / 429 in the correct standard format (e.g., RFC 7807 ProblemDetails) + correlation id.
+- Error contract: 400 / 401 / 403 / 404 / 409 / 429 in the correct standard format (e.g., RFC 7807 ProblemDetails) + correlation id — per the error-code contract table in `ARCHITECTURE.md` (kit convention: validation = **400, not 422**, see `rules/api-conventions.md`).
 - **Cross-origin preflight** (`OPTIONS` + `Origin` header) for every state-writing route — covers the CORS bug class.
 - **Response headers** on every response (including 4xx/5xx): security headers, cache-control, correlation id.
 - **Env-gating**: dev-only resources (API docs UI, debug/diagnostics endpoint, verbose stack trace) are **not** exposed in production.
@@ -113,13 +113,15 @@ Verify the measurable NFRs in `specs/SPEC.md`:
 - **Resilience**: graceful degradation when a dependency is slow/fails (if the spec requires it).
 - Other NFRs in the spec that can be measured at runtime.
 
+> Targets & thresholds quick reference: [`references/performance-checklist.md`](../references/performance-checklist.md) (Core Web Vitals, P50/P95/P99 latency, cache hit ratio).
+
 > NFRs that require truly high load (soak, stress, spike) can be split into a separate sub-phase if infrastructure permits; at minimum, verify the P95 threshold under normal load.
 
 ### Phase 5 — Traceability gate (mechanism that guarantees "full feature coverage")
 
 This is the **heart** of `/verify`. Automatically cross-checks:
 
-```
+```text
 For EVERY scenario ID in specs/SPEC.md (the @US-XXX-Snn tags; and specs/user-stories/*):
   there must exist ≥ 1 verify test mapped to that scenario ID, at the REQUIRED LAYER:
     - a UI-observable scenario  → an E2E-UI test (Phase 3) meeting the E2E assertion contract
@@ -148,7 +150,7 @@ Generate `reports/VERIFY_REPORT.md` (see structure below) + attach the run outpu
 
 Everything the test runner generates goes under **one fixed directory** so the structure is reproducible across runs, agents, and machines — never an agent-chosen ad-hoc path:
 
-```
+```text
 reports/
 ├── VERIFY_REPORT.md            # tracked — gate verdict (Phase 6)
 ├── VERIFY_MATRIX.md            # tracked — scenario→test traceability (Phase 5)
@@ -172,36 +174,9 @@ reports/
 
 ## Output — `reports/VERIFY_REPORT.md` (MANDATORY)
 
-```markdown
-# Verify Report — <product> <candidate-tag>
+> **Boilerplate template (fill-only — tối ưu thời gian):** copy [`templates/VERIFY_REPORT_TEMPLATE.md`](../templates/VERIFY_REPORT_TEMPLATE.md) — §A report skeleton + §B VERIFY_MATRIX skeleton — và fill placeholder; KHÔNG re-author structure.
 
-- **Artifact digest(s)**: <locked from Phase 0 — must match the digest /deploy will promote>
-- **Environment**: production-config, real network
-- **Date**: YYYY-MM-DD
-
-## 1. Summary
-| Phase | Suite | Pass / Total | Verdict |
-|-------|-------|--------------|---------|
-| 1 | Liveness | … | … |
-| 2 | API contract | … | … |
-| 3 | E2E | … | … |
-| 4 | NFR | … | … |
-
-**Gate verdict**: SUCCEEDED / PASS WITH CONDITIONS / FAILED.
-
-## 2. Traceability matrix
-Link to `reports/VERIFY_MATRIX.md`. Assert coverage = 100% acceptance scenarios, or list waived scenarios (with reason + approver).
-
-## 3. Failures & evidence
-Each failure: test id → US-XXX → symptom → artifact path → suspected root cause.
-(`/verify` is read-only on production code — fixes belong to `/fix-issue` or `/hotfix`.)
-
-## 4. NFR results
-Actual measurements vs spec thresholds (latency, a11y, …).
-
-## 5. Gate decision
-SUCCEEDED ⟺ Phase 1-5 PASS + 100% coverage. Otherwise, name the blocker + recommendation (rollback / hotfix / waiver).
-```
+**5 sections:** 1 Summary (bảng per-phase + gate verdict) · 2 Traceability matrix (link VERIFY_MATRIX; assert 100% hoặc liệt kê waivers kèm reason + approver) · 3 Failures & evidence (read-only — fixes → `/fix-issue` / `/hotfix`) · 4 NFR results (số đo thực vs threshold của spec) · 5 Gate decision (SUCCEEDED ⟺ Phase 1-5 PASS + 100% coverage; otherwise blocker + recommendation).
 
 ---
 
@@ -246,8 +221,10 @@ SUCCEEDED ⟺ Phase 1-5 PASS + 100% coverage. Otherwise, name the blocker + reco
 
 Invoke: **Test Engineer** (owns verification suite design + execution + gate), collaborating with **Release Manager** (owns artifact identity / tag / promotion decision).
 
-```
-"As Test Engineer, run /verify against the deployed candidate and gate promotion on full acceptance-criteria coverage."
+```text
+"As Test Engineer, run /verify against the deployed candidate and gate promotion on full acceptance-criteria coverage.
+Output language: Vietnamese for prose/artifacts, English for code and technical identifiers
+(see .claude/CLAUDE.md → Output Language)."
 ```
 
 ## Next Step

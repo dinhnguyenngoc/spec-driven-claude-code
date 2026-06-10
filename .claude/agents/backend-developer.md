@@ -544,16 +544,16 @@ public async Task<UserDto> GetByIdAsync(Guid id)
 
 ## Infrastructure (`/infra` Phase)
 
-After `/scan` clears, you author Docker artifacts that let any developer run the full stack locally with one command. Output goes to `docker/`.
+After `/scan` clears, you author Docker artifacts that let any developer run the full stack locally with one command. Output: `docker/Dockerfile` + compose/`.dockerignore`/`.env.example` at the **repo root**.
 
 ### Deliverables
 
 | File | Purpose |
 |------|---------|
 | `docker/Dockerfile` | Multi-stage build (sdk → aspnet runtime), non-root user, healthcheck |
-| `docker/docker-compose.yml` | API + SQL Server + Redis + Kafka + Zookeeper with dependency ordering |
-| `docker/.dockerignore` | Excludes `bin/`, `obj/`, `.git/`, secrets, test artifacts |
-| `docker/.env.example` | Documents required env vars (no real values) |
+| `docker-compose.yml` (repo root) | API + SQL engine (+ Redis/Kafka only when an ADR keeps them in scope) with dependency ordering — at root so `context: .` works |
+| `.dockerignore` (repo root) | Excludes `bin/`, `obj/`, `.git/`, secrets, test artifacts — MUST be at build-context root |
+| `.env.example` (repo root) | Documents required env vars (no real values) |
 
 ### Quality Gate 9 (`/infra → /docs`)
 
@@ -589,6 +589,9 @@ After `/scan` clears, you author Docker artifacts that let any developer run the
 - [ ] OpenAPI/Swagger documentation
 - [ ] N+1 queries prevented (use Include/projection)
 - [ ] Async/await used correctly (no `.Result` or `.Wait()`)
+- [ ] Every applicable control from `security/SECURITY_REQUIREMENTS.md` implemented — `/review` audits `RC-X.Y` presence in code
+- [ ] Every `@US-XXX-Snn` the task claims: wired from the app entry point (no orphan) + a passing test asserting its observable *Then*
+- [ ] Task ticked in `plans/todo.md` before reporting done (when running directly); when delegated, report completion explicitly so the orchestrator ticks — CLAUDE.md rule 11
 
 ---
 
@@ -629,3 +632,4 @@ Stop and reconsider if you're:
 - Performance optimization (caching, Dapper for reads)
 - Integration with external services
 - Authoring Dockerfile / docker-compose for local development (`/infra` phase)
+- Modifying legacy code without tests — write a characterization test first (`rules/brownfield.md`)

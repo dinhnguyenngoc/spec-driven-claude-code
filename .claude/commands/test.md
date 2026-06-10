@@ -52,8 +52,8 @@ Verify code works correctly in **production-like environment** with real depende
    - Verify bug fixes have tests
    - Ensure no regressions from changes
 
-5. **Scenario reconciliation (spec ↔ test)**
-   - Every `@US-XXX-Snn` in the spec has ≥ 1 test asserting that scenario's observable *Then* — not just "the endpoint/class works". A **UI-observable** scenario needs a UI/E2E-layer test (deep UI E2E may be deferred to `/verify`, but record the gap, do not count it as covered here).
+5. **Scenario reconciliation (spec ↔ test)** — per [`references/scenario-traceability.md`](../references/scenario-traceability.md)
+   - Every `@US-XXX-Snn` has ≥ 1 test asserting that scenario's observable *Then* (effect, not presence). A **UI-observable** scenario needs a UI/E2E-layer test (deep UI E2E may be deferred to `/verify` — record the gap, do not count it as covered here).
    - Any scenario with no asserting test → file it (TEST_REPORT §9) for `/verify` / `/review`, never silently treat as covered.
 
 6. **Consumer-contract conformance (cross-layer drift)**
@@ -63,7 +63,7 @@ Verify code works correctly in **production-like environment** with real depende
 
 > **IMPORTANT:** `/test` uses tests that REQUIRE Docker.
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                    /test TESTING APPROACH                        │
 ├─────────────────────────────────────────────────────────────────┤
@@ -222,70 +222,15 @@ open ./coverage/report/index.html
 
 ## Output — `reports/TEST_REPORT.md` (MANDATORY)
 
-`/test` produces ONE primary artifact: `reports/TEST_REPORT.md`. It is the handoff document to `/review` and `/scan`. Follow the structure below — every section must be present even if the answer is "n/a, see §X".
+`/test` produces ONE primary artifact: `reports/TEST_REPORT.md`. It is the handoff document to `/review` and `/scan`.
 
-```markdown
-# Test Report — [Project] (`/test` phase)
+> **Boilerplate template (fill-only — tối ưu thời gian):** copy [`templates/TEST_REPORT_TEMPLATE.md`](../templates/TEST_REPORT_TEMPLATE.md) và fill placeholder — KHÔNG re-author structure 12 section mỗi lần chạy. Mọi section phải hiện diện kể cả khi là "n/a, see §X".
 
-**Date**: YYYY-MM-DD
-**Test Engineer Agent**: Quality Gate 6 verification
-**Inputs**: `/build` deliverables (X backend tests, Y frontend tests, Z E2E specs)
-
-## 1. Summary
-| Deliverable | Suite | Pass / Total | Verdict |
-|---|---|---|---|
-| ... | ... | ... | PASS / FAIL |
-
-**Verdict for Quality Gate 6**: PASS / PASS WITH CONDITIONS / FAIL — one paragraph stating why.
-
-> "PASS WITH CONDITIONS" = baseline green + ≥1 BUG-### filed + no Critical-severity blocker. Conditions must be closed by `/review` before Gate 7 opens.
-
-## 2. Backend in-memory suite (re-run baseline)
-Command + per-project pass/fail/skip/duration table. Note any delta vs `/build`-reported counts.
-
-## 3. Backend TestContainers suite (NEW)
-- What was built (fixtures, container image choice incl. arm64 / x86 note)
-- Curated test set (TC-RD-## table mapping each test to the contract it verifies)
-- Execution result + failure analysis (if any)
-
-## 4. Frontend Vitest suite (re-run)
-Command + result. If coverage tooling is missing, say so and defer to `/review`.
-
-## 5. E2E (Playwright) — LIVE execution
-Setup steps + result + artifact paths (screenshot/video/trace) on failure.
-
-## 6. Coverage report
-- `coverlet.runsettings` scope policy (link to file + list of exclusions with rationale)
-- Top-level metrics: line / branch / critical-path vs gates
-- Per-assembly breakdown
-- Top 5 uncovered files with **rationale** ("acceptable" / "gap-closing test added")
-- New tests added to close gaps (file → test count → rationale)
-
-## 7. Verification checklist
-Every Quality Gate 6 item with PASS/FAIL/n-a.
-
-## 8. Bug reports
-One BUG-### subsection per defect using the Test Engineer Bug Report Template
-(Severity / Environment / Hidden-by / Found-by / Reproducible / Summary /
-Steps / Expected / Actual / Root cause `file:line` / Impact / Evidence /
-Proposed fix / Regression test).
-
-## 9. Gaps identified, not closed
-Things acknowledged but deferred — frontend coverage, CI verification on other archs, E2E expansion, etc. Each line names the next owner.
-
-## 10. Files added during `/test`
-List every new/modified file. Repeat the boundary rule: "No production code under `src/` was modified."
-
-## 11. Quality Gate 6 verdict
-PASS / PASS WITH CONDITIONS / FAIL with one-paragraph justification. If PWC or FAIL: name the blocker(s), reference BUG-### in §8.
-
-## 12. Open items for `/review`
-Numbered, actionable list — what `/review` must do (fix BUG-001) + optional items (add `@vitest/coverage-v8`, expand E2E suite, …).
-```
+**12 sections:** 1 Summary (verdict PASS / PASS-WITH-CONDITIONS / FAIL — PWC = baseline green + ≥1 BUG-### + no Critical blocker) · 2 Backend in-memory re-run · 3 TestContainers (NEW) · 4 Frontend Vitest re-run · 5 E2E live · 6 Coverage (scope policy + metrics + top-5 uncovered có rationale) · 7 Gate-6 checklist · 8 Bug reports (BUG-###, Prove-It) · 9 Gaps deferred (mỗi dòng nêu next owner) · 10 Files added (+ boundary statement) · 11 Gate 6 verdict · 12 Open items for `/review`.
 
 > **Boundary rule:** `/test` MUST NOT modify production code under `src/` or `client/src/`. Bugs found during `/test` are filed as reports in §8 with a proposed fix; the fix happens in `/review` (or `/fix-issue` for production hotfixes). This is what makes the regression net in §3 trustworthy — the TestContainers tests are written against unchanged production code.
 
-## Exit Criteria (Quality Gate 6)
+## Quality Gate 6 — Exit Criteria
 
 Before proceeding to `/review`:
 
@@ -316,6 +261,8 @@ Invoke: **Test Engineer** (owns strategy, execution, and verification)
 | Agent | Responsibility |
 |-------|----------------|
 | Test Engineer | Test strategy + TDD coaching + coverage policy + test plans + TestContainers/E2E execution + bug triage |
+
+> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 
 ## Next Step
 

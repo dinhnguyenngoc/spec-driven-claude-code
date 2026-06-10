@@ -168,6 +168,8 @@ public class InMemoryWebApplicationFactory : WebApplicationFactory<Program>
 
 ### Template B — TestContainers (for `/test`)
 
+> **Tối ưu thời gian — collection fixture (mặc định):** đăng ký factory qua `ICollectionFixture` để **MỘT container phục vụ TOÀN BỘ integration suite**. Per-class `IClassFixture` = N test class × (~30–60s khởi động SQL Server) lãng phí. Reset state giữa các test bằng Respawn / transaction rollback / unique keys per test. Chỉ rơi về per-class khi một test phá state container không khôi phục được.
+
 ```csharp
 // tests/MyApp.IntegrationTests/CustomWebApplicationFactory.cs
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -209,11 +211,17 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     }
 }
 
+// tests/MyApp.IntegrationTests/IntegrationCollection.cs
+// MỘT container cho cả suite — mọi test class gắn [Collection("Integration")]
+[CollectionDefinition("Integration")]
+public class IntegrationCollection : ICollectionFixture<CustomWebApplicationFactory> { }
+
 // tests/MyApp.IntegrationTests/Controllers/UsersControllerTests.cs
 namespace MyApp.IntegrationTests.Controllers;
 
+[Collection("Integration")]
 [Trait("Category", "RequiresDocker")]
-public class UsersControllerTests : IClassFixture<CustomWebApplicationFactory>
+public class UsersControllerTests
 {
     private readonly HttpClient _client;
     private readonly CustomWebApplicationFactory _factory;

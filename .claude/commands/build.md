@@ -31,11 +31,13 @@ Implement tasks one at a time using Test-Driven Development. Each increment leav
 | APIs, services, DB, background jobs | 🔧 Backend Developer |
 | Components, pages, routing, UI | 🖥️ Frontend Developer |
 
+> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+
 ## Testing Strategy for /build
 
 > **IMPORTANT:** `/build` uses tests that do NOT require Docker.
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                   /build TESTING APPROACH                        │
 ├─────────────────────────────────────────────────────────────────┤
@@ -98,7 +100,7 @@ dotnet test
 
 #### Step 1: Load Context
 
-```
+```text
 1. Read the task's acceptance criteria
 2. Identify relevant existing code and patterns
 3. Understand types and interfaces involved
@@ -324,7 +326,7 @@ Stop and reassess if you find yourself:
 - Updated `plans/todo.md` with completed items
 - Clean git history with atomic commits
 
-## Exit Criteria (Quality Gate 5)
+## Quality Gate 5 — Exit Criteria
 
 Before proceeding to `/test`:
 

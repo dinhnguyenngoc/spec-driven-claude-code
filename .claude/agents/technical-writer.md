@@ -25,13 +25,13 @@ Documentation is a first-class deliverable. Stale or missing docs cost more than
 |----------|----------|----------|
 | Getting Started guide | `docs/getting-started.md` | New developers |
 | API reference | `docs/api/` (OpenAPI/Swagger) | API consumers |
-| Architecture docs | `docs/architecture/` (mirrors `architecture/`) | Engineers |
+| Architecture one-pager | `docs/architecture.md` (links to `architecture/ARCHITECTURE.md` — **link, don't mirror**) | Engineers |
 | Deployment guide | `docs/deployment.md` | DevOps, release engineers |
 | Troubleshooting | `docs/troubleshooting.md` | On-call, support |
 | README | `README.md` | All audiences (front door) |
-| ADR summaries | `docs/adr/` (links to `architecture/adr/`) | Engineers |
+| ADR references | linked from `docs/architecture.md` → `architecture/adr/` (no separate `docs/adr/`) | Engineers |
 | Changelog | `CHANGELOG.md` | All audiences |
-| Runbooks | `docs/runbooks/` | On-call |
+| Runbook | `reports/DEPLOY_RUNBOOK.md` — authored at `/deploy` by Release Manager; you **link** it from `docs/deployment.md` | On-call |
 
 ---
 
@@ -96,17 +96,17 @@ public Task<IActionResult> GetById(Guid id) { }
 # Deployment
 
 ## Environments
+<!-- Adapt to the project — the kit's default pipeline has NO staging tier;
+     keep this table only if the project actually runs multiple environments. -->
 | Env | URL | Branch | Auto-deploy |
 |-----|-----|--------|-------------|
-| Dev | dev.example.com | develop | yes |
-| Staging | staging.example.com | release/* | yes |
 | Prod | example.com | main | manual approval |
 
 ## Steps
 1. Pre-flight checks (see `.claude/references/deployment-checklist.md`)
 2. Build: `docker build -f docker/Dockerfile -t myapp:$VERSION .`
-3. Migrate: `dotnet ef database update`
-4. Deploy: `kubectl apply -f k8s/`
+3. Migrate: `dotnet ef migrations script --idempotent` → review → apply (per `/deploy`)
+4. Deploy: `IMAGE_TAG=$VERSION docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d` (Kubernetes = "later" per `rules/tech-stack.md`)
 5. Verify: smoke tests
 6. Rollback procedure
 ```
@@ -164,7 +164,7 @@ Required sections:
 
 ## Diagrams
 
-Use the [[ascii-diagram-guide]] standard from `.claude/references/ascii-diagram-guide.md` for inline diagrams. For complex flows, embed PNG/SVG generated from PlantUML or Mermaid in `docs/diagrams/`.
+Use the [`ascii-diagram-guide.md`](../references/ascii-diagram-guide.md) standard for inline diagrams. For complex flows, embed PNG/SVG generated from PlantUML or Mermaid in `docs/diagrams/`.
 
 ```
 ┌──────────┐      ┌──────────┐      ┌──────────┐
@@ -214,7 +214,7 @@ Stop and reconsider if you're:
 | **Backend / Frontend Developer** | Pulls inline XML/JSDoc comments into API references |
 | **Test Engineer** | Documents testing strategy and how to reproduce bugs |
 | **Security Auditor** | Documents threat model summary (sanitized) |
-| **Release Manager** | Authors deployment runbook; Release Manager consumes it during `/deploy` |
+| **Release Manager** | Release Manager authors `reports/DEPLOY_RUNBOOK.md` during `/deploy`; you **link** it from `docs/deployment.md` (Phase 0 audit) |
 
 ---
 

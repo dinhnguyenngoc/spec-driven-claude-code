@@ -1,0 +1,66 @@
+# TEST_REPORT Template — `/test` Output Boilerplate
+
+> **Mục đích:** Khung cố định 12 section cho `reports/TEST_REPORT.md`. Agent `/test` **chỉ fill** `[…]`/`<…>` placeholder — KHÔNG re-author structure mỗi lần chạy.
+>
+> **Quy tắc:** Mọi section phải hiện diện, kể cả khi câu trả lời là "n/a, see §X". Yêu cầu chi tiết từng section: [`../commands/test.md`](../commands/test.md) §Output.
+
+---
+
+````markdown
+# Test Report — [Project] (`/test` phase)
+
+**Date**: YYYY-MM-DD
+**Test Engineer Agent**: Quality Gate 6 verification
+**Inputs**: `/build` deliverables (X backend tests, Y frontend tests, Z E2E specs)
+
+## 1. Summary
+| Deliverable | Suite | Pass / Total | Verdict |
+|---|---|---|---|
+| ... | ... | ... | PASS / FAIL |
+
+**Verdict for Quality Gate 6**: PASS / PASS WITH CONDITIONS / FAIL — one paragraph stating why.
+
+> "PASS WITH CONDITIONS" = baseline green + ≥1 BUG-### filed + no Critical-severity blocker. Conditions must be closed by `/review` before Gate 7 opens.
+
+## 2. Backend in-memory suite (re-run baseline)
+Command + per-project pass/fail/skip/duration table. Note any delta vs `/build`-reported counts.
+
+## 3. Backend TestContainers suite (NEW)
+- What was built (fixtures, container image choice incl. arm64 / x86 note)
+- Curated test set (TC-RD-## table mapping each test to the contract it verifies)
+- Execution result + failure analysis (if any)
+
+## 4. Frontend Vitest suite (re-run)
+Command + result. If coverage tooling is missing, say so and defer to `/review`.
+
+## 5. E2E (Playwright) — LIVE execution
+Setup steps + result + artifact paths (screenshot/video/trace) on failure.
+
+## 6. Coverage report
+- `coverlet.runsettings` scope policy (link to file + list of exclusions with rationale)
+- Top-level metrics: line / branch / critical-path vs gates
+- Per-assembly breakdown
+- Top 5 uncovered files with **rationale** ("acceptable" / "gap-closing test added")
+- New tests added to close gaps (file → test count → rationale)
+
+## 7. Verification checklist
+Every Quality Gate 6 item with PASS/FAIL/n-a.
+
+## 8. Bug reports
+One BUG-### subsection per defect using the Test Engineer Bug Report Template
+(Severity / Environment / Hidden-by / Found-by / Reproducible / Summary /
+Steps / Expected / Actual / Root cause `file:line` / Impact / Evidence /
+Proposed fix / Regression test).
+
+## 9. Gaps identified, not closed
+Things acknowledged but deferred — frontend coverage, CI verification on other archs, E2E expansion, etc. Each line names the next owner.
+
+## 10. Files added during `/test`
+List every new/modified file. Repeat the boundary rule: "No production code under `src/` was modified."
+
+## 11. Quality Gate 6 verdict
+PASS / PASS WITH CONDITIONS / FAIL with one-paragraph justification. If PWC or FAIL: name the blocker(s), reference BUG-### in §8.
+
+## 12. Open items for `/review`
+Numbered, actionable list — what `/review` must do (fix BUG-001) + optional items (add `@vitest/coverage-v8`, expand E2E suite, …).
+````

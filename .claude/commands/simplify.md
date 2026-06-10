@@ -32,7 +32,13 @@ Don't delete code just because it looks unnecessary. Investigate:
 
 ### Rule of 500
 
-If a function, file, or class exceeds ~500 lines, it likely needs splitting.
+If a **file or class** exceeds ~500 lines, it likely needs splitting. (Methods have a much tighter bar: **~30 lines** per `rules/code-style.md` — see the Step 3 table.)
+
+### Brownfield (Mode: brownfield)
+
+`/simplify` is where the tech-debt backlog lands (per `rules/brownfield.md` §No Gratuitous Refactor). Two extra disciplines apply:
+- The area being simplified has **no tests** → write a **characterization test first** (capture current behavior, PASS) — that net is what proves "behavior unchanged".
+- Stay **within the assigned area** — do not "tidy up" unrelated code in the same pass.
 
 ---
 
@@ -283,6 +289,8 @@ Stop if you find yourself:
 Invoke: **Code Reviewer** (simplification mode)
 
 The Code Reviewer agent applies the same quality lens used in `/review`, but focuses specifically on reducing complexity while preserving behavior.
+
+> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 
 ## Next Step
 

@@ -23,7 +23,7 @@ Progress over perfection. Every review should leave the codebase better than bef
 /build → /test → /review (Code Reviewer drives) → /scan
 ```
 
-Code Reviewer owns the `/review` phase: performs five-axis review on the implementation produced by `/build` and verified by `/test`. Produces `reports/CODE_REVIEW.md`. Blocks `/scan` until critical feedback is addressed.
+Code Reviewer owns the `/review` phase (Gate 7 — optional step · **blocking when run**): performs five-axis review on the implementation produced by `/build` and verified by `/test`. Produces `reports/CODE_REVIEW.md`. When run, blocks `/scan` until critical feedback is addressed. Also owns `/simplify` (simplification mode — reduce complexity, preserve behavior).
 
 ---
 
@@ -87,7 +87,7 @@ Code Reviewer owns the `/review` phase: performs five-axis review on the impleme
 ### 🟢 Suggestions
 [Optional improvements]
 
-### ✅ Positives
+### ✅ Good
 [What's done well]
 ```
 
@@ -103,10 +103,12 @@ reports/CODE_REVIEW.md
 
 The report must include:
 1. **Executive Summary** — Overall verdict + severity counts
-2. **Five-Axis Scores** — Quick assessment per axis (Pass/Warning/Fail)
-3. **Findings** — Organized by severity (🔴 → 🟡 → 🟢 → ✅)
+2. **Five-Axis Scores** — numerical score **1–5 per axis** with a one-line justification (per `commands/review.md` §Output File)
+3. **Findings** — Organized by severity (🔴 → 🟡 → 🟢 → ✅); **every finding ends with `Relates-to: <US-XXX | RC-X.Y | ADR-NNN | T-XX | S1..E10>`** (mandatory traceability)
 4. **Action Items** — Checklist with priority (P0/P1/P2)
-5. **Approval Status** — Final decision with conditions (if any)
+5. **Test Coverage** — cite numbers from `reports/TEST_REPORT.md`; every `OPEN-XXX` debt tagged **CLOSED / DEFERRED-to-Pn / ESCALATED** — none silently dropped
+6. **Compliance Check** — every `.claude/rules/*.md` → PASS / WARNING / FAIL (frees `/scan` from re-checking rule compliance)
+7. **Approval Status** — Final decision with conditions (if any)
 
 Create the `reports/` folder if it doesn't exist.
 
@@ -118,8 +120,10 @@ Create the `reports/` folder if it doesn't exist.
 |--------|-------|---------|
 | `Critical:` | 🔴 | Merge blocker, must fix |
 | `Warning:` | 🟡 | Should fix, potential issue |
-| `Nit:` | 🟢 | Minor/style, optional |
-| `FYI:` | ℹ️ | Informational only |
+| `Suggestion:` | 🟢 | Improvement — readability, style, micro-optimization (optional) |
+| `Good:` | ✅ | Praise — highlight what's done well |
+
+> **Canonical four labels** — must match `commands/review.md`, `references/code-review-checklist.md`, and the `code-review` skill. Free-form `FYI:` / `Question:` comments are allowed inline in the PR but are NOT tracked findings and do not appear in `reports/CODE_REVIEW.md`.
 
 ---
 
@@ -213,3 +217,4 @@ var users = await _context.Users
 - Code quality assessment needed
 - Architecture decisions to validate
 - Before major releases
+- `/simplify` — simplification mode (reduce complexity while preserving behavior)

@@ -463,46 +463,7 @@ public partial class AddUserRole : Migration
 
 ## Naming Conventions
 
-### Tables
-
-```sql
--- PascalCase, plural nouns
-Users
-Orders
-OrderItems
-ProductCategories
-UserRoleMappings    -- junction tables: Entity1Entity2Mappings
-```
-
-### Columns
-
-```sql
--- PascalCase (EF Core default for SQL Server)
-Id                  -- primary key
-UserId              -- foreign key: {ReferencedTable}Id
-CreatedAt           -- timestamps: {Event}At
-UpdatedAt
-DeletedAt           -- soft delete
-IsActive            -- booleans: Is{Adjective}
-HasVerifiedEmail
-Email               -- data fields: plain descriptive name
-FullName
-```
-
-### Indexes
-
-```sql
--- Pattern: IX_{Table}_{Columns}
-IX_Users_Email
-IX_Orders_UserId_CreatedAt
-IX_Products_CategoryId_IsActive
-
--- Unique indexes
-UQ_Users_Email
-
--- Filtered indexes
-IX_Users_DeletedAt INCLUDE (Email) WHERE DeletedAt IS NULL
-```
+> **Single source of truth: [`naming-conventions.md`](naming-conventions.md) §Database Naming** — tables (PascalCase plural), columns (`{ReferencedTable}Id`, `{Event}At`, `Is{Adjective}`), indexes (`IX_{Table}_{Columns}`, `UQ_`), foreign keys (`FK_{Child}_{Parent}_{Column}`). Do not restate here.
 
 ---
 

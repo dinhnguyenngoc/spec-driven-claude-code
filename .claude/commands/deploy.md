@@ -444,85 +444,53 @@ lsof -i :6379
 
 ---
 
+## Quality Gate — Exit Criteria (before declaring DEPLOYED)
+
+All boxes must be ticked. A deploy with any box open is **not done** and produces no "SUCCEEDED" release notes:
+
+- [ ] Every service in compose is `Up (healthy)` (or `Up` + documented whitelist note)
+- [ ] Smoke pack passes (DEPLOY_RUNBOOK §3): `/health`, `/health/ready`, version endpoint + 1–2 happy-path calls
+- [ ] Every image carries a semver tag `:vX.Y.Z` — no service running `:latest`
+- [ ] Digest promoted == digest verified (`reports/verify-artifact.lock`) — if `/verify` was run (Gate 11)
+- [ ] `reports/DEPLOY_RUNBOOK.md` complete (all 7 sections)
+- [ ] `reports/RELEASE_NOTES_v<X.Y.Z>.md` complete (all 5 sections, correct Status)
+- [ ] `CHANGELOG.md` has an entry for this release
+- [ ] Rollback path ready: previous image tags recorded (runbook §1), procedure (§4) complete
+
+---
+
 ## Output
 
 ### Runtime state
 - All containers running on Docker Desktop
 - Health checks passing
-- API accessible at `http://localhost:${API_PORT}` (replace with the host port from `docker/docker-compose.yml` — commonly `5050` or `5000`)
+- API accessible at `http://localhost:${API_PORT}` (replace with the host port from `docker-compose.yml` at repo root — commonly `5050` or `5000`)
 - Swagger UI at `http://localhost:${API_PORT}/swagger` (only when `ASPNETCORE_ENVIRONMENT=Development`)
 
 ### Required artifacts (MANDATORY)
 
 `/deploy` MUST produce the following files. These are the audit trail and operator handoff — without them, the deploy is incomplete.
 
-**1. `reports/DEPLOY_RUNBOOK.md`** — operator-facing procedure. Minimum 7 sections:
+**1. `reports/DEPLOY_RUNBOOK.md`** — operator-facing procedure. Minimum 7 sections — **skeleton: [`templates/RUNBOOK_RELEASE_TEMPLATE.md`](../templates/RUNBOOK_RELEASE_TEMPLATE.md) §A (fill-only, KHÔNG re-author):**
+1 Pre-deploy checklist · 2 Deploy (semver tag, never `:latest`) · 3 Post-deploy smoke (**bảng MỌI service** `Service | Image tag | Expected | Actual | Healthcheck` + curl pack — thiếu service = không có "SUCCEEDED") · 4 Rollback < 1 phút (re-run §3 sau rollback) · 5 Common operations · 6 Troubleshooting (top 3-5 failure modes) · 7 Escalation.
 
-```markdown
-# Deploy Runbook — <product> v<X.Y.Z>
-
-## 1. Pre-deploy checklist
-Docker daemon up, `.env` present, /scan P0 items implemented, current image tags noted for rollback.
-
-## 2. Deploy
-Exact build + up commands. Image tagging with `:v<X.Y.Z>` (never `:latest`).
-
-## 3. Post-deploy smoke verification
-**Explicitly list every service** in compose + expected status (`Up (healthy)` or `Up` + whitelist note). This section MUST contain a table with columns `Service | Image tag | Expected status | Actual status | Healthcheck command`. A missing service = deploy did not pass the gate, no "SUCCEEDED" release notes produced.
-
-Then: concrete `curl` smoke commands hitting `/health`, `/health/ready`, `/api/v1/version` (or your project's smoke endpoint), and 1-2 happy-path API calls. Each with expected response.
-
-## 4. Rollback (target < 1 minute)
-Stop + restart with previous image tag. Database rollback notes (and pre-deploy backup pointer if migrations are involved). After rollback: re-run §3 smoke pack — rollback is not complete until smoke passes.
-
-## 5. Common operations
-Logs, restart, shell access, cleanup commands.
-
-## 6. Troubleshooting
-Top 3-5 known failure modes with diagnostic + fix. Link to `docs/troubleshooting.md` for developer-facing issues.
-
-## 7. Escalation
-On-call contact, severity thresholds, when to roll back vs hold.
-```
-
-**2. `reports/RELEASE_NOTES_v<X.Y.Z>.md`** — one file per release tag. Minimum 5 sections (the full Release Manager agent template adds more):
-
-```markdown
-# <product> — Release Notes v<X.Y.Z>
-
-- **Version**: <X.Y.Z>
-- **Release date**: YYYY-MM-DD
-- **Container tags**: `<api-image>:<X.Y.Z>`, `<spa-image>:<X.Y.Z>` (etc.)
-- **Status**: SUCCEEDED / FAILED / ROLLED-BACK
-
-## 1. Summary
-One paragraph: what this release ships, the MVP/scope boundary, what's NOT in it.
-
-## 2. Quality gates passed
-Reference each gate (1-10) with link to its artifact (`reports/CODE_REVIEW.md`, `reports/TEST_REPORT.md`, `security/SCAN_REPORT.md`, etc.). Note any documented exceptions.
-
-## 3. Hardening landed in this release
-List every P0/P1 item from `security/SCAN_REPORT.md` §Recommendations that this release implements. Cross-reference `F-#` IDs.
-
-## 4. Rollback procedure
-Image tags to revert to, DB rollback notes, smoke verification. Link to `reports/DEPLOY_RUNBOOK.md` §4.
-
-## 5. Sign-off
-Release Manager, Tech Lead, Security Auditor — each with date + decision.
-```
+**2. `reports/RELEASE_NOTES_v<X.Y.Z>.md`** — one file per release tag. Minimum 5 sections — **skeleton: [`templates/RUNBOOK_RELEASE_TEMPLATE.md`](../templates/RUNBOOK_RELEASE_TEMPLATE.md) §B (fill-only):**
+1 Summary (scope boundary, what's NOT in it) · 2 Quality gates passed (link artifacts, nêu exception) · 3 Hardening landed (mọi P0/P1 từ SCAN_REPORT, cross-ref `F-#`) · 4 Rollback procedure (link RUNBOOK §4) · 5 Sign-off (Release Manager + Tech Lead + Security Auditor, mỗi người date + decision).
 
 **3. `CHANGELOG.md`** — updated with a new entry per release (Keep a Changelog format — Added / Changed / Fixed / Security). Acts as the rollup index over the per-release notes above.
 
 **4. Tagged images** — every image built carries a semver tag (`<image>:v<X.Y.Z>`). Never deploy `:latest` to anything beyond a developer's laptop.
 
-## Next Step
-
-After deployment verified and health checks passing, monitor logs/metrics and start the next feature cycle with `/spec`.
-
 ## Agent
 
 Invoke: **Release Manager**
 
+```text
+"As Release Manager, build, deploy and verify the application with staged rollout.
+Output language: Vietnamese for prose/artifacts, English for code and technical identifiers
+(see .claude/CLAUDE.md → Output Language)."
 ```
-"As Release Manager, build, deploy and verify the application with staged rollout"
-```
+
+## Next Step
+
+After deployment verified and health checks passing, monitor logs/metrics and start the next feature cycle with `/spec`.

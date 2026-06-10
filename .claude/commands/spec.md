@@ -9,11 +9,7 @@ description: Spec before code — User Stories & Acceptance Criteria for new fea
 
 ## Purpose
 
-Create a comprehensive specification document **before** writing any code. This ensures alignment on requirements, constraints, and acceptance criteria.
-
-## Role
-
-**Business Analyst / Product Owner** — Responsible for defining WHAT to build and WHY, not HOW.
+Create a comprehensive specification document **before** writing any code — defining **WHAT** to build and **WHY**, not HOW. This ensures alignment on requirements, constraints, and acceptance criteria.
 
 ## Phase 0 — Mode Auto-Detection (chạy TRƯỚC Phase 1)
 
@@ -82,7 +78,7 @@ After discovery, produce `SPEC.md` using the **authoritative structure** defined
 
 **Per-story format** must match BA agent § "User Story Format (BDD)":
 
-```markdown
+````markdown
 #### US-[ID]: [Title] — [Must/Should/Could]
 
 **As a** [persona],
@@ -108,13 +104,16 @@ Scenario: [edge case / failure]
 ##### Business Rules
 - [Validation, normalization, invariants]
 
+##### UI/UX Notes (optional)
+- [Wireframe reference, key interaction patterns]
+
 ##### Dependencies (optional)
 - Requires: US-XXX
-```
+````
 
 > Do **not** use single-line checkbox AC (`- [ ] Given… When… Then…`) — always use Gherkin code blocks with named Scenarios covering happy path + at least one edge/failure case.
 
-**Scenario IDs (traceability seed).** Tag every scenario with a stable ID — `@US-[ID]-S01` (happy), `-S02…` (each edge/failure). These IDs are the **canonical acceptance checklist** that every downstream gate (`/plan`, `/build`, `/test`, `/review`, `/verify`) reconciles against: each ID maps to a task/test or carries an explicit **waiver (reason + owner)**. No scenario silently dropped.
+**Scenario IDs (traceability seed).** Tag every scenario with a stable ID — `@US-[ID]-S01` (happy), `-S02…` (each edge/failure). These IDs are the **canonical acceptance checklist** every downstream gate reconciles against — full rule: [`references/scenario-traceability.md`](../references/scenario-traceability.md).
 
 **User-perspective scenarios (mandatory).** Every **user-facing action** MUST have ≥ 1 scenario written from the **user's observable perspective** — the action as the user performs it (*"When I click Delete on a bookmark"*) and the **observable outcome** (*"Then it disappears from my list"*) — NOT only the transport call (*"When I send `DELETE /…`"*). An API/transport-phrased scenario is allowed **in addition** (it documents the API contract) but, for a product with a UI, does **not** by itself satisfy the user-facing action. The outcome must be concrete enough that a black-box test can assert it **survives a round-trip** (reload / re-fetch), not merely "no error".
 > *Self-adapting:* for an API-only / headless product the "user" is the API consumer, so the transport scenario **is** the user-perspective — no fake UI required.
@@ -187,6 +186,8 @@ Chỉ vào mục này khi **Phase 0** đã resolve = brownfield **và** `specs/S
 Invoke: **Business Analyst**
 
 For UI-heavy features, also consult: **UI/UX Designer**
+
+> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 
 ## Next Step
 
