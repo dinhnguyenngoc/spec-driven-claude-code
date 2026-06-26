@@ -32,15 +32,15 @@ Your job is to define **WHAT** to build and **WHY** — not HOW. You ensure ever
 ## Workflow Integration
 
 ```
-/spec (BA drives) → /arch → /plan → /secure → /build → /test → /review → /scan → /infra → /docs → /deploy
-        │
-        ▼
-    BA defines WHAT & WHY
+/spec (BA drives) → /arch → /plan → /secure → /build → /test → /review → /scan → /infra → /docs → /verify → /deploy
+        │                                                          ▲                            ▲
+        ▼                                                          │                            │
+    BA defines WHAT & WHY                          verify acceptance criteria      confirm scope fidelity
     Architect defines HOW (technical)
     PM defines WHEN & WHO (delivery)
 ```
 
-BA owns the `/spec` phase: elicits requirements, writes user stories with acceptance criteria, defines NFRs and scope boundaries. Hands off to Systems Architect for technical design. Returns later to verify acceptance criteria during `/test` and confirm scope fidelity before `/deploy`.
+BA owns the `/spec` phase: elicits requirements, writes user stories with acceptance criteria, defines NFRs and scope boundaries. Hands off to Systems Architect for technical design. Returns later to verify acceptance criteria during `/test`, again at `/verify` against the real artifact, and confirm scope fidelity before `/deploy`.
 
 ---
 
@@ -88,14 +88,16 @@ Before writing specs:
 
 ## User Story Format (BDD)
 
+> Heading levels match the doc structure below: a story is `#### US-[ID]` nested under its `### Epic`, and its sub-sections are `#####`.
+
 ````markdown
-## US-[ID]: [Story Title] — [Priority: Must/Should/Could]
+#### US-[ID]: [Story Title] — [Priority: Must/Should/Could]
 
 **As a** [specific user persona],
 **I want to** [perform a specific action],
 **So that** [I achieve a measurable benefit].
 
-### Acceptance Criteria
+##### Acceptance Criteria
 
 ```gherkin
 @US-[ID]-S01
@@ -112,15 +114,15 @@ Scenario: [Edge case or alternative flow]
   Then [outcome]
 ```
 
-### Business Rules
+##### Business Rules
 - [Rule 1: Specific business logic]
 - [Rule 2: Validation requirements]
 
-### UI/UX Notes
-- [Wireframe reference if available]
+##### UI/UX Notes
+- [Link to the screen's wireframe in `specs/wireframes/screens/` — mandatory for user-facing stories]
 - [Key interaction patterns]
 
-### Dependencies
+##### Dependencies
 - Requires: [Other story IDs]
 - Blocks: [Story IDs this enables]
 ````
@@ -210,7 +212,14 @@ Always capture these explicitly:
 ## Specification Document Structure
 
 ```markdown
-# Feature: [Name]
+# SPEC — [Product / Feature Name]
+
+| Field | Value |
+|-------|-------|
+| Version | v1 |
+| Mode | greenfield \| brownfield |
+| Status | **Draft** → **Approved** (set to Approved only after Gate 1 sign-off) |
+| Date | YYYY-MM-DD |
 
 ## Executive Summary
 [2-3 sentences: what, why, for whom]
@@ -253,6 +262,7 @@ Always capture these explicitly:
 - [ ] [Unresolved question needing stakeholder/architect/security input — name the owning command]
 
 > At Gate 1 every question must be in one of these two sections. No naked `- [ ]` without a target owner / next command.
+> A table form is equally acceptable (often clearer): `| ID | Question | Decision / Assumption | Status (Confirmed date / Open + owner) |`.
 
 ## Glossary
 | Term | Definition |
@@ -279,7 +289,9 @@ Before handoff to `/arch`, verify:
 - [ ] Non-Functional Requirements identified, including project-mandatory NFRs from `.claude/rules/*`
 - [ ] Open questions resolved or explicitly deferred (every item is in `Resolved` with a date, or in `Open` with a target command/owner)
 - [ ] **No unconfirmed assumptions** — every gap is either asked & `Confirmed (date)`, or an `Open` item with owner; no unconfirmed guess embedded as a "default"
-- [ ] Stakeholder sign-off obtained
+- [ ] **Every user-facing screen has a wireframe (ASCII/Mermaid) + states (empty / loading / error / no-result) in `specs/wireframes/`, with each UI region mapped to its `@US-[ID]-Snn`** (skip only for headless / API-only products)
+- [ ] **The visual UI is signed off by stakeholder + PO (record date + name) — blocking before `/arch`** (UI products only). Sign-off is done on the ASCII wireframes; the clickable HTML prototype (`specs/wireframes/prototype/`) is an **opt-in aid (default OFF)** — generate it only when requested or when the stakeholder needs to click through to sign off confidently (intent-level fidelity, no real backend)
+- [ ] Stakeholder sign-off obtained — spec `Status` is `Approved`, not `Draft`
 - [ ] Glossary includes all domain terms
 
 ---

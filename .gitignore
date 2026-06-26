@@ -26,6 +26,7 @@ appsettings.*.json
 !appsettings.Testing.json
 .env
 .env.local
+!.env.example
 
 # ─── Tooling caches ──────────────────────────────────────────────
 .dotnet/
@@ -57,6 +58,9 @@ reports/verify-artifacts/**
 !reports/verify-artifacts/*.txt
 !reports/verify-artifacts/report/
 !reports/verify-artifacts/report/results.json
+!reports/verify-artifacts/report/phase2-results.json
+!reports/verify-artifacts/report/phase4-nfr.json
 !reports/verify-artifacts/evidence/
 !reports/verify-artifacts/evidence/**
 reports/verify-artifacts/report/html/
+reports/verify-artifacts/runner/

@@ -140,11 +140,11 @@ await mongoose.connect(process.env.MONGO_URL!);
 ### Anti-pattern: "Unbounded array embedded"
 
 ```json
-// ❌ BAD — bookmarks growth → document size bùng nổ → resize cost cao + cap 16MB
-{ "_id": "u-001", "bookmarks": [ ...10000 items... ] }
+// ❌ BAD — orders growth → document size bùng nổ → resize cost cao + cap 16MB
+{ "_id": "u-001", "orders": [ ...10000 items... ] }
 
-// ✅ GOOD — tách bookmarks collection, reference user_id
-{ "_id": "u-001", "bookmarkCount": 10000 }  // cache count nếu cần
+// ✅ GOOD — tách orders collection, reference user_id
+{ "_id": "u-001", "orderCount": 10000 }  // cache count nếu cần
 ```
 
 > Rule of thumb: nếu array có thể grow > 100 items → tách collection riêng.

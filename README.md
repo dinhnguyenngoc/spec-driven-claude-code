@@ -89,7 +89,7 @@ Run the commands in order, reviewing each artifact as you go:
 /arch      → system design, ADRs, API contracts   → architecture/
 /plan      → tasks broken into vertical slices     → plans/todo.md
 /secure    → STRIDE threat model (optional)        → security/
-/build     → TDD implementation                    → src/ + tests/
+/build     → TDD implementation                    → src/ + web/ + tests/
 /test      → real-dependency QA gate               → tests/
 /review    → five-axis code review                 → reports/
 /scan      → vulnerability scan                     → security/
@@ -117,7 +117,7 @@ Open [plans/todo.md](plans/todo.md) anytime to see what's done (`- [x]`) and wha
 | 2 | `/arch` | Systems Architect | Architecture, diagrams, ADRs, API contracts | `architecture/` |
 | 3 | `/plan` | Project Manager | Decompose into small, dependency-ordered tasks | `plans/` |
 | 4 | `/secure` ⃰ | Security Auditor | Pre-dev threat model (STRIDE) | `security/PRE_DEV_REVIEW` |
-| 5 | `/build` | Frontend/Backend Dev | Implement with TDD, vertical slices | `src/`, `tests/` |
+| 5 | `/build` | Frontend/Backend Dev | Implement with TDD, vertical slices | `src/`, `web/`, `tests/` |
 | 6 | `/test` | Test Engineer | QA with real dependencies (TestContainers) | `tests/` |
 | 7 | `/review` ⃰ | Code Reviewer | Five-Axis review of the change | `reports/CODE_REVIEW` |
 | 8 | `/scan` ⃰ | Security Auditor | Post-dev vulnerability scan | `security/SCAN_REPORT` |
@@ -128,11 +128,16 @@ Open [plans/todo.md](plans/todo.md) anytime to see what's done (`- [x]`) and wha
 
 <sub>⃰ = optional step, but **blocking if run** (security gates are non-negotiable).</sub>
 
+**Optional parameters (so you know they exist):**
+- **`/spec`** — for UI products, **ASCII wireframes are produced by default**; add **`--prototype`** (or say *"with prototype"*) to also generate a clickable HTML prototype for stakeholder click-through sign-off.
+- **`/arch`** — Rejection ADRs (intentionally-excluded stack components) default to **one consolidated table**; add **`--adr=per-component`** (or say *"a separate ADR per component"*) to emit one full ADR per excluded component (e.g. audit/compliance).
+
 ### Supporting commands
 
 | Command | Purpose |
 |---------|---------|
 | `/discover` | **Brownfield onboarding** — survey an existing codebase, verify build/run, generate the Project Profile |
+| `/discover-system` | **Multi-repo** — aggregate per-repo discovery into a system-wide map (service catalog, call-graph, cross-service journeys); read-only, one-way docs |
 | `/debug` | Systematic debugging — find the root cause, not the symptom |
 | `/simplify` | Reduce complexity without changing behavior |
 | `/fix-issue` | Analyze and fix a reported bug during the dev cycle (ends at `/review`) |
@@ -217,18 +222,18 @@ Overrides only replace the dialect/backend-specific parts — all agnostic princ
 ```
 .claude/
 ├── CLAUDE.md          # The brain — pipeline, gates, Project Profile, rules index
-├── commands/          # 17 slash-command workflows (/spec, /arch, /build, …)
+├── commands/          # 18 slash-command workflows (/spec, /arch, /build, …)
 ├── agents/            # 11 specialized agent playbooks
 ├── rules/             # 17 mandatory engineering rules
 │   └── overrides/     # 8 stack-specific overrides (Postgres, Node.js, ELK, …)
 ├── skills/            # Reusable techniques (tdd, code-review, …)
-├── references/        # 10 checklists (security, testing, docker, a11y, …)
-├── templates/         # STRIDE & OWASP templates
+├── references/        # 10 references/checklists (security, testing, docker, a11y, multi-repo, …)
+├── templates/         # fill-only templates: STRIDE · OWASP · TEST_REPORT · VERIFY_REPORT · CODE_REVIEW · RUNBOOK_RELEASE · wireframes
 ├── hooks/             # Lifecycle hooks (command stats)
 └── scripts/           # Security scanners (dotnet, nodejs, python, docker)
 
 # Generated as you work:
-specs/  architecture/  plans/  security/  src/  tests/  reports/  docker/  docs/
+specs/  architecture/  plans/  security/  src/  web/  tests/  reports/  docker/  docs/
 ```
 
 > 📖 The single source of truth for the whole workflow is [.claude/CLAUDE.md](.claude/CLAUDE.md) — start there if you want the deep dive.

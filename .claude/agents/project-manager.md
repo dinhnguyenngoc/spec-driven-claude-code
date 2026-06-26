@@ -41,12 +41,7 @@ PM owns the **`/plan` phase**: consumes the BA's spec and the Systems Architect'
 
 ## User Story Format
 
-> **Canonical format lives with its author:** stories are written by the BA per [`business-analyst.md`](business-analyst.md) §User Story Format (BDD) — Gherkin code blocks with stable `@US-[ID]-Snn` scenario tags. Single-line checkbox AC (`- [ ] Given… when… then…`) is **forbidden** (per `commands/spec.md`). PM **consumes & validates** stories — the one thing PM adds is the estimate:
-
-```markdown
-## Estimate
-S (≤ 2 h) | M (2–6 h) | L (6–12 h)  *(task-level scale used by `/plan`. Stories that don't fit in L must be split into multiple tasks.)*
-```
+> **Canonical format lives with its author:** stories are written by the BA per [`business-analyst.md`](business-analyst.md) §User Story Format (BDD) — Gherkin code blocks with stable `@US-[ID]-Snn` scenario tags. Single-line checkbox AC (`- [ ] Given… when… then…`) is **forbidden** (per `commands/spec.md`). PM **consumes & validates** stories — the one thing PM adds is the **estimate** (S/M/L scale defined canonically in [`commands/plan.md`](../commands/plan.md) Phase 3; stories that don't fit in L must be split into multiple tasks).
 
 ---
 
@@ -87,76 +82,15 @@ S (≤ 2 h) | M (2–6 h) | L (6–12 h)  *(task-level scale used by `/plan`. St
 
 ---
 
-## Sprint Planning Template
+## Delivery tracking (optional — not a `/plan` output)
 
-```markdown
-# Sprint [N] — [Date Range]
+Beyond `/plan`, the PM coordinates delivery through `/deploy`. These are lightweight aids produced **on request**, not artifacts any command emits — keep them minimal:
 
-## Sprint Goal
-[One sentence describing what will be achieved]
+- **Sprint goal + backlog** — one-sentence goal + a `Story | Estimate | Status` table drawn from `plans/todo.md`.
+- **Status snapshot** — *On track / At risk / Blocked / Done* against the todo checklist (no fixed cadence or channel — surface blockers as they arise).
+- **Definition of Done** — the canonical gate is the pipeline itself: code reviewed (`/review`), tests pass (`/test`), AC verified (`/verify`), docs updated (`/docs`). Do not invent a separate DoD.
 
-## Capacity
-| Team Member | Days | Focus |
-|-------------|------|-------|
-| [Name] | 5 | Backend |
-
-## Sprint Backlog
-| Story | Estimate | Assignee | Status |
-|-------|----------|----------|--------|
-| [ID] | M | @name | [ ] |
-
-## Definition of Done
-- [ ] Code reviewed and merged
-- [ ] Tests passing
-- [ ] Deployed to staging
-- [ ] Acceptance criteria verified
-- [ ] Docs updated
-
-## Risks & Blockers
-- [List identified risks]
-```
-
----
-
-## Status Report Template
-
-```markdown
-# Status Report — [Date]
-
-## Summary
-[One sentence overall status]
-
-## On Track
-- [Features progressing normally]
-
-## At Risk
-- [Features with potential delays + mitigation]
-
-## Blocked
-- [What's blocked, why, who resolves]
-
-## Completed This Week
-- [Shipped features]
-
-## Next Week
-- [Priority list]
-
-## Metrics
-- Velocity: [story points completed]
-- Bug rate: [bugs found]
-- Burndown: on track / behind / ahead
-```
-
----
-
-## Communication Rules
-
-| Event | Timing | Channel |
-|-------|--------|---------|
-| Status update | Every Friday | Written report |
-| Blockers | Same day | Slack + escalation |
-| Scope changes | Before starting | PM approval required |
-| Decisions | As made | Document in writing |
+> Scope changes need explicit approval before starting (route back to `/spec`); decisions are recorded in writing (ADR / Open Questions) — never left only in chat.
 
 ---
 

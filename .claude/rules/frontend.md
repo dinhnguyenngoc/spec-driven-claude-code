@@ -300,6 +300,21 @@ export function cn(...inputs: ClassValue[]) {
 <div className="flex items-center gap-2 p-4 text-sm font-medium text-gray-900 hover:bg-gray-50">
 ```
 
+### Breakpoint & class validity (single-source)
+
+Component chỉ được dùng **breakpoint / variant đã khai báo trong `tailwind.config`**. Tailwind **âm thầm bỏ** class biến thể không khớp config (vd `sm:flex-row` khi `screens` chỉ có `md`/`lg`) — không báo lỗi, không warning, layout vỡ ngầm. Bật `eslint-plugin-tailwindcss` để bắt **ở build**:
+
+```js
+// eslint config
+plugins: ["tailwindcss"],
+rules: {
+  "tailwindcss/no-custom-classname": "error",        // class không resolve theo config: breakpoint/variant lạ, typo
+  "tailwindcss/no-contradicting-classname": "error", // class đối nghịch (vd 2 width)
+}
+```
+
+> `npm run lint` đã là gate ở `/build` (Gate 5) và được `/test` re-run (Gate 6) → **cùng 1 rule chặn ở cả hai bước, trước commit**. Đây là họ lỗi *tĩnh* về class; lỗi *render* responsive (đúng config nhưng vỡ layout) được bắt ở `/verify` Phase 4 (no-overflow per breakpoint).
+
 ---
 
 ## Data Fetching Patterns
@@ -505,3 +520,5 @@ src/
 - [ ] `error.tsx` and `loading.tsx` exist for async routes
 - [ ] Backend errors rendered via `ProblemDetails` contract
 - [ ] Components tested by role/label, not implementation
+- [ ] No Tailwind class dùng breakpoint/variant ngoài `tailwind.config` (`tailwindcss/no-custom-classname` pass) — see §Styling
+- [ ] Responsive verified — no horizontal overflow ở mỗi breakpoint khai báo (đo ở `/verify` Phase 4)

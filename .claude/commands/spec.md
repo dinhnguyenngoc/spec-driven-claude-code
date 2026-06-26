@@ -11,6 +11,16 @@ description: Spec before code — User Stories & Acceptance Criteria for new fea
 
 Create a comprehensive specification document **before** writing any code — defining **WHAT** to build and **WHY**, not HOW. This ensures alignment on requirements, constraints, and acceptance criteria.
 
+## Usage
+
+| Cách gọi | Kết quả |
+|----------|---------|
+| `/spec <requirements>` | Sinh `SPEC.md` + (nếu sản phẩm có UI) **ASCII wireframes**. **Đây là mặc định** — KHÔNG sinh prototype HTML. |
+| `/spec <requirements> --prototype` | Như trên, **kèm** clickable HTML prototype. Cũng kích hoạt được bằng ngôn ngữ thường: thêm *"kèm prototype" / "có prototype"* vào yêu cầu. |
+| `/spec` (không tham số) | Xem **Phase 0**: repo đã có code → brownfield (cần `/discover` trước); chưa có gì → hỏi user cấp requirements. |
+
+> **Vì sao prototype mặc định OFF:** nó là artifact nặng nhất của `/spec`. ASCII wireframes (luôn sinh) đã đủ làm source of truth + đa số trường hợp đủ để sign-off. Prototype được sinh khi user yêu cầu, **hoặc** khi stakeholder/PO cần click-through mới yên tâm duyệt ở Gate 1. Chi tiết: Phase 2.5.
+
 ## Phase 0 — Mode Auto-Detection (chạy TRƯỚC Phase 1)
 
 `/spec` tự resolve mode tại runtime thay vì tin tuyệt đối vào `Project Profile → Mode` (có thể stale). Hai tín hiệu:
@@ -56,15 +66,17 @@ Before generating a spec, gather requirements by asking:
 
 **Project-mandatory NFRs (cross-check before closing discovery)**
 
-Before generating the spec, consult these rule files so project-default NFRs are not silently omitted:
+Before generating the spec, cross-check project-default NFRs against the table below so none are silently omitted. **The table is self-sufficient — surface these items directly; do NOT read the full rule files for this check. Open a specific rule file only when a particular threshold/detail is genuinely unclear.**
 
 | Rule | NFR(s) to surface in the spec |
 |------|------------------------------|
-| `.claude/rules/security.md` | Rate limiting on auth endpoints, password policy, JWT lifetime, secrets storage |
+| `.claude/rules/security.md` | Rate limiting on auth endpoints, password policy, JWT lifetime, secrets storage, **HTTP security headers** (X-Content-Type-Options / X-Frame-Options / Referrer-Policy / HSTS / CSP — see `security.md §HTTP Security Headers`) |
 | `.claude/rules/frontend.md` + `.claude/references/accessibility-checklist.md` | **Accessibility (WCAG 2.1 AA)** as an NFR for every user-facing screen |
+| `.claude/rules/frontend.md` + `.claude/agents/ui-ux-designer.md` | **Responsive** — no horizontal overflow at the design-system breakpoints (320 / 768 / 1024 / 1280px); usable on mobile **and** desktop — a *measurable* NFR for every screen |
 | `.claude/rules/monitoring.md` | Structured logging, correlation IDs, log redaction of sensitive data |
 | `.claude/rules/tech-stack.md` | Approved tech stack alignment statement |
 | `.claude/rules/api-conventions.md` | `ProblemDetails` error contract, `PagedResult<T>` envelope |
+| `.claude/rules/principles-and-practices.md` §5 | NFR-dependent infra triggers — surface whether Redis / Kafka / read-replica / CDN may be needed, or explicitly confirm "not yet" (design the seam now, implement on measured trigger) |
 
 Treat anything listed in these rules as **default-on NFRs** — the spec must either include them or explicitly justify an exception.
 
@@ -76,51 +88,29 @@ After discovery, produce `SPEC.md` using the **authoritative structure** defined
 >
 > It includes (in this order): Executive Summary → Objective → Target Users → User Stories (with **Gherkin AC**, **Business Rules**, **UI/UX Notes**, **Dependencies** per story) → Non-Functional Requirements → Boundaries (Always/Ask/Never) → Out of Scope → Open Questions → Glossary → Appendix.
 
-**Per-story format** must match BA agent § "User Story Format (BDD)":
-
-````markdown
-#### US-[ID]: [Title] — [Must/Should/Could]
-
-**As a** [persona],
-**I want to** [action],
-**So that** [benefit].
-
-##### Acceptance Criteria
-
-```gherkin
-@US-[ID]-S01
-Scenario: [happy path]
-  Given …
-  When [the user performs the action as they perform it] …
-  Then [observable outcome the user can see] …
-
-@US-[ID]-S02
-Scenario: [edge case / failure]
-  Given …
-  When …
-  Then …
-```
-
-##### Business Rules
-- [Validation, normalization, invariants]
-
-##### UI/UX Notes (optional)
-- [Wireframe reference, key interaction patterns]
-
-##### Dependencies (optional)
-- Requires: US-XXX
-````
+**Per-story format** — follow the BA agent § "User Story Format (BDD)" template **verbatim** (`#### US-[ID]` → As-a / I-want / So-that → Gherkin AC → Business Rules → UI/UX Notes → Dependencies); that copy is canonical, do not restate it here. The spec-specific rules below augment it:
 
 > Do **not** use single-line checkbox AC (`- [ ] Given… When… Then…`) — always use Gherkin code blocks with named Scenarios covering happy path + at least one edge/failure case.
 
 **Scenario IDs (traceability seed).** Tag every scenario with a stable ID — `@US-[ID]-S01` (happy), `-S02…` (each edge/failure). These IDs are the **canonical acceptance checklist** every downstream gate reconciles against — full rule: [`references/scenario-traceability.md`](../references/scenario-traceability.md).
 
-**User-perspective scenarios (mandatory).** Every **user-facing action** MUST have ≥ 1 scenario written from the **user's observable perspective** — the action as the user performs it (*"When I click Delete on a bookmark"*) and the **observable outcome** (*"Then it disappears from my list"*) — NOT only the transport call (*"When I send `DELETE /…`"*). An API/transport-phrased scenario is allowed **in addition** (it documents the API contract) but, for a product with a UI, does **not** by itself satisfy the user-facing action. The outcome must be concrete enough that a black-box test can assert it **survives a round-trip** (reload / re-fetch), not merely "no error".
+**User-perspective scenarios (mandatory).** Every **user-facing action** MUST have ≥ 1 scenario written from the **user's observable perspective** — the action as the user performs it (*"When I click Delete on an order"*) and the **observable outcome** (*"Then it disappears from my list"*) — NOT only the transport call (*"When I send `DELETE /…`"*). An API/transport-phrased scenario is allowed **in addition** (it documents the API contract) but, for a product with a UI, does **not** by itself satisfy the user-facing action. The *Then* must be a concrete, assertable observable outcome — per the "effect, not presence / survives a round-trip" rule in [`references/scenario-traceability.md`](../references/scenario-traceability.md) §3.
 > *Self-adapting:* for an API-only / headless product the "user" is the API consumer, so the transport scenario **is** the user-perspective — no fake UI required.
+
+### Phase 2.5: Wireframe & Visual Prototype (UI products)
+
+> Skip for headless / API-only products (the API contract is the interface). For **any** product with a UI — UI-light or UI-heavy — the **UI/UX Designer** produces the wireframes; the HTML prototype is an **opt-in** add-on:
+
+1. **ASCII / Mermaid wireframes** (`specs/wireframes/`) — **ALWAYS produced.** The versioned, diff-able **source of truth**: one file per screen with layout + states (empty / loading / error / no-result) + a11y notes + a **control → `@US-[ID]-Snn` mapping table**, plus a Mermaid sitemap and key user flows. This is what `/arch`, `/build`, and `/verify` cite for traceability.
+   > **Chỉ page-level state** (default / empty / loading / error / no-result) cho mỗi screen. Ma trận state per-component (hover / focus / active / disabled…) là design-system territory của `/arch` — **KHÔNG** sinh ở `/spec` (fidelity = intent-level).
+2. **A clickable HTML prototype** (`specs/wireframes/prototype/index.html`) — **OPT-IN, default OFF** (it is the heaviest artifact of `/spec`). Generate it **only when the user requests it** (e.g. `/spec … --prototype`, or "kèm prototype" in the request) **or when the stakeholder/PO cannot confidently sign off from the ASCII wireframes alone** and needs to click through the flow. It is a self-contained, **intent-level** sign-off aid (no real backend): disposable after approval (or snapshot per release); NOT pixel-perfect and NOT the design system (tokens / component contracts belong to `/arch`).
+
+**Fidelity stays intent-level** — this phase validates *what the user sees and how the flow works*, not pixels/tokens. **The Gate 1 quality bar is: ASCII wireframes + stakeholder/PO visual sign-off** (both mandatory); the HTML prototype is an optional aid to reaching that sign-off, not a gate item in itself. **Fill-only boilerplate:** copy [`.claude/templates/wireframes/`](../templates/wireframes/) into `specs/wireframes/`. Convention: [`.claude/agents/ui-ux-designer.md`](../agents/ui-ux-designer.md); ASCII rules: [`.claude/references/ascii-diagram-guide.md`](../references/ascii-diagram-guide.md).
 
 ### Phase 3: Review & Confirm
 
 - Present the spec to the user (Product Owner / Stakeholder)
+- **(UI products) Tell the user the HTML prototype was not generated (opt-in, default OFF) and how to get it** — e.g. *"Đã có ASCII wireframes. Prototype HTML không sinh mặc định; nếu bạn/stakeholder muốn click-through để duyệt, nói 'tạo prototype' (hoặc chạy `/spec … --prototype`)."* This is how the user discovers the option at point-of-use.
 - Confirm before proceeding to `/arch`
 
 ## Output
@@ -144,26 +134,21 @@ Decide between **monolithic** and **split** layouts based on size and review wor
 
 - `specs/SPEC.md` — always required
 - `specs/user-stories/US-*.md` — only when split layout is chosen
+- `specs/wireframes/` — required for UI products (Phase 2.5): `README.md` (Mermaid sitemap + design notes) · `screens/US-*.md` (ASCII layout + states + a11y + control→`@US` mapping) · `flows/*.md` (Mermaid). `prototype/index.html` (self-contained clickable prototype) — **only when requested (opt-in, default OFF)**
 - Clear alignment on WHAT to build and WHY
 
 ## Quality Gate 1 — Definition of Ready (DoR)
 
-Before moving to `/arch`, verify the **full DoR** maintained by the Business Analyst agent — see [`.claude/agents/business-analyst.md`](../agents/business-analyst.md) § "Definition of Ready (DoR)" for the authoritative checklist.
+Before moving to `/arch`, verify the **full DoR** in the Business Analyst agent — see [`.claude/agents/business-analyst.md`](../agents/business-analyst.md) § "Definition of Ready (DoR)" for the **authoritative checklist** (that copy is canonical — do not restate it here).
 
-Summary (must all be ✓):
+The **blocking essentials** (the gate fails without these):
 
-- [ ] All user stories follow "As a… I want… So that…" format
-- [ ] All stories have Given/When/Then acceptance criteria (Gherkin, with happy path + ≥ 1 edge case)
-- [ ] **Every user-facing action has a user-perspective (observable) scenario** — not only an API-transport scenario
-- [ ] **Every scenario has a stable ID (`@US-XXX-Snn`) and a concrete, assertable observable outcome (*Then*)**
-- [ ] Personas defined for all user types
-- [ ] Priority assigned (Must / Should / Could / Won't)
-- [ ] Non-Functional Requirements identified, including project-mandatory NFRs from `.claude/rules/*`
-- [ ] Out of Scope explicitly documented
-- [ ] **Open questions resolved or explicitly deferred** (no naked `- [ ]` items at Gate 1 — every question is either in `Resolved` with a decision + date, or in `Open` with a target command/owner)
-- [ ] **No unconfirmed assumptions** — every gap is either asked & `Confirmed (date)`, or an `Open` item with owner; no unconfirmed guess embedded as a "default"
-- [ ] Glossary includes all domain terms
-- [ ] Stakeholder sign-off obtained — spec `Status` is `Approved`, not `Draft`
+- [ ] **Stakeholder sign-off obtained** — spec `Status` is `Approved`, not `Draft`
+- [ ] **Every scenario has a stable ID (`@US-XXX-Snn`) + a concrete, assertable observable outcome (*Then*)**, and **every user-facing action has a user-perspective scenario** — not only an API-transport one
+- [ ] **No unconfirmed assumptions / open questions** — each is `Resolved (date)` or `Open (owner / next command)`
+- [ ] **(UI products) Wireframes + states in `specs/wireframes/` (mapped to `@US-XXX-Snn`), and visual UI signed off by stakeholder + PO** (date + name) — blocking before `/arch`
+
+> All other DoR items (story format, personas, priority, NFRs, Out-of-Scope, Glossary) → the authoritative checklist in the BA agent.
 
 ## Brownfield Mode (khi Phase 0 resolve = brownfield)
 
@@ -171,10 +156,13 @@ Chỉ vào mục này khi **Phase 0** đã resolve = brownfield **và** `specs/S
 
 | Situation | Mode | Behavior |
 |-----------|------|----------|
-| `specs/SPEC.md` does not exist (after `/discover`) | **REVERSE** | Read `Controllers/`, `Services/`, validators, routes → extract **User Stories as-is** (describe what the system *is currently doing*, not what it should do). Assign stable US-IDs. This is baseline documentation. |
+| `specs/SPEC.md` does not exist (after `/discover`) | **REVERSE** | **First consume the `/discover` artifacts** (`Project Profile` + `docs/CODEBASE_MAP.md` endpoint inventory + red-flag list) as the navigation index. From the inventory, go **directly** to the relevant handlers/`Services`/validators to extract **User Stories as-is** (describe what the system *is currently doing*, not what it should do) — do **NOT** re-survey the whole tree (that was `/discover`'s job). Assign stable US-IDs. This is baseline documentation. |
 | `specs/SPEC.md` already exists | **DELTA** | Spec only **changes/new features**; reference existing stories (`Extend US-011…`), do NOT rewrite existing stories. Keep old IDs stable. |
 
 **REVERSE — notes:**
+- **Consume, don't re-scan:** the `docs/CODEBASE_MAP.md` endpoint inventory is the skeleton — one story-cluster per entry-point group; read handler bodies only for the behavior detail. Targeted reads, not a full-tree sweep.
+- **Reuse red-flags:** carry the red-flag list from `/discover` straight into the spec as `⚠️ suspicious behavior` — do not re-detect from scratch.
+- **Fallback guard:** if `docs/CODEBASE_MAP.md` is missing or has no endpoint inventory, **STOP** and re-run `/discover` (or scan only the missing area) — do not silently fall back to a full-tree survey.
 - Describe **actual** behavior (even if it looks wrong/incomplete) — flag with `⚠️ suspicious behavior` instead of correcting it in the spec.
 - Discovery `/spec` only **measures** (describes), does NOT verify against acceptance criteria (there are none yet) — per `rules/brownfield.md` §Measure-vs-Verify.
 - Acceptance criteria are written based on observed behavior; used as a baseline for per-change characterization tests later.
@@ -185,7 +173,7 @@ Chỉ vào mục này khi **Phase 0** đã resolve = brownfield **và** `specs/S
 
 Invoke: **Business Analyst**
 
-For UI-heavy features, also consult: **UI/UX Designer**
+For **any product with a UI** (UI-light or UI-heavy), the **UI/UX Designer** produces the Phase 2.5 ASCII/Mermaid wireframes (always) plus the clickable HTML prototype (opt-in, default OFF) — see [`.claude/agents/ui-ux-designer.md`](../agents/ui-ux-designer.md) for the `specs/wireframes/` convention and fidelity rules.
 
 > Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 

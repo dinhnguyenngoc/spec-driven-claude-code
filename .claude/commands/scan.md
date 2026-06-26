@@ -40,6 +40,8 @@ Comprehensive security scan of completed code **before deployment**. Detect vuln
 bash .claude/scripts/scan-all.sh
 ```
 
+> **Kiến trúc script:** Phase 1 inventory + **auto-detect stack** → Phase 2 universal (secrets) → Phase 3 **dispatch per-stack** qua `scripts/scanners/{dotnet,nodejs,python,docker}.sh` → Phase 4 summarize. Danh sách dưới là **hợp** các scan có thể chạy; bước nào không khớp stack đã detect sẽ tự skip.
+
 Script tự làm:
 1. **Tool inventory** → `security/sast-results/tooling-availability.txt`
 2. **Secrets scan** (gitleaks → fallback regex grep nếu missing)
@@ -104,7 +106,7 @@ python3 -c "import json; s=json.load(open('security/SCAN_SUMMARY.json')); print(
 
 **Đây là phần agent BẮT BUỘC tự làm — script không tự động hoá được vì cần đọc file:line trong source code và verify mitigation logic.**
 
-Walk **mọi** threat ID trong `security/THREAT_MODEL.md` và confirm mitigation đã sống trong code. Đây là artifact load-bearing nhất `/scan` produces — chứng minh threat model không phải paperwork.
+Walk **mọi** threat ID trong `security/THREAT_MODEL.md` và confirm mitigation đã sống trong code. **Nếu `security/PRE_DEV_REVIEW.md` tồn tại, walk thêm mọi `RC-X.Y` Required Control** (do `/secure` mint) — confirm đã implement + cite file:line, dùng cùng status legend dưới; RC `Not implemented` → Finding F-### mới (feed Gate 8 như threat). Đây là artifact load-bearing nhất `/scan` produces — chứng minh threat model + required controls không phải paperwork.
 
 Status legend (dùng đúng các giá trị này):
 - **Verified** — code + tests prove mitigation
@@ -170,6 +172,7 @@ Template ở §Scan Report Template phía dưới.
 - **Commit**: [SHA]
 - **Tools run**: <from SCAN_SUMMARY.json tools_installed>
 - **Tools missing + compensating controls**: <from SCAN_SUMMARY.json compensating_controls>
+- **SAST scope**: <from SCAN_SUMMARY.json sast_scope — "whole-repo" or "semgrep diff vs <base>; other scans whole-repo">
 - **Overall Status**: [PASS/FAIL]
 
 ## Pre-Dev Security Review (if applicable)
@@ -245,6 +248,21 @@ Template ở §Scan Report Template phía dưới.
 
 ---
 
+## Brownfield Mode (when `Project Profile → Mode: brownfield`)
+
+For a **large legacy repo**, a per-change `/scan` should not re-run whole-tree **semgrep** every time (it re-surfaces thousands of pre-existing legacy findings + is slow). Scope **semgrep only**:
+
+- **Set the diff base** so semgrep scopes to the change (everything else stays whole-repo):
+  ```bash
+  SCAN_DIFF_BASE=origin/main bash .claude/scripts/scan-all.sh
+  ```
+  semgrep then runs only on files changed since the merge-base with `origin/main` (committed **and** uncommitted). If the base can't be resolved, the script **falls back to a whole-repo semgrep** — it never silently skips.
+- **Everything else stays whole-repo** — SCA (`dotnet list --vulnerable`, `npm audit`, `retire`, `trivy`), secrets (gitleaks), Roslyn analyzers, ESLint, XSS-grep. A vulnerable dependency or leaked secret anywhere is in scope regardless of the diff; the script enforces this — only semgrep is scoped.
+- **Disclosure is mandatory** — `SCAN_SUMMARY.json.sast_scope` records the scope; carry it into `SCAN_REPORT.md §Summary`. A diff-scoped scan must never be presented as a full scan.
+- **Keep a periodic FULL baseline** — run `/scan` **without** `SCAN_DIFF_BASE` before a release (or on a cadence) so semgrep's cross-file rules + newly-reachable legacy code are covered. Per-change = semgrep diff; baseline = whole-repo.
+
+> Greenfield / baseline run: do **not** set `SCAN_DIFF_BASE` → full whole-repo scan (unchanged behavior).
+
 ## Quality Gate 8 — Security Scan ⛔ BLOCKING
 
 > Step optional per CLAUDE.md §Quality Gates — **BLOCKING if run**.
@@ -257,6 +275,7 @@ Template ở §Scan Report Template phía dưới.
 - Security Lead has not approved
 - **STRIDE Re-evaluation matrix is missing** khi `security/THREAT_MODEL.md` exists — every threat ID phải có `Verified / Partial / Deferred / Not implemented` status với file:line evidence
 - Compensating control trong `SCAN_SUMMARY.json §compensating_controls` có `must_add_to_pipeline: true` nhưng chưa được flagged trong report
+- **Diff-scoped scan không được disclose** — nếu `SCAN_SUMMARY.json.sast_scope` ≠ `"whole-repo"` mà report KHÔNG ghi rõ scope, HOẶC release này chưa có một full whole-repo baseline scan gần đây (newly-reachable code chưa được phủ)
 
 ## Severity Definitions
 

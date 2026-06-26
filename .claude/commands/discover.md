@@ -13,6 +13,8 @@ The first step when taking over a **legacy repo** (brownfield). Survey the syste
 
 This is **Phase A** of the brownfield pipeline: `/discover` → `/spec` (reverse) → `/arch` (reverse) → `/infra` (reverse-bootstrap).
 
+> **Multi-repo microservices:** `/discover` is **repo-scoped** — run it (+ the rest of Phase A) **per service repo**. To then understand how the services fit together, run [`/discover-system`](discover-system.md) once over a workspace of all repos (it aggregates each repo's Phase A output, one-way). See [`../references/microservices-multirepo.md`](../references/microservices-multirepo.md).
+
 ## When to Use
 
 - Taking over an existing codebase for the first time, with missing docs/spec/tests.
@@ -26,7 +28,7 @@ This is **Phase A** of the brownfield pipeline: `/discover` → `/spec` (reverse
 
 ## Boundary — READ-ONLY
 
-`/discover` **does not modify code, does not install anything, does not run migrations that write to the DB**. It only reads, builds/tests to observe, and produces documentation. All code changes belong to flow B.
+`/discover` **does not modify source code, does not add/upgrade dependencies or install new global tooling, and does not run migrations that write to the DB**. Restoring the project's *already-declared* dependencies to build/test for observation is fine. It only reads, builds/tests to observe, and produces documentation. All code changes belong to flow B.
 
 > Also does NOT do work that belongs to other commands: does not run a full `/scan` (independent, recommended separately), does not run a full `/review` Five-Axis (per-change). `/discover` only takes a **light health snapshot** sufficient to assess initial risk.
 
@@ -73,12 +75,16 @@ Generate / update the `## Project Profile` section in `CLAUDE.md`:
 ## Output
 
 - `## Project Profile` in `CLAUDE.md` (fully filled in) — the **most important artifact**.
-- Codebase map (structure summary + entry points) — may be written to `docs/CODEBASE_MAP.md` or included in the report.
+- `docs/CODEBASE_MAP.md` — **REQUIRED** (consumed as the navigation index by `/spec` REVERSE and `/arch` reverse, so they do not re-survey the tree). Must contain at minimum:
+  - Module / layering summary + entry points.
+  - **Endpoint inventory** — a table `route + method → controller/handler → service` covering every externally reachable entry point. This is the skeleton `/spec` REVERSE turns into as-is user stories.
+  - **Red-flag list** — the Phase 3 findings with `file:line` locations, so `/spec` REVERSE carries them over as `⚠️ suspicious behavior` instead of re-detecting.
 - Health snapshot (build/test status, coverage baseline, red-flags) — input for deciding whether `/scan` is urgently needed.
 
 ## Quality Gate — Phase A Kickoff
 
 - [ ] `Project Profile` fully filled in: Mode, Core, Database, Observability, Structure
+- [ ] `docs/CODEBASE_MAP.md` written, containing the **endpoint inventory** + **red-flag list** (the index `/spec` REVERSE / `/arch` reverse consume)
 - [ ] Build status confirmed (pass / fail + reason)
 - [ ] Test suite status measured (pass count / coverage or "no tests")
 - [ ] Obvious security/technical red-flags listed (for `/scan` to dig into)

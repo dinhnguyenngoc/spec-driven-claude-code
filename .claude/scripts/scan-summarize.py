@@ -521,6 +521,10 @@ def main():
         "tools_installed": installed,
         "tools_missing": missing,
         "stacks_scanned": detect_stacks_scanned(),
+        "sast_scope": (
+            f"semgrep diff vs {os.environ['SCAN_DIFF_BASE'].strip()}; other scans whole-repo"
+            if os.environ.get("SCAN_DIFF_BASE", "").strip() else "whole-repo"
+        ),
         "compensating_controls": build_compensating_controls(missing),
         "findings_count": len(findings),
         "findings": findings,

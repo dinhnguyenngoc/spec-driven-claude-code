@@ -37,12 +37,19 @@ If a **file or class** exceeds ~500 lines, it likely needs splitting. (Methods h
 ### Brownfield (Mode: brownfield)
 
 `/simplify` is where the tech-debt backlog lands (per `rules/brownfield.md` §No Gratuitous Refactor). Two extra disciplines apply:
-- The area being simplified has **no tests** → write a **characterization test first** (capture current behavior, PASS) — that net is what proves "behavior unchanged".
+- **Characterization-test-first** for any untested area is now the general Step 0 (applies to every mode) — brownfield just hits it most often.
 - Stay **within the assigned area** — do not "tidy up" unrelated code in the same pass.
 
 ---
 
 ## Workflow
+
+### Step 0: Establish a green baseline (before touching any line)
+
+`/simplify`'s entire promise is **behavior unchanged** — provable only if the test net is GREEN **before** and **after**. So first:
+
+1. **Run the suite covering the target area — confirm GREEN.** If RED/flaky → fix or quarantine first; **never simplify on a red base** (you cannot tell "I preserved behavior" from "the test never caught it").
+2. **If the target area has no tests → write a characterization test first** (capture current behavior, runs GREEN) — **regardless of mode** (greenfield or brownfield). That net is what makes "behavior unchanged" a checkable claim, not a hope.
 
 ### Step 1: Identify Target
 

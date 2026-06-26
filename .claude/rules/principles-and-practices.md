@@ -93,8 +93,8 @@ src/
 ├── App.Core/                      # Domain + Application
 │   ├── Modules/
 │   │   ├── UserModule/            # Bounded context: User
-│   │   ├── BookmarkModule/        # Bounded context: Bookmark
-│   │   └── TagModule/             # Bounded context: Tag
+│   │   ├── OrderModule/           # Bounded context: Order
+│   │   └── CatalogModule/         # Bounded context: Catalog
 │   ├── Shared/                    # Cross-cutting (auth, time, ID generation)
 │   └── Interfaces/                # Module contracts
 └── App.Infrastructure/            # EF Core, Redis, Kafka, external adapters

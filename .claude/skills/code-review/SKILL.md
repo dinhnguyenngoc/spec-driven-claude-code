@@ -15,6 +15,8 @@ Progress over perfection. Continuous incremental improvement.
 
 ## Five-Axis Review Framework
 
+> **Canonical detail: [`../../references/code-review-checklist.md`](../../references/code-review-checklist.md).** This skill lists the axes as an executable pass; the exhaustive per-axis checklist lives there — keep in sync.
+
 ### Axis 1: Correctness
 
 **Questions to ask:**

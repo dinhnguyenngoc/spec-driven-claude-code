@@ -56,16 +56,18 @@
 
 ## 6. Compliance Check
 
-| Rule | Status | Notes |
-|------|--------|-------|
-| clean-code.md | PASS / WARNING / FAIL | … |
-| code-style.md | … | … |
-| error-handling.md | … | … |
-| security.md | … | … |
-| database.md | … | … |
-| api-conventions.md | … | … |
-| testing.md | … | … |
-| [mọi rule còn lại trong .claude/rules/] | … | … |
+> `PASS` **phải có `Evidence`** (file:line / wired-pipeline ref / tên test). PASS rỗng Evidence = không hợp lệ. Cross-cutting control (security headers, CORS, rate-limit, auth, exception handler) phải cite **nơi wired trong pipeline**, không chỉ "defined".
+
+| Rule | Status | Evidence (file:line / test) | Notes |
+|------|--------|-----------------------------|-------|
+| clean-code.md | PASS / WARNING / FAIL | `<file:line>` / `<test>` | … |
+| code-style.md | … | … | … |
+| error-handling.md | … | … | … |
+| security.md | … | `Program.cs:NN` (headers/CORS/auth wired) + `<test>` | … |
+| database.md | … | … | … |
+| api-conventions.md | … | … | … |
+| testing.md | … | … | … |
+| [mọi rule còn lại trong .claude/rules/] | … | … | … |
 
 ## 7. Approval Status
 

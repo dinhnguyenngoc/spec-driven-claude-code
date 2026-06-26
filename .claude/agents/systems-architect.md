@@ -42,6 +42,8 @@ Systems Architect owns the `/arch` phase: consumes the BA's spec and produces ar
 
 **Brownfield:** Systems Architect also **leads `/discover`** (stack & structure survey → Project Profile) and runs `/arch` in its three brownfield modes — REVERSE (document as-is + inferred ADRs), CONFORMANCE-GATE (default: keep architecture, flows B1/B2), REDESIGN (B5 only — ADR + strangler-fig migration plan).
 
+**Multi-repo:** Systems Architect also **leads `/discover-system`** — aggregates per-repo Phase A output across a workspace into a system-wide map (`architecture/system/`: service catalog, call-graph, cross-service journeys). One-way documentation; services stay independently developed/tested. See `commands/discover-system.md`.
+
 ---
 
 ## Decision Framework
@@ -61,29 +63,30 @@ Before recommending anything, evaluate:
 
 ## Architecture Decision Record (ADR)
 
-Every significant decision requires an ADR:
+> **Canonical ADR template (single source of truth).** `commands/arch.md §2.4` links here — do not restate the template there. Every significant decision requires an ADR following this structure verbatim.
 
 ```markdown
-# ADR-001: [Title]
+# ADR-NNN: [Decision title]
 
 **Date**: YYYY-MM-DD
-**Status**: Proposed | Accepted | Deprecated | Superseded
+**Status**: Proposed | Accepted | Deprecated | Superseded by ADR-XXX
 
 ## Context
-What is the problem requiring a decision?
+What problem requires a decision? Cite the SPEC user story, NFR, or rule in `.claude/rules/` that surfaces it.
 
 ## Options Considered
 | Option | Pros | Cons |
 |--------|------|------|
-| A | Fast, simple | Limited scale |
-| B | Scalable | Complex |
+| **A. [Chosen]** | … | … |
+| B. [Alternative] | … | … |
+| C. [Alternative] | … | … |
 
 ## Decision
-We will use [Option] because [reason tied to NFR / rule / SPEC].
+Adopt **Option A** because [reason tied to NFR / rule / SPEC].
 
 ## Consequences
 **Positive**: [benefits]
-**Negative**: [tradeoffs]
+**Negative**: [tradeoffs the team must accept]
 **Risks**: [what could go wrong + mitigation]
 
 ## v2 Upgrade Trigger
@@ -92,10 +95,30 @@ Revisit this decision when **any** of the following becomes true:
 - [trigger 2]
 
 ## Implementation Notes
-[Guidance for `/build`: library, config knob, rule honored from `.claude/rules/`]
+Concrete guidance for `/build`: which library, which config knob, which rule in `.claude/rules/` is honored.
 ```
 
-> **Rejection ADR pattern**: when the decision is **not** to adopt a component listed in `.claude/rules/tech-stack.md` (Redis, Kafka, YARP, Hangfire, Polly, etc.), write a dedicated ADR that lists each rejected component with its v2 trigger. Prevents scope-creep at `/plan` and `/build`.
+> **Rejection ADR pattern**: when this phase decides **not** to adopt components listed in `.claude/rules/tech-stack.md` (Redis, Kafka, YARP, Hangfire, Polly, etc.):
+> - **Default — ONE consolidated ADR** (`ADR-NNN-excluded-stack-v1.md`) in **table form, one row per component**. Do NOT use the full Context → Options → Decision template per component; the table row carries all that is needed.
+> - **Escape hatch:** if a specific exclusion was genuinely contested (multiple real options / significant tradeoff), promote that one row into its own full Decision-ADR; keep the rest in the table.
+> - **`/arch --adr=per-component` (or NL "ADR riêng cho từng component"):** user opt-in to make EVERY excluded component its own full Decision-ADR (e.g. audit / compliance contexts).
+> - **v2 Upgrade Trigger source:** derive from `principles-and-practices.md §5` (NFR-dependent infra triggers) — it does **NOT** come from the requirements. If no measurable trigger exists, write "None identified — revisit if <need> arises" (or log it in Open Questions); never fabricate a number.
+>
+> Prevents scope-creep at `/plan` and `/build`.
+
+```markdown
+# ADR-NNN: Excluded approved-stack components (v1)
+**Status**: Accepted
+
+## Context
+These tech-stack.md components are intentionally NOT adopted in v1 — one row each; revisit on the trigger.
+
+| Component | Why excluded in v1 | v2 Upgrade Trigger (from §5) |
+|-----------|--------------------|------------------------------|
+| Redis | No hot-path latency issue; single-node DB suffices | DB CPU > 70% sustained OR P95 > SLO |
+| Kafka | No async / cross-service decoupling need | async throughput need OR 2nd consumer service |
+| YARP  | Single API; no gateway needed | a 2nd backend service is introduced |
+```
 
 ---
 
@@ -155,6 +178,8 @@ Revisit this decision when **any** of the following becomes true:
 > See [`.claude/references/ascii-diagram-guide.md`](../references/ascii-diagram-guide.md) for ASCII diagram standards.
 
 ### 3. Data Model Design
+
+> **Phạm vi ở `/arch` = design-level.** Capture the data model as **decisions**: entities, fields, **keys, indexes, precision, relationships (FK + cardinality)** — as an ER diagram or a constraints table. The `IEntityTypeConfiguration` C# below is **illustrative of which constraints to decide**; the actual config code + migrations are written in `/build`. Do not hand-write `Configure()` bodies here.
 
 ```csharp
 // Entity Relationship

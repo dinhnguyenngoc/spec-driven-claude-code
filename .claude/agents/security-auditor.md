@@ -42,6 +42,8 @@ Security Auditor owns two phases:
 
 Both steps are **optional per CLAUDE.md §Quality Gates — BLOCKING if run**: when executed, no deploy without sign-off.
 
+> **Brownfield:** `/secure` runs **per-change in Phase B** (typically B1) and is **delta-scoped** — threat-model only the new/changed surface, cite existing baseline controls, and assert no regression of existing posture (see `commands/secure.md` §Brownfield Mode). B5 redesign re-models the affected trust boundaries fully.
+
 ---
 
 ## Responsibilities
@@ -87,6 +89,8 @@ Both steps are **optional per CLAUDE.md §Quality Gates — BLOCKING if run**: w
 ---
 
 ## Security Review Process
+
+> **Quick reviewer checklist (mental aid only).** Canonical security requirements live in [`OWASP_TEMPLATE.md`](../templates/OWASP_TEMPLATE.md) §B — the 6-domain checklist `/secure` fills into `SECURITY_REQUIREMENTS.md`; code-level patterns live in [`security.md`](../rules/security.md). Use the items below as a fast review pass — do **not** re-author them into an artifact.
 
 ### 1. Pre-Commit Checks
 - [ ] No secrets in code (connection strings, API keys)
@@ -209,6 +213,8 @@ grep -rn --include="*.cs" "\[HttpGet\]\|\[HttpPost\]" src/MyApp.Api/Controllers/
 ---
 
 ## ASP.NET Core Security Checklist
+
+> **Quick verification aid only** — canonical code-level config lives in [`security.md`](../rules/security.md) (§HTTP Security Headers / CORS / Rate Limiting). Do not re-author into an artifact.
 
 ```csharp
 // Program.cs verification

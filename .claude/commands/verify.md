@@ -56,14 +56,15 @@ Ensure we are testing **exactly what will ship**, not a different rebuild.
 #    (specific commands depend on the orchestrator: docker compose / k8s / nomad / bare process)
 <bring up the EXACT candidate build>
 
-# 2. Record the digest/hash of the artifact under test → lock its identity
-<record image digest / build hash> > reports/verify-artifact.lock
+# 2. Record the candidate identity — VERSION/tag + digest → lock it (so /deploy can tell a
+#    fresh lock for THIS release from a stale one, and enforce digest match at Gate 11)
+echo "<candidate-version> <image digest / build hash>" > reports/verify-artifact.lock
 
 # 3. Assert production config (NOT dev/test)
 <assert APP_ENV / ASPNETCORE_ENVIRONMENT / NODE_ENV == production>
 ```
 
-> **Invariant rule:** `/deploy` may only promote a digest **with a PASSing verify report matching that digest**. `/verify` and `/deploy` must use the **same digest** — if `/deploy` rebuilds after verify, the lock is broken and the verdict is void.
+> **Invariant rule:** `/deploy` may only promote a digest **with a PASSing verify report matching that digest**. `/verify` and `/deploy` must use the **same digest** — if `/deploy` rebuilds after verify, the lock is broken and the verdict is void. The lock pairs `version + digest` so `/deploy` keys on the candidate (not mere file presence) — a stale lock from a prior release does NOT force a verify-gated deploy, keeping `/verify` optional.
 
 ### Phase 1 — Liveness smoke (fail-fast)
 
@@ -104,12 +105,15 @@ Run E2E via a **real client** (browser for web, real SDK/HTTP client for service
 
 Capture artifacts on failure: screenshot / video / trace / request log → `reports/` so debugging does not require reproduction.
 
+> **Throttle vs E2E flakiness (env-real gotcha).** A production rate-limit (e.g. auth 5/15min/IP) counts all requests in **one shared IP bucket** when they traverse a single reverse-proxy → a suite that logs in / hits auth repeatedly draws a **429 that is an artifact of test design, not an app fault** (it trips the network tripwire #4 above). Accommodate without weakening the check: reset the limiter window between test groups (restart the service if the limiter is in-memory) · use a distinct identity/IP per test · or raise the threshold in the verify-env config. **Do NOT disable rate-limiting** — Phase 2 must still verify it triggers at the real thresholds. Record the accommodation used in `VERIFY_REPORT` §1.
+
 ### Phase 4 — NFR verification (measured on the real artifact)
 
 Verify the measurable NFRs in `specs/SPEC.md`:
 
 - **Performance**: P95/P99 latency below the spec threshold, measured over the real network (e.g., k6, autocannon, wrk).
 - **Accessibility** (if UI exists): automated scan (e.g., axe-core) reaches the spec-required level (WCAG A/AA…), 0 critical violations.
+- **Responsive / layout correctness** (if UI exists): run a **responsive smoke** — for every screen × **each breakpoint declared in the design system** (`UI_DESIGN_SYSTEM.md` / `tailwind.config` screens), assert **no horizontal overflow** (`document.scrollingElement.scrollWidth <= clientWidth`). This is a page-agnostic invariant (≈10 lines of Playwright, no baselines) that catches stretched/broken responsive layout generally — the failure class a single-viewport run misses. Optional further invariants: interactive target ≥ 44px, no overlapping interactive controls.
 - **Resilience**: graceful degradation when a dependency is slow/fails (if the spec requires it).
 - Other NFRs in the spec that can be measured at runtime.
 
@@ -192,6 +196,7 @@ reports/
 - [ ] **Phase 3 E2E** PASS — every user story journey (mandatory if a UI exists), each meeting the **E2E assertion contract** (`When` via real control, never simulated · no conditional skip · effect asserted after a reload round-trip · network tripwire)
 - [ ] **≥ 1 zero-seed golden journey** PASS (UI-only, no API seeding, core lifecycle chained with persistence asserted per step) — if a UI exists
 - [ ] **Phase 4 NFR** meets measurable spec thresholds
+- [ ] **Responsive smoke** (if a UI exists) — no horizontal overflow on every screen × each design-system breakpoint
 - [ ] **Phase 5 traceability** — 100% scenario IDs have a verify test **at the required Layer** (UI-observable → E2E-UI, not an API test alone); missing/wrong-layer → signed-off waiver, or FAIL
 - [ ] `reports/VERIFY_REPORT.md` + `VERIFY_MATRIX.md` + `verify-artifact.lock` produced
 - [ ] Failure artifacts captured for every failing test

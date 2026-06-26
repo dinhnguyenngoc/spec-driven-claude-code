@@ -151,6 +151,7 @@ git bisect good <last-known-good-commit>
 - [ ] Issue reproduced locally
 - [ ] Root cause identified (`file:line`)
 - [ ] Regression test written (fails before fix)
+- [ ] If the bug is a **handoff** (producer→consumer: nav-state key / context / event name / shared prop) → the regression test exercises **both ends together** (`references/scenario-traceability.md` §3) — two sides passing in isolation does not cover the join
 - [ ] Fix implemented
 - [ ] All tests pass
 - [ ] Build succeeds
@@ -214,7 +215,12 @@ public async Task<Order> CreateOrderAsync(CreateOrderRequest request)
 {
     var validationResult = await _validator.ValidateAsync(request);
     if (!validationResult.IsValid)
-        throw new ValidationException(validationResult.Errors);
+    {
+        var errors = validationResult.Errors
+            .GroupBy(e => e.PropertyName)
+            .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+        throw new ValidationException(errors);
+    }
     
     var order = new Order { /* map from request */ };
 }
@@ -230,4 +236,6 @@ Invoke: **Backend Developer** or **Frontend Developer** depending on the issue l
 
 ## Next Step
 
-After fix verified, run `/review` for code review.
+The exit depends on **where the bug was found**:
+- **Dev-time** (during the build cycle, no candidate artifact yet) → after the fix is verified, run `/review`.
+- **Found by `/verify` or `/hotfix`** (a candidate artifact already exists) → the **caller owns the continuation**: rebuild the artifact and **re-run `/verify` from Phase 0** on the new digest (per `verify.md`) — do **not** stop at `/review` (`/review` already passed for the prior digest; the fix needs proof on the artifact that will ship).

@@ -64,6 +64,49 @@ Khi orchestrator delegate task cho sub-agent (qua tool `Agent`), prompt gửi ch
 
 ---
 
+## Output Clarity (MANDATORY)
+
+> **Áp dụng cho mọi artifact của mọi lệnh/agent.** Bổ trợ cho §Output Language (quy định *ngôn ngữ*) — mục này quy định *độ rõ ràng*. Hai thứ kết hợp: vừa **đúng ngôn ngữ**, vừa **mạch lạc, dễ hiểu**.
+
+Mọi artifact SDLC (`specs/`, `architecture/`, `plans/`, `security/`, `reports/`, `docs/`…) PHẢI viết **rõ ràng cho đúng đối tượng đọc**:
+
+- **Mở đầu bằng tóm tắt ngôn-ngữ-thường** (*cái gì / vì sao / cho ai*) trước khi vào chi tiết.
+- **Viết cho người đọc:** SPEC / wireframe / release-notes → stakeholder (ngôn ngữ thường nhất); ARCHITECTURE / ADR / report → engineer (kỹ thuật nhưng vẫn rõ + giải thích *why*); runbook / troubleshooting → operator (từng bước, rõ ràng).
+- **Giải thích thuật ngữ & viết tắt** ở lần đầu; **nêu lý do một dòng** cho mỗi quyết định + con số/ngưỡng; phân tầng nội dung (tóm tắt → chi tiết → tham chiếu); câu ngắn, bảng/list thay cho khối văn dày; **bôi đậm quyết định then chốt**.
+- Rõ ràng **không** đồng nghĩa với đơn-giản-hoá-sai — giữ độ chính xác + tên định danh/standard (theo §Output Language).
+
+> Chuẩn đầy đủ + anti-pattern + self-check: [`rules/output-style.md`](rules/output-style.md). Đây là tiêu chí **kiểm được** ở DoR và `/review`.
+
+---
+
+## Progress Visibility (MANDATORY)
+
+> **Áp dụng cho mọi lệnh SDLC nhiều bước / có spawn sub-agent** (`/spec`, `/arch`, `/plan`, `/build`, `/test`, `/review`, `/scan`, `/infra`, `/docs`, `/verify`, `/deploy`, `/discover`, `/fix-issue`, `/hotfix`…). Bổ trợ §Output Language + §Output Clarity (quy định *nội dung*); mục này quy định *khả năng theo dõi tiến trình trên chat*.
+
+Output nội bộ của sub-agent (tool `Agent`) **KHÔNG stream về chat của user** — chỉ trả về cho orchestrator. Nếu orchestrator im lặng, user không biết gì đang diễn ra trong suốt thời gian sub-agent chạy (thường vài phút) → trải nghiệm "hộp đen". Vì vậy orchestrator **PHẢI**:
+
+1. **TodoWrite checklist sống** — đầu mỗi lệnh dài, tạo todo list theo các phase của lệnh; cập nhật `in_progress` / `completed` qua từng bước để user nhìn thấy tiến độ.
+2. **Narrate từng bước** — một dòng *trước* mỗi sub-agent/bước nặng ("đang giao BA viết SPEC…") và một dòng *sau* khi nhận kết quả ("xong → 9 stories, 38 scenarios").
+3. **Giữ sub-agent chuyên trách** — KHÔNG chuyển sang chạy inline chỉ để "cho dễ thấy"; thiết kế agent-per-command vẫn đúng (context sạch), chỉ cần **bọc bằng todo + narrate**. Khoảng im lặng được phép tồn tại **chỉ trong lúc một sub-agent đang chạy**, khi user đã biết nó đang làm gì.
+
+> Vẫn giữ kỷ luật verify trên đĩa sau khi sub-agent báo xong → xem §Verification After Delegation ngay dưới.
+
+---
+
+## Verification After Delegation (MANDATORY)
+
+> **Áp dụng cho mọi lệnh có spawn sub-agent làm thay đổi/kiểm chứng** (`/build`, `/test`, `/infra`, `/verify`, `/deploy`, `/fix-issue`, `/hotfix`…).
+
+**Báo cáo "xanh" của sub-agent KHÔNG phải ground truth.** Trước khi tuyên bố một gate/step PASS, orchestrator **PHẢI tự chạy lại các check *quyết-định-gate* trên đĩa** và đọc kết quả thật — không tin mù summary của sub-agent:
+
+1. **Re-run lệnh canonical quyết định gate** (chỉ những lệnh quyết định pass, không phải mọi thứ): `dotnet build -c Release` + `dotnet test` · `npm run typecheck && npm test && npm run build` · `docker compose up` + healthcheck + smoke. Đọc **exit code / số test / health thật**.
+2. **Đối chiếu invariant then chốt trên đĩa**: file artifact tồn tại đúng chỗ, digest khớp lock, không có file production bị sửa ngoài phạm vi, scenario coverage khớp số.
+3. **Khi lệch** giữa báo cáo và đĩa → tin đĩa, surface ngay, sửa trước khi đi tiếp.
+
+> **Vì sao bắt buộc:** trong pipeline thực tế, kỷ luật này đã bắt được những lỗi *report-nói-xanh-nhưng-đĩa-đỏ* mà không gate nào khác bắt — vd `npm test` chuyển RED sau khi thêm Playwright (sub-agent vẫn báo PASS), và container API crash khi khởi động lại (deploy báo SUCCEEDED). Đây là đánh đổi có chủ đích: tốn thêm thời gian re-run, đổi lấy việc chặn **false-green**. Chỉ re-run check *quyết định gate*, không lạm dụng chạy lại toàn bộ.
+
+---
+
 ## Project Mode & Profile
 
 This kit supports **two modes**. The mode + peripheral technologies are declared in the `## Project Profile` section (placed directly below in each repo). If **no** Project Profile is present → defaults to **greenfield** + the default stack (`rules/tech-stack.md`).
@@ -114,14 +157,15 @@ Sau đó **hỏi user chọn chế độ thực thi** (mặc định KHÔNG tự
 
 ## Project Profile
 
-> **Greenfield** — xây LinkVault từ đầu. Repo **chưa có source code**; Profile này khai báo stack **mục tiêu** (intended), không phải hiện trạng. Nguồn requirements: [`README1.txt`](../README1.txt). Áp dụng pipeline greenfield 12 bước (`/spec` → `/arch` → … → `/deploy`); `rules/brownfield.md` **KHÔNG** áp dụng. Khi nào có code thật + chạy `/discover`, đổi `Mode` → brownfield và để `/discover` sinh lại Notes hiện trạng.
+> **Điền block này cho project của bạn.** Nó cấu hình mode + peripheral stack cho cả pipeline. Giá trị dưới đây là **mặc định mẫu** (greenfield trên base stack) — thay bằng lựa chọn thật của project. Nếu onboard codebase legacy → chạy `/discover` để kit tự sinh lại block này (đặt `Mode: brownfield`). Nếu xây từ đầu → giữ `Mode: greenfield` và khai báo stack mục tiêu.
 
-- **Mode:** greenfield
-- **Core:** C# 12 + ASP.NET Core 8 (`net8.0`) + EF Core 8
-- **Database:** SQL Server 2022 → base `rules/database.md` (no override). InMemory provider cho test/design-time.
-- **Observability:** Serilog (structured JSON: Console + rolling File) → base `rules/monitoring.md`.
-- **Structure:** Clean Architecture 3-layer (`LinkVault.Api` → `LinkVault.Core` ← `LinkVault.Infrastructure`).
-- **Frontend:** Next.js 15 (App Router) + React 18 + TypeScript 5.x + Zustand + TanStack Query + React Hook Form + Zod + Tailwind + shadcn/ui (Radix UI primitives). Test: Vitest + Testing Library + jsdom.
+- **Mode:** greenfield  *(greenfield = xây từ đầu; brownfield = đã có code legacy → chạy `/discover` trước)*
+- **Core:** C# 12 + ASP.NET Core 8 (`net8.0`) + EF Core 8 (base) | Node.js → `rules/overrides/lang-nodejs.md` + `framework-nodejs-web.md` + `test-nodejs.md`
+- **Database:** SQL Server 2022 → base `rules/database.md` (no override). InMemory provider cho test/design-time. | Oracle / MySQL / PostgreSQL / MongoDB → `rules/overrides/database-*.md`
+- **Observability:** Serilog (structured JSON: Console + rolling File) → base `rules/monitoring.md`. | ELK → `rules/overrides/monitoring-elk.md`
+- **Structure:** Clean Architecture 3-layer (`MyApp.Api` → `MyApp.Core` ← `MyApp.Infrastructure`) | N-tier | monolith
+- **Frontend:** <nếu có — vd: Next.js + React + TypeScript + Zustand + TanStack Query + React Hook Form + Zod + Tailwind + shadcn/ui; test Vitest + Testing Library; hoặc "none / API-only">
+- **Service id:** <chỉ multi-repo — id chuẩn của service NÀY cho system catalog của `/discover-system`; bỏ trống nếu single-repo>
 
 ---
 
@@ -137,7 +181,7 @@ Follow this **12-step workflow** (3 phases) for all feature development (greenfi
 │  ┌─────────────────────────────────────────────────────────────────────────────┐  │
 │  │  PHASE 1: REQUIREMENTS & DESIGN                                             │  │
 │  │                                                                             │  │
-│  │  /spec ────→ /arch* ───→ /plan ────→ /secure*                               │  │
+│  │  /spec ────→ /arch ────→ /plan ────→ /secure*                               │  │
 │  │    │           │           │            │                                   │  │
 │  │   BA          SA          PM       SecArch                                  │  │
 │  │    │           │           │            │                                   │  │
@@ -187,7 +231,7 @@ Legend: * = Optional (other commands are required)
 
 | # | Command | Agent | Purpose | Output | Docker |
 |---|---------|-------|---------|--------|--------|
-| 5 | `/build` | Frontend/Backend Dev | Implement tasks incrementally using TDD and vertical slices | `src/`, `tests/` | ❌ Not required |
+| 5 | `/build` | Frontend/Backend Dev | Implement tasks incrementally using TDD and vertical slices | `src/`, `web/`, `tests/` | ❌ Not required |
 | 6 | `/test` | Test Engineer | QA verification with real dependencies — the quality gate before review | `tests/` | ✅ Required |
 | 7 | `/review` | Code Reviewer | Review a pull request or branch changes using the Five-Axis Framework | `reports/CODE_REVIEW` | — |
 
@@ -210,9 +254,10 @@ Legend: * = Optional (other commands are required)
 | Command | Purpose |
 |---------|---------|
 | `/discover` | **Brownfield Phase A** — onboard a legacy repo: survey stack/structure, verify build/run, snapshot health, generate the Project Profile (read-only) |
+| `/discover-system` | **Multi-repo** — aggregate per-repo discovery across a workspace into a system-wide map (service catalog, call-graph, cross-service journeys). Read-only, one-way documentation. See [`references/microservices-multirepo.md`](references/microservices-multirepo.md) |
 | `/debug` | Systematic debugging and error recovery — find root cause, not symptoms |
 | `/simplify` | Reduce complexity without changing behavior — code simplification |
-| `/fix-issue` | Analyze and fix a reported bug or issue systematically (dev-time, ends at `/review`) |
+| `/fix-issue` | Analyze and fix a reported bug or issue systematically (dev-time → `/review`; if the bug was found by `/verify`/`/hotfix`, the caller re-verifies the patched digest instead) |
 | `/hotfix` | Restore a live/released system — triage rollback vs fix-forward, patch, re-verify, redeploy with audit trail (incident-time) |
 
 > **`/fix-issue` vs `/hotfix`:** `/fix-issue` fixes code during the dev cycle (not yet released, ends at `/review`). `/hotfix` is a **thin orchestrator** for an artifact that is **already live** — it triages rollback-vs-fix-forward, then reuses `/fix-issue` (the fix) + `/verify` (proves the patch on the real artifact) + `/deploy` (promotes rollback-ready), along with patch versioning + a post-incident runbook. See [`.claude/commands/hotfix.md`](commands/hotfix.md).
@@ -231,6 +276,7 @@ Each phase transition has mandatory quality gates:
 │  GATE 1: /spec → /arch                                          │
 │  ✓ PRD approved by stakeholder                                  │
 │  ✓ All user stories have acceptance criteria                   │
+│  ✓ (UI) ASCII wireframe + visual sign-off (prototype opt-in)    │
 │                                                                 │
 │  GATE 2: /arch → /plan                                          │
 │  ✓ Architecture reviewed                                       │
@@ -311,6 +357,7 @@ All rules in `.claude/rules/` are **mandatory** and must be followed:
 | Rule | Description |
 |------|-------------|
 | `principles-and-practices.md` | **Master reference** — design principles (SOLID, YAGNI, KISS, DRY, Composition, Tell-Don't-Ask), best practices (TDD, code review, idempotency, ADR, postmortem), architecture default (Modular Monolith + Clean Architecture), Docker baseline (20 must-haves), NFR-dependent infrastructure (Redis/Kafka/sharding/CDN — opt-in by trigger). Referenced by every SDLC command. |
+| `output-style.md` | **Output clarity (artifacts)** — every artifact reads clearly for its audience: plain-language summary first, jargon defined, decisions & numbers justified, register matched to reader (stakeholder / engineer / operator). Complements § Output Language; applies to all commands/agents. |
 
 ### Code Quality
 | Rule | Description |
@@ -383,7 +430,8 @@ project-root/
 │
 ├── specs/                          # /spec output
 │   ├── SPEC.md
-│   └── user-stories/
+│   ├── user-stories/               # split layout only (> 20 stories / multi-epic)
+│   └── wireframes/                 # UI products: README + screens/ + flows/ (+ prototype/ opt-in)
 │
 ├── architecture/                   # /arch output
 │   ├── ARCHITECTURE.md
@@ -401,7 +449,9 @@ project-root/
 │   ├── PRE_DEV_REVIEW.md
 │   └── SCAN_REPORT.md
 │
-├── src/                            # /build output
+├── src/                            # /build output — backend (ASP.NET Core / Node)
+│
+├── web/                            # /build output — frontend (Next.js/React), if any — canonical FE folder
 │
 ├── tests/                          # /build + /test output
 │   ├── unit/
@@ -434,7 +484,7 @@ project-root/
     ├── rules/
     ├── skills/
     ├── references/
-    ├── templates/                  # fill-only boilerplates: STRIDE/OWASP (/secure,/scan) · TEST_REPORT (/test) · VERIFY_REPORT (/verify) · CODE_REVIEW (/review) · RUNBOOK_RELEASE (/deploy)
+    ├── templates/                  # fill-only boilerplates: STRIDE/OWASP (/secure,/scan) · TEST_REPORT (/test) · VERIFY_REPORT (/verify) · CODE_REVIEW (/review) · RUNBOOK_RELEASE (/deploy) · wireframes (/spec)
     ├── scripts/                    # scan-all.sh + scan-summarize.py for /scan
     └── CLAUDE.md
 ```
@@ -463,7 +513,6 @@ Quick references in `.claude/references/`:
 | Reference | Use For |
 |-----------|---------|
 | `security-checklist.md` | Pre-deploy security verification |
-| `testing-patterns.md` | Test structure and anti-patterns |
 | `performance-checklist.md` | Core Web Vitals, optimization |
 | `accessibility-checklist.md` | WCAG 2.1 AA compliance |
 | `ascii-diagram-guide.md` | ASCII diagram standards for architecture docs |
@@ -472,6 +521,7 @@ Quick references in `.claude/references/`:
 | `docker-patterns.md` | Dockerfile and docker-compose best practices |
 | `scenario-traceability.md` | Scenario-level traceability rule (`@US-XXX-Snn` → task/test mapping across all gates) |
 | `brownfield-pipeline.md` | Brownfield quick lookup — Phase A discovery order + Phase B flows (B1–B5) |
+| `microservices-multirepo.md` | Multi-repo quick lookup — per-repo pipeline + one-way system layer (`/discover-system`), backward-compat as cross-service safety |
 
 ---
 

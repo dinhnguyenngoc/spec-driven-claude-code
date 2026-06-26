@@ -8,6 +8,17 @@
      [Unit Tests]            ← Many, fast, test isolated logic
 ```
 
+## Test Phases — `/build` vs `/test`
+
+The testing strategy splits across two SDLC phases (per [CLAUDE.md](../CLAUDE.md) §Development Workflow):
+
+| Phase | Test types added & run | Dependencies | Docker? |
+|-------|------------------------|--------------|---------|
+| `/build` | Unit (Moq) + Integration (EF Core In-Memory / `WebApplicationFactory`) | Fakes / in-memory | ❌ Not required |
+| `/test`  | Integration (TestContainers — real SQL Server / Redis / Kafka) + E2E (Playwright); also re-runs the `/build` suite | Real services in containers | ✅ Required |
+
+→ Use **Unit / In-Memory** during `/build` for fast feedback; promote to **TestContainers / E2E** during `/test` before the `/review` gate. The integration-layer detail (InMemory vs TestContainers templates) is in §Integration Test Templates below.
+
 ## Requirements
 
 - Unit test coverage: **minimum 80%**
@@ -169,6 +180,8 @@ public class InMemoryWebApplicationFactory : WebApplicationFactory<Program>
 ### Template B — TestContainers (for `/test`)
 
 > **Tối ưu thời gian — collection fixture (mặc định):** đăng ký factory qua `ICollectionFixture` để **MỘT container phục vụ TOÀN BỘ integration suite**. Per-class `IClassFixture` = N test class × (~30–60s khởi động SQL Server) lãng phí. Reset state giữa các test bằng Respawn / transaction rollback / unique keys per test. Chỉ rơi về per-class khi một test phá state container không khôi phục được.
+
+> **arm64 (Apple Silicon):** `mcr.microsoft.com/mssql/server:2022-latest` (dùng trong fixture dưới) **không có image arm64 → segfault dưới qemu**. Trên máy arm64, đổi `.WithImage("mcr.microsoft.com/azure-sql-edge:1.0.7")` + wait strategy `Wait.ForUnixContainer().UntilPortIsAvailable(1433)` (azure-sql-edge thiếu `sqlcmd` nên readiness mặc định của `MsSqlBuilder` không dùng được). EF Core migrations apply OK trên Edge cho schema thường; nếu schema dùng tính năng SQL Server đặc thù thiếu ở Edge → gate sau ADR.
 
 ```csharp
 // tests/MyApp.IntegrationTests/CustomWebApplicationFactory.cs

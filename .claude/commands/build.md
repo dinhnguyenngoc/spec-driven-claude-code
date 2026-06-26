@@ -16,7 +16,7 @@ Implement tasks one at a time using Test-Driven Development. Each increment leav
 ## Prerequisites
 
 **Required:**
-- A plan exists (`plans/todo.md`)
+- A plan exists — `plans/plan.md` (task detail: AC, **Scenarios covered**, Files to modify, Tests to add) + `plans/todo.md` (the actionable checklist)
 - Understanding of task acceptance criteria
 - .NET SDK 8.0 installed
 
@@ -108,39 +108,9 @@ dotnet test
 
 #### Step 2: RED — Write Failing Test
 
-```csharp
-// Write a test that describes expected behavior
-// This test MUST fail initially
+Write a failing test for the task's claimed scenario (`@US-XXX-Snn`). See the `tdd` skill §RED Phase for the canonical shape (Arrange-Act-Assert + FluentAssertions); the example there is generic — here, assert this task's observable *Then*.
 
-public class TaskServiceTests
-{
-    private readonly Mock<ITaskRepository> _mockRepository;
-    private readonly TaskService _sut;
-
-    public TaskServiceTests()
-    {
-        _mockRepository = new Mock<ITaskRepository>();
-        _sut = new TaskService(_mockRepository.Object);
-    }
-
-    [Fact]
-    public async Task CreateAsync_WithValidTitle_ReturnsTaskWithId()
-    {
-        // Arrange
-        var request = new CreateTaskRequest { Title = "Test" };
-        _mockRepository
-            .Setup(r => r.AddAsync(It.IsAny<TaskEntity>()))
-            .ReturnsAsync((TaskEntity t) => { t.Id = Guid.NewGuid(); return t; });
-
-        // Act
-        var result = await _sut.CreateAsync(request);
-
-        // Assert
-        result.Id.Should().NotBeEmpty();
-        result.Title.Should().Be("Test");
-    }
-}
-```
+> **Producer→consumer handoff:** if the scenario hands a value from one unit to another (navigation-state key, context, event/message name, shared prop), the failing test must exercise **both ends together** — producer acts → assert the consumer's observable effect — not just the producing side in isolation. See Rules §"Test the handoff" + [`references/scenario-traceability.md`](../references/scenario-traceability.md) §3. (A key/name mismatch passes each side alone yet breaks the feature.)
 
 Run test — confirm it **fails**.
 
@@ -150,27 +120,7 @@ dotnet test --filter "CreateAsync_WithValidTitle_ReturnsTaskWithId"
 
 #### Step 3: GREEN — Minimal Implementation
 
-```csharp
-// Write the MINIMUM code to pass the test
-// No extra features, no premature optimization
-
-public class TaskService : ITaskService
-{
-    private readonly ITaskRepository _repository;
-
-    public TaskService(ITaskRepository repository)
-    {
-        _repository = repository;
-    }
-
-    public async Task<TaskDto> CreateAsync(CreateTaskRequest request)
-    {
-        var entity = new TaskEntity { Title = request.Title };
-        var created = await _repository.AddAsync(entity);
-        return new TaskDto { Id = created.Id, Title = created.Title };
-    }
-}
-```
+Write the **minimum** code to pass the test — no extra features, no premature optimization. See the `tdd` skill §GREEN Phase.
 
 Run test — confirm it **passes**.
 
@@ -188,28 +138,27 @@ dotnet test --filter "CreateAsync_WithValidTitle_ReturnsTaskWithId"
 // - Apply clean code patterns
 ```
 
-Run tests — confirm they **still pass**.
+Run the task's tests — confirm the refactor kept them **green** (fast inner loop; the single full-suite regression run happens once at Step 5):
 
 ```bash
-dotnet test
+dotnet test --filter "FullyQualifiedName~TaskServiceTests"
 ```
 
 #### Step 5: Verify & Commit
 
 ```bash
-# Run full test suite
+# Full regression gate — the single full-suite run for this task (Step 4 ran only the task's tests)
 dotnet test
 
 # Enforce code-style.md (pre-commit hook also runs this — see git-workflow.md)
 dotnet format --verify-no-changes
 
-# Run build
-dotnet build --configuration Release
-
 # Commit with a Conventional Commit message (type(scope): description — see git-workflow.md)
 git add .
 git commit -m "feat(tasks): add CreateAsync method to TaskService"
 ```
+
+> **Per-task compile is guaranteed by `dotnet test`** (it builds the solution in Debug). The full **Release** build runs once per checkpoint (Step 6) and at Gate 5 exit — not on every task.
 
 #### Step 6: Mark Complete — REQUIRED
 
@@ -219,7 +168,10 @@ Tick the task in `plans/todo.md` **before moving to the next task or reporting d
 - [x] T-XX: Task description (US-XXX) [S|M|L]
 ```
 
-When a phase finishes, also tick its checkpoint line and note the verification in `plan.md` if anything diverged from the plan:
+When a phase finishes, run the **Release build** (the per-checkpoint artifact check), then tick its checkpoint line and note the verification in `plan.md` if anything diverged from the plan:
+```bash
+dotnet build --configuration Release
+```
 ```markdown
 - [x] CHECKPOINT 1 — Auth slice complete: ...
 ```
@@ -262,6 +214,7 @@ npm run typecheck && npm run lint && npm run build && npm run test
 | **Keep it building** | Project must compile after each increment |
 | **No orphan — wire end-to-end** | A slice is "done" only when the new control/handler is **reachable from the application entry point** (mounted / passed / routed), not merely defined. A button/endpoint/handler that nothing invokes from the real app path is incomplete — even if its unit tests pass. |
 | **Cover the scenario, not just the unit** | A task is done only when **every `@US-XXX-Snn` it claims** (plan's "Scenarios covered") is exercised by a passing test asserting that scenario's observable *Then* through the wired path — not merely that an isolated class works. |
+| **Test the handoff, not just each side** | When a unit produces a value another consumes (navigation-state key, context, event/message name, shared prop contract), ≥ 1 test must exercise **both ends together** (producer acts → consumer's effect asserted). Two sides each unit-passing in isolation does NOT cover the join — a key/name mismatch passes both yet breaks the feature. See [`references/scenario-traceability.md`](../references/scenario-traceability.md) §3. |
 | **Feature flags** | Use flags for incomplete features that need merging |
 | **Rollback-friendly** | Each increment should be independently revertable |
 
@@ -333,7 +286,8 @@ Before proceeding to `/test`:
 - [ ] All tasks in `plans/todo.md` marked complete
 - [ ] **Every `@US-XXX-Snn` claimed by the completed tasks is reachable from the app entry (no orphan) and backed by a passing test asserting its observable *Then*** — a scenario whose code exists but is unwired, or has only a presence-level test, is NOT done
 - [ ] All unit tests pass (`dotnet test`)
-- [ ] Code compiles without errors (`dotnet build`)
+- [ ] Code compiles without errors in Release (`dotnet build --configuration Release`)
+- [ ] **(If `web/` exists) Frontend gate green** — `npm run typecheck && npm run lint && npm run build && npm run test` all pass, including `tailwindcss/no-custom-classname` (no undefined breakpoint/variant class)
 - [ ] No red flags present (see Red Flags section)
 - [ ] Git commits are clean and atomic
 

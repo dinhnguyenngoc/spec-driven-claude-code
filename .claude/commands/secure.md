@@ -26,7 +26,7 @@ If a finding requires reading source code to confirm, defer it to `/scan`.
 
 - `specs/SPEC.md` — for asset inventory, data sensitivity, NFRs
 - `architecture/ARCHITECTURE.md` + its **Open Questions** section
-- `architecture/adr/*.md` — every ADR is a design decision with security implications; read them all
+- `architecture/adr/*.md` — every ADR is a design decision with security implications; read them all *(brownfield delta: read the ADRs touching the delta surface — see §Brownfield Mode)*
 - `plans/plan.md` — for mitigation → task ID mapping (see Phase 4)
 - `.claude/rules/security.md` — non-negotiables
 
@@ -53,7 +53,7 @@ If a finding requires reading source code to confirm, defer it to `/scan`.
 **Template:** `STRIDE_TEMPLATE.md §A`
 
 1. Đọc reference asset categories ở `§A.1` (10 loại asset chuẩn) — chọn loại có trong feature.
-2. Bổ sung asset feature-specific (vd: `Bookmark URL`, `Shared collection token`).
+2. Bổ sung asset feature-specific (vd: `Uploaded document URL`, `Shared resource token`).
 3. Copy `§A.2` table vào `THREAT_MODEL.md §Assets`, fill rows.
 
 **Output:** Bảng `Assets` trong `THREAT_MODEL.md`.
@@ -85,8 +85,8 @@ KHÔNG re-write bảng STRIDE 6 categories. Agent dùng `§B` như reference khi
 BẮT BUỘC identify **1 surface** rủi ro cao nhất:
 
 1. Tham khảo `§E.1` candidate list (10 loại surface thường gặp). Chọn 1.
-2. Copy `§E.2` table, fill ≥3 controls (nếu <3, surface chưa đủ rủi ro để gọi là "highest").
-3. Mỗi control `[NEW]` (ngoài ADR có sẵn) **PHẢI** xuất hiện lại trong `PRE_DEV_REVIEW.md §"Controls added beyond ADRs"` với cùng số thứ tự.
+2. Copy `§E.2` table, fill ≥3 controls (nếu <3, surface chưa đủ rủi ro để gọi là "highest"). Mỗi control nhận **id ổn định `RC-N`** (N tuần tự trong `PRE_DEV_REVIEW.md`) — đây là **Required Control id** mà `/review` cite (`Relates-to: RC-N`) và `/build` implement theo. Control từ ADR có sẵn có thể cite ADR-id thay vì RC-N.
+3. Mỗi control `[NEW]` (ngoài ADR có sẵn) **PHẢI** có `RC-N` và xuất hiện lại trong `PRE_DEV_REVIEW.md §"Controls added beyond ADRs"` với cùng `RC-N`.
 
 Một deep table hơn 15 paragraph shallow.
 
@@ -131,9 +131,24 @@ security/
 
 ---
 
+## Brownfield Mode (when `Project Profile → Mode: brownfield`)
+
+`/secure` runs **per-change in Phase B** (typically B1, when a change opens a new/changed surface). It is **delta-scoped**, not a whole-system re-model:
+
+- **Scope STRIDE to the delta surface** — threat-model only the new/changed surface; do NOT re-run STRIDE on unchanged surfaces.
+- **Reference existing controls, don't re-derive** — controls already in the baseline `THREAT_MODEL.md` / `PRE_DEV_REVIEW.md` or in (inferred) ADRs are cited by ID; only add NEW controls the delta surface needs.
+- **Read only the relevant ADRs** — those touching the delta surface, not all.
+- **Regression-security is an acceptance criterion** — the change MUST NOT weaken an existing control (drop an `[Authorize]`, widen CORS, expose a field). Add a check asserting the existing posture is preserved — the security counterpart of `/plan`'s backward-compat AC.
+- **Widen scope when cross-cutting** — if the delta touches a shared control (auth, rate limiter, error contract), widen STRIDE to every surface that control protects. Delta-scoping must not hide a cross-cutting regression.
+- **Baseline fallback** — if no baseline threat model exists, this run first establishes one for the affected subsystem, then proceeds with the delta; later runs are pure delta.
+
+> **B5 (architecture upgrade) exception:** a redesign may move trust boundaries → re-model the affected boundaries fully (with ADR), not just a delta.
+
 ## Quality Gate 4 — Pre-Dev Security Review ⛔ BLOCKING
 
 > Step optional per CLAUDE.md §Quality Gates — **BLOCKING if run**.
+
+> **Brownfield (delta mode):** the OWASP Top 10 + Security Requirements coverage below is assessed **for the delta surface**; categories the change does not touch **cite the baseline `PRE_DEV_REVIEW.md`** instead of being re-filled. Whole-system completeness is required only on the baseline run (or B5). See §Brownfield Mode.
 
 **Development CANNOT proceed** without:
 
@@ -141,8 +156,9 @@ security/
 - [ ] All Critical/High risks có `[Required for v1]` mitigation
 - [ ] Every mitigation map tới `plans/plan.md` task ID (Phase 3 Owner field)
 - [ ] All `ARCHITECTURE.md §Open Questions` resolved hoặc explicitly deferred với ack
-- [ ] Phase 3.5 deep-dive table sinh từ `STRIDE_TEMPLATE §E.2` (≥3 controls)
+- [ ] Phase 3.5 deep-dive table sinh từ `STRIDE_TEMPLATE §E.2` (≥3 controls), **mỗi control có `RC-N` id**; control `[NEW]` cũng có `RC-N`
 - [ ] OWASP Top 10 (2021) table filled đủ 10 hàng theo `OWASP_TEMPLATE §A` (Status + Evidence, no blanks)
+- [ ] **A05 (Security Misconfiguration)** đánh giá explicit **security headers + CORS** (Status ≠ blank, không để mơ hồ/`N/A` thiếu lý do) — đây là tuyến pre-dev chặn lớp "thiếu security headers"
 - [ ] Security Requirements checklist từ `OWASP_TEMPLATE §B` đã đánh dấu (control áp dụng có evidence, control N/A có lý do)
 - [ ] Residual risks từ `OWASP_TEMPLATE §C` documented với observable v2 trigger
 - [ ] Security requirements mechanically implementable (file/attribute/header/flag specified)

@@ -1,6 +1,6 @@
 # ASCII Diagram Guide
 
-> Standards for drawing ASCII art diagrams in Markdown documents for architecture diagrams.
+> Standards for drawing ASCII art diagrams in Markdown documents for architecture diagrams and wireframes.
 
 ## Why ASCII art?
 

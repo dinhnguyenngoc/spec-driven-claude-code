@@ -10,6 +10,32 @@ log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "${LOG_FILE:-/dev/null}"; }
 has() { command -v "$1" >/dev/null 2>&1; }
 
 # ----------------------------------------------------------------------------
+# Diff-scope helpers — brownfield per-change SAST (semgrep only).
+# Whole-repo nếu SCAN_DIFF_BASE unset. SCA + secrets + Roslyn + ESLint + grep
+# LUÔN whole-repo (KHÔNG dùng các helper này — breadth bảo mật bắt buộc).
+# ----------------------------------------------------------------------------
+scan_diff_mode() { [ -n "${SCAN_DIFF_BASE:-}" ]; }
+
+# $1 = ERE lọc đuôi file (vd '\.cs$'). Echo các file Added/Copied/Modified/Renamed
+# kể từ merge-base(SCAN_DIFF_BASE, HEAD) tới working tree (gồm cả file CHƯA commit).
+# Echo literal "__GIT_ERROR__" nếu không resolve được base → caller PHẢI fallback
+# whole-repo (KHÔNG được silently skip — đó là lỗ hổng coverage).
+changed_files() {
+    local base
+    base=$(git merge-base "${SCAN_DIFF_BASE:-}" HEAD 2>/dev/null) || base=""
+    if [ -z "$base" ]; then
+        echo "__GIT_ERROR__"
+        return
+    fi
+    # Union: (1) tracked changes base→working tree, (2) untracked-new files (chưa git add).
+    # git diff KHÔNG liệt kê untracked → phải thêm git ls-files --others.
+    {
+        git diff --name-only --diff-filter=ACMR "$base" 2>/dev/null
+        git ls-files --others --exclude-standard 2>/dev/null
+    } | grep -E "${1:-.}" | sort -u || true
+}
+
+# ----------------------------------------------------------------------------
 # Universal: secrets scan (chạy bất kể stack nào)
 # ----------------------------------------------------------------------------
 scan_secrets() {

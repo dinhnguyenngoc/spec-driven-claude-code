@@ -11,7 +11,7 @@ description: Build, test, deploy with staged rollout
 
 Execute deployment to Docker Desktop: build images, run containers, verify health, rollback if needed.
 
-> **Note**: Dockerfile and docker-compose are created in `/infra`. This command **executes** deployment.
+> **Note**: Dockerfile and docker compose are created in `/infra`. This command **executes** deployment.
 
 > **Stack Profile note:** the `sqlcmd`/DB commands below use the **default profile** (SQL Server). If `Project Profile` declares Oracle/MySQL → swap to the corresponding client (`sqlplus`/`mysql`) per `rules/overrides/database-*.md`.
 
@@ -90,7 +90,7 @@ if grep -qE '^\s*-\s*\[ \].*(P0|Critical)' security/SCAN_REPORT.md; then
 fi
 
 # Note current running image tag (for rollback) — replace <api-image> with your registry name
-PREV_TAG=$(docker inspect --format='{{.Config.Image}}' "$(docker-compose ps -q api 2>/dev/null)" 2>/dev/null || echo "none")
+PREV_TAG=$(docker inspect --format='{{.Config.Image}}' "$(docker compose ps -q api 2>/dev/null)" 2>/dev/null || echo "none")
 echo "Previous image: ${PREV_TAG}"
 
 # Review pending migrations
@@ -107,14 +107,33 @@ export VERSION="v1.2.0"          # MAJOR.MINOR.PATCH — never deploy :latest be
 git tag -a "${VERSION}" -m "Release ${VERSION}"
 git push origin "${VERSION}"
 
-# 3. Build with explicit image tag (compose reads docker-compose.yml from REPO ROOT)
-IMAGE_TAG="${VERSION}" docker-compose build --no-cache
+# 3. Obtain the image to promote — honor /verify's digest lock (Gate 11) if it covers THIS candidate.
+LOCK_VER=""; LOCK_DIG=""
+[ -f reports/verify-artifact.lock ] && read -r LOCK_VER LOCK_DIG < reports/verify-artifact.lock
+
+if [ "$LOCK_VER" = "$VERSION" ]; then
+    # /verify ran for this candidate → promote the EXACT verified digest, do NOT rebuild
+    # (rebuilding yields a new digest and VOIDS the verify verdict — verify.md Phase 0 invariant).
+    PROMOTE=$(docker inspect --format='{{.Id}}' "<api-image>:${VERSION}" 2>/dev/null || echo "")
+    [ "$PROMOTE" = "$LOCK_DIG" ] || { echo "✗ Digest mismatch — promote=$PROMOTE verified=$LOCK_DIG → REFUSE (Gate 11)"; exit 1; }
+    echo "✓ Promoting verified digest ${LOCK_DIG} (no rebuild)."
+elif [ "${HOTFIX_MODE:-0}" = "1" ]; then
+    # hotfix → /verify on this candidate is REQUIRED
+    echo "✗ Hotfix mode requires a verify lock for ${VERSION} (run /verify on the patched digest first)"; exit 1
+else
+    # /verify not run for this candidate (or only a stale lock) → optional path: build fresh
+    [ -n "$LOCK_VER" ] && echo "⚠ verify lock is for ${LOCK_VER}, not ${VERSION} (stale) — deploying WITHOUT /verify."
+    # --pull: refresh base images (guard a re-pushed base tag) but KEEP layer cache — reproducible
+    # base + fast. Reproducibility comes from the digest lock (/verify path) + pinned base tags,
+    # NOT from --no-cache. Use --no-cache only when you suspect cache corruption.
+    IMAGE_TAG="${VERSION}" docker compose build --pull   # compose reads docker-compose.yml from REPO ROOT
+fi
 
 # 4. (Optional) push to registry before rolling out
 # docker push <registry>/<api-image>:${VERSION}
 
 # 5. Start all services (detached) with the tagged images
-IMAGE_TAG="${VERSION}" docker-compose up -d
+IMAGE_TAG="${VERSION}" docker compose up -d
 ```
 
 > **`IMAGE_TAG` requirement:** `docker-compose.yml` must reference `image: <name>:${IMAGE_TAG:-dev}` for each service so the same compose file produces tagged images at deploy time and `:dev` during local development. If your compose still hardcodes tags, fix it in `/infra` before deploying.
@@ -123,16 +142,16 @@ IMAGE_TAG="${VERSION}" docker-compose up -d
 
 ```bash
 # Watch container status
-docker-compose ps
+docker compose ps
 
 # Watch logs (all services)
-docker-compose logs -f
+docker compose logs -f
 
 # Watch logs (API only)
-docker-compose logs -f api
+docker compose logs -f api
 
 # Check for errors
-docker-compose logs api | grep -i error
+docker compose logs api | grep -i error
 ```
 
 ### Step 4: Post-Deploy Verification
@@ -142,8 +161,9 @@ docker-compose logs api | grep -i error
 > A service with no `HEALTHCHECK` defined (Docker shows state `Up` without `(healthy)`) is only accepted when explicitly **opted in** via `DEPLOY_SERVICES_WITHOUT_HEALTHCHECK="<svc1> <svc2>"` (explicit whitelist). All other services must have a healthcheck — push that responsibility back to `/infra` to define.
 
 ```bash
-# Wait for services to start (initial settle — healthcheck will gate the real readiness below)
-sleep 10
+# Brief settle so container IDs are registered; the poll loop below does the real gating
+# (no fixed long sleep — the loop already waits on 'starting' up to MAX_WAIT).
+sleep 2
 
 # 1) Enumerate every service declared in compose
 SERVICES=$(docker compose config --services)
@@ -226,7 +246,7 @@ dotnet ef database update \
   --startup-project src/MyApp.Api
 
 # Or exec into API container
-docker-compose exec api dotnet ef database update
+docker compose exec api dotnet ef database update
 ```
 
 ---
@@ -245,7 +265,7 @@ export PREV_VERSION="v1.1.9"
 # docker pull <registry>/<api-image>:${PREV_VERSION}
 
 # 3. Restart only the changed services with the previous tag (other services keep state)
-IMAGE_TAG="${PREV_VERSION}" docker-compose up -d --no-deps api
+IMAGE_TAG="${PREV_VERSION}" docker compose up -d --no-deps api
 
 # 4. Re-run smoke pack — rollback is NOT complete until smoke passes
 curl -f http://localhost:${API_PORT}/health
@@ -281,38 +301,38 @@ git push origin --delete "${VERSION}"
 
 ```bash
 # All services
-docker-compose logs -f
+docker compose logs -f
 
 # Specific service
-docker-compose logs -f api
-docker-compose logs -f sqlserver
-docker-compose logs -f redis
+docker compose logs -f api
+docker compose logs -f sqlserver
+docker compose logs -f redis
 
 # Last 100 lines
-docker-compose logs --tail=100 api
+docker compose logs --tail=100 api
 ```
 
 ### Restart Services
 
 ```bash
 # Restart all
-docker-compose restart
+docker compose restart
 
 # Restart specific service
-docker-compose restart api
+docker compose restart api
 
 # Recreate containers (picks up config changes)
-docker-compose up -d --force-recreate
+docker compose up -d --force-recreate
 ```
 
 ### Stop & Cleanup
 
 ```bash
 # Stop all services (keep data)
-docker-compose down
+docker compose down
 
 # Stop and remove volumes (WARNING: deletes data)
-docker-compose down -v
+docker compose down -v
 
 # Remove unused images
 docker image prune -f
@@ -348,13 +368,13 @@ done
 
 ```bash
 # API container
-docker-compose exec api /bin/sh
+docker compose exec api /bin/sh
 
 # SQL Server
-docker-compose exec sqlserver /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$DB_PASSWORD"
+docker compose exec sqlserver /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$DB_PASSWORD"
 
 # Redis
-docker-compose exec redis redis-cli
+docker compose exec redis redis-cli
 ```
 
 ---
@@ -365,10 +385,10 @@ docker-compose exec redis redis-cli
 
 ```bash
 # Check container status
-docker-compose ps
+docker compose ps
 
 # Check logs for errors
-docker-compose logs api
+docker compose logs api
 
 # Common issues:
 # - Port already in use: stop other services on 5000, 1433, 6379
@@ -380,13 +400,13 @@ docker-compose logs api
 
 ```bash
 # Check SQL Server is running
-docker-compose ps sqlserver
+docker compose ps sqlserver
 
 # Check SQL Server logs
-docker-compose logs sqlserver
+docker compose logs sqlserver
 
 # Test connection
-docker-compose exec sqlserver /opt/mssql-tools18/bin/sqlcmd \
+docker compose exec sqlserver /opt/mssql-tools18/bin/sqlcmd \
   -C -S localhost -U sa -P "$DB_PASSWORD" -Q "SELECT 1"
 
 # Common issues:

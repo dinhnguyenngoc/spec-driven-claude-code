@@ -2,6 +2,8 @@
 
 > Quick reference for `/infra` phase. Best practices for Dockerfile and docker-compose.
 
+> **Tag discipline.** Images shown with `:latest` or a floating tag (e.g. `myapp:latest`, `aspnet:8.0-alpine`) are **illustrative only**. Real artifacts MUST pin an exact patch tag or digest — no `:latest`, no floating tags (Docker baseline: [`principles-and-practices.md`](../rules/principles-and-practices.md) §4.1 → #4 *Image pinned*; + standing `/scan` rule).
+
 ## Dockerfile Best Practices
 
 ### Multi-Stage Build (ASP.NET Core)
@@ -176,7 +178,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 
 ```yaml
 # docker-compose.yml (base — local development; at repo root so `context: .` works)
-version: '3.8'
+# No top-level `version:` — obsolete in Compose v2 (emits a warning).
 
 services:
   api:
@@ -195,10 +197,10 @@ services:
         condition: service_healthy
 
   sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04   # pin exact tag — no :latest (§4.1 #4)
     environment:
       - ACCEPT_EULA=Y
-      - SA_PASSWORD=${SA_PASSWORD}
+      - MSSQL_SA_PASSWORD=${SA_PASSWORD}
     ports:
       - "1433:1433"
     volumes:
@@ -221,11 +223,13 @@ volumes:
   redis_data:
 ```
 
+> **arm64 (Apple Silicon / Graviton):** `mcr.microsoft.com/mssql/server` has no arm64 image — use `mcr.microsoft.com/azure-sql-edge:<pinned>` + a TCP-probe healthcheck (Edge ships no sqlcmd).
+
 ### Production Setup
 
 ```yaml
 # docker-compose.deploy.yml (release-tag overlay — at repo root)
-version: '3.8'
+# No top-level `version:` — obsolete in Compose v2 (emits a warning).
 
 services:
   api:

@@ -18,7 +18,7 @@ Transform requirements into technical architecture **before** planning implement
 
 ## References to Rules
 
-The following rules provide detailed standards — refer to them during architecture design:
+The following rules provide detailed standards. **The Purpose column is self-sufficient for routine design decisions — do NOT open these files wholesale at the start. Open a specific rule only when a concrete decision genuinely needs its threshold/detail** (e.g., read `system-design.md` only when a scaling/caching choice is actually on the table). This avoids reading several large rule files on every `/arch` run.
 
 | Rule | Purpose |
 |------|---------|
@@ -35,163 +35,44 @@ The following rules provide detailed standards — refer to them during architec
 
 1. **Read the spec** — Understand functional requirements
 2. **Carry-forward Open Questions** — Read `specs/SPEC.md` §Open Questions; copy each into `ARCHITECTURE.md` §Open Questions and tag the blocking phase (`/secure`, `/plan`, or stakeholder). Any new OQ surfaced during this phase is added to the same table with `Source: /arch`.
-3. **Identify components** — What systems/services are needed?
-4. **Map integrations** — How do components communicate?
-5. **Choose patterns** — Which architectural patterns apply?
+3. **Cross-check NFRs (completeness)** — list every NFR in `specs/SPEC.md §NFR` **plus** every project-mandatory NFR in the rules (`security.md` incl. §HTTP Security Headers, `principles-and-practices.md §4`); ensure each has a NFR-mechanism row, a §Security Considerations line, or a tagged Open Question — no silent drop (see the Completeness rule under the NFR table).
+4. **Identify components** — What systems/services are needed?
+5. **Map integrations** — How do components communicate?
+6. **Choose patterns** — Which architectural patterns apply?
 
 ### Phase 2: Design Artifacts
 
-#### 2.1 System Context Diagram
+> **Diagram format is delegated.** All diagram art follows the canonical templates in [`../references/ascii-diagram-guide.md`](../references/ascii-diagram-guide.md) — do not re-draw them here. The rules below are `/arch`-specific: which diagrams are **mandatory**, and **when** the optional ones are warranted.
 
-```text
-                         ┌──────────┐
-                         │   User   │
-                         └────┬─────┘
-                              │
-                              ▼
-                    ┌─────────────────┐
-                    │ Our Application │
-                    └────────┬────────┘
-                             │
-           ┌─────────────────┼─────────────────┐
-           ▼                 ▼                 ▼
-    ┌────────────┐    ┌────────────┐    ┌────────────┐
-    │  Database  │    │   Cache    │    │ External   │
-    │            │    │  (Redis)   │    │    API     │
-    └────────────┘    └────────────┘    └────────────┘
-```
+#### 2.1 System Context Diagram — **mandatory**
 
-#### 2.2 Container Diagram
+Show the system boundary, its actors, and external dependencies. Template: [`ascii-diagram-guide.md` §1](../references/ascii-diagram-guide.md#1-system-context-diagram).
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                        System Boundary                           │
-│                                                                  │
-│  ┌─────────────┐  ┌─────────────┐                               │
-│  │  Frontend   │  │   Admin     │                               │
-│  │  (Next.js)  │  │   (SPA)     │                               │
-│  └──────┬──────┘  └──────┬──────┘                               │
-│         │                │                                       │
-│         └───────┬────────┘                                       │
-│                 ▼                                                │
-│         ┌─────────────┐                                         │
-│         │   Gateway   │                                         │
-│         │   (YARP)    │                                         │
-│         └──────┬──────┘                                         │
-│                │                                                 │
-│      ┌─────────┴─────────┐                                      │
-│      ▼                   ▼                                      │
-│  ┌────────┐        ┌────────────┐                               │
-│  │  API   │        │   Worker   │                               │
-│  └───┬────┘        └─────┬──────┘                               │
-│      │                   │                                       │
-│      └─────────┬─────────┘                                       │
-│                │                                                 │
-│    ┌───────────┼───────────┐                                    │
-│    ▼           ▼           ▼                                    │
-│ ┌──────┐  ┌────────┐  ┌────────┐                                │
-│ │ SQL  │  │ Redis  │  │ Kafka  │                                │
-│ └──────┘  └────────┘  └────────┘                                │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+#### 2.2 Container Diagram — **mandatory**
 
-#### 2.3 Component Diagram (for complex services)
+Show the deployable units (frontend, gateway, API, worker) and the data stores they depend on. Template: [`ascii-diagram-guide.md` §2](../references/ascii-diagram-guide.md#2-container-diagram).
 
-Create component diagrams when a service has **> 5 internal components** or complex dependencies:
+#### 2.3 Component Diagram — *when a service has > 5 internal components or complex dependencies*
 
-```text
-┌─────────────────────────────────────────────────────┐
-│                    API Service                       │
-│                                                      │
-│  ┌─────────────┐                                    │
-│  │ Controllers │                                    │
-│  └──────┬──────┘                                    │
-│         │                                           │
-│    ┌────┴────┐                                      │
-│    ▼         ▼                                      │
-│ ┌──────┐ ┌──────────┐                              │
-│ │Valid.│ │ Services │                              │
-│ └──────┘ └────┬─────┘                              │
-│               │                                     │
-│          ┌────┴────┐                               │
-│          ▼         ▼                               │
-│    ┌──────────┐ ┌────────┐                         │
-│    │  Repos   │ │ Events │                         │
-│    └──────────┘ └────────┘                         │
-│                                                      │
-└─────────────────────────────────────────────────────┘
-```
-
-**When to create**: Complex service internals, onboarding documentation, or refactoring planning.
+Use for complex service internals, onboarding documentation, or refactoring planning. Template: [`ascii-diagram-guide.md` §3](../references/ascii-diagram-guide.md#3-component-diagram-layered).
 
 #### 2.4 Architecture Decision Records (ADRs)
 
-```markdown
-# ADR-NNN: [Decision title]
+> **Single source of truth:** [`../agents/systems-architect.md`](../agents/systems-architect.md) § "Architecture Decision Record (ADR)". **Decision ADRs** follow that template **verbatim** (Context → Options Considered → Decision → Consequences → v2 Upgrade Trigger → Implementation Notes). **Rejection ADRs default to the lightweight consolidated table** (ONE ADR, one row per excluded component); `/arch --adr=per-component` switches them to one full ADR each — see the agent § "Rejection ADR pattern". Do not restate either template here.
 
-**Date**: YYYY-MM-DD
-**Status**: Proposed | Accepted | Deprecated | Superseded by ADR-XXX
+Every significant decision (and every intentional exclusion) gets an ADR in `architecture/adr/` (filename `ADR-NNN-kebab-title.md`).
 
-## Context
-What problem requires a decision? Cite the SPEC user story, NFR, or rule in `.claude/rules/` that surfaces it.
+> **Bound the ADRs (greenfield + brownfield alike):** write a full Decision-ADR only for a decision that **constrains future change** — persistence engine, auth model, module/service boundary, sync-vs-async integration, public contract. **Routine settings** (timeouts, page sizes, log levels, retry counts) go in an `ARCHITECTURE.md` notes list, **NOT** a per-item ADR.
 
-## Options Considered
-| Option | Pros | Cons |
-|--------|------|------|
-| **A. [Chosen]** | … | … |
-| B. [Alternative] | … | … |
-| C. [Alternative] | … | … |
+#### 2.5 Sequence Diagrams — *for any flow involving > 2 components or where timing/ordering matters*
 
-## Decision
-Adopt **Option A** because [reason tied to NFR / rule / SPEC].
-
-## Consequences
-**Positive**: [benefits]
-**Negative**: [tradeoffs the team must accept]
-**Risks**: [what could go wrong + mitigation]
-
-## v2 Upgrade Trigger
-Revisit this decision when **any** of the following becomes true:
-- [trigger 1 — e.g., a second concurrent user is supported]
-- [trigger 2 — e.g., latency SLO drops below X ms]
-
-## Implementation Notes
-Concrete guidance for `/build`: which library, which config knob, which rule in `.claude/rules/` is honored.
-```
-
-**Rejection ADR pattern** — if this phase decides **not** to adopt a component listed in `.claude/rules/tech-stack.md` (Redis, Kafka, YARP, Hangfire, Polly, etc.), write a dedicated ADR (e.g., `ADR-NNN-no-redis-kafka-or-gateway-in-v1.md`) that lists each rejected component, the reason, and the v2 trigger. This prevents scope-creep during `/plan` and `/build`.
-
-#### 2.5 Sequence Diagrams (for key flows)
-
-Create sequence diagrams for:
+Create for:
 - **Authentication/Authorization** — Login, token refresh, permission checks
 - **Payment/Transactions** — Multi-step processes with rollback scenarios
 - **Multi-service interactions** — When > 2 services coordinate
 - **Error handling flows** — Retry logic, circuit breaker behavior
 
-```text
-┌────────┐      ┌─────────┐      ┌────────┐      ┌────────┐
-│ Client │      │ Gateway │      │  Auth  │      │  User  │
-└───┬────┘      └────┬────┘      └───┬────┘      └───┬────┘
-    │                │               │               │
-    │ POST /login    │               │               │
-    │───────────────>│               │               │
-    │                │ Validate      │               │
-    │                │──────────────>│               │
-    │                │               │ Get user      │
-    │                │               │──────────────>│
-    │                │               │               │
-    │                │               │  User data    │
-    │                │               │<──────────────│
-    │                │  JWT token    │               │
-    │                │<──────────────│               │
-    │ 200 OK + token │               │               │
-    │<───────────────│               │               │
-    │                │               │               │
-```
-
-**When to create**: Any flow involving > 2 components or where timing/ordering matters.
+Template: [`ascii-diagram-guide.md` §4](../references/ascii-diagram-guide.md#4-sequence-diagram).
 
 ### Phase 3: API Contract Design
 
@@ -230,6 +111,28 @@ Contract rules:
 - `traceId` is always populated (carried from `X-Correlation-ID`).
 
 Honors `.claude/rules/error-handling.md` (`AppException` + ProblemDetails RFC 7807).
+
+#### 3.2 Service Contracts — *multi-repo system-layer input (only when this service is one repo of a multi-repo product)*
+
+When this service is **one repo of a multi-repo microservices product**, `ARCHITECTURE.md` MUST include a **Service Contracts** section so [`/discover-system`](discover-system.md) can stitch the cross-service call-graph. **Single-repo projects skip this.**
+
+```markdown
+## Service Contracts (system-layer input)
+**Service id:** <service-id>   <!-- canonical key; matches Project Profile → Service id + the system service-catalog -->
+
+### Exposes
+| Contract id | Type (REST/Event) | Method/Path or Topic | @US |
+|-------------|-------------------|----------------------|-----|
+| order.create | REST | `POST /api/v1/orders` | US-012 |
+| order.created | Event | `topic order.events / OrderCreated` | US-012 |
+
+### Consumes
+| Contract id | Type | Method/Path or Topic | Partner service |
+|-------------|------|----------------------|-----------------|
+| payment.charge | REST | `POST /api/v1/charges` | payment-service |
+```
+
+> **`contract-id` is the join key:** a consumer's `payment.charge` must match the provider's exposed `payment.charge` **exactly** — keep ids stable. Read your own outbound calls (HTTP clients, event consumers) to fill `Consumes`; you do **not** need the system layer to do this. Convention: [`../references/microservices-multirepo.md`](../references/microservices-multirepo.md).
 
 ### Phase 4: Output Structure
 
@@ -271,6 +174,7 @@ architecture/
 | Throughput | 1000 req/s | [Mechanism — e.g., horizontal scaling behind YARP + Kestrel thread pool tuning] |
 
 > **Rule:** every row MUST have a concrete architectural mechanism in the third column. An NFR without a mechanism is an unmet NFR.
+> **Completeness rule:** every NFR in `specs/SPEC.md §NFR` **and** every project-mandatory NFR in the rules (`security.md` incl. §HTTP Security Headers, `principles-and-practices.md §4`) MUST appear here as a row, **or** as a line in §Security Considerations, **or** as a tagged Open Question — no NFR is silently dropped. This is the symmetric counterpart of `/plan`'s spec-NFR → task chain.
 
 ## System Context
 [Diagram showing system boundaries]
@@ -282,11 +186,16 @@ architecture/
 - **Interfaces**: [APIs exposed/consumed]
 
 ## Data Model
-[ER diagram or schema overview]
+[ER diagram + entities/fields + keys, indexes, precision, relationships as **design decisions** — NOT EF `Configure()` code (that belongs to `/build`)]
 
 ## Security Considerations
+> List the **required controls** below; each must name its mechanism, or be deferred to `/secure` with a tagged Open Question. A control omitted here is a control that will not be built.
 - Authentication: [approach]
-- Authorization: [approach]
+- Authorization / data-isolation (IDOR): [approach]
+- **HTTP security headers**: X-Content-Type-Options, X-Frame-Options, Referrer-Policy, HSTS, CSP — middleware wired in the request pipeline (or deferred to `/secure` + OQ)
+- **CORS**: allowlist of origins for state-writing routes
+- Secrets management: [approach]
+- Transport (HTTPS) / SSRF / other surface-specific controls: [as applicable]
 - Data encryption: [approach]
 
 ## Deployment Architecture
@@ -306,13 +215,14 @@ Before proceeding to `/plan`:
 - [ ] Diagrams are clear and complete (System Context + Container **mandatory**; Component & Sequence as needed)
 - [ ] ADRs document key decisions
 - [ ] **Every NFR row has a concrete architectural mechanism** (no empty third column)
+- [ ] **NFR completeness** — every spec NFR + every project-mandatory NFR (rules) maps to a mechanism row / §Security line / tagged OQ (no silent drop)
 - [ ] **Every ADR has `Options Considered` and `v2 Upgrade Trigger`** sections populated
-- [ ] **Rejection ADR exists** if any approved-stack component is intentionally excluded
+- [ ] **Rejection ADR exists** if any approved-stack component is intentionally excluded — consolidated table by default, or one full ADR per component when `--adr=per-component` was requested
 - [ ] **Error-code contract table** exists in `ARCHITECTURE.md`
 - [ ] **Open Questions table** carried from SPEC + arch-surfaced, each tagged with blocking phase
 - [ ] **No "either is acceptable" hedges** — every option is committed; alternatives live in `v2 Upgrade Trigger`
 - [ ] API contracts defined (OpenAPI 3.0.3)
-- [ ] Security considerations addressed
+- [ ] **Security controls listed** — §Security names HTTP security headers + CORS + auth/authz/secrets/transport, each with a mechanism or deferred to `/secure` with an OQ (not just "addressed")
 
 ## Brownfield Mode (when `Project Profile → Mode: brownfield`)
 
@@ -320,7 +230,7 @@ Before proceeding to `/plan`:
 
 | Flow | Mode | Behavior |
 |------|------|----------|
-| Discovery (no `architecture/ARCHITECTURE.md` yet) | **REVERSE** | Draw the **actual** architecture from code: container/component diagrams from project refs, ER from DbContext/migrations, sequence for the main flows. Record **inferred ADRs** for decisions already embedded (e.g., "JWT 15min no-refresh — inferred from JwtTokenService"). Describe as-is, do not propose changes. |
+| Discovery (no `architecture/ARCHITECTURE.md` yet) | **REVERSE** | **First consume the `/discover` artifacts** (`Project Profile` + `docs/CODEBASE_MAP.md`) as the index — do not re-survey the tree. Draw the **actual** architecture from code: container/component diagrams from project refs, ER from DbContext/migrations, sequence for the main flows. Record **inferred ADRs** for decisions already embedded (e.g., "JWT 15min no-refresh — inferred from JwtTokenService"). Describe as-is, do not propose changes. **Bound the inferred ADRs per the general rule in §2.4** (full ADR only for decisions that constrain future change; routine settings → ARCHITECTURE.md notes list) — applied here to *inferred* decisions. |
 | B1 new feature / B2 modify feature (ARCHITECTURE.md exists) | **CONFORMANCE-GATE** | Default is to **keep as-is**. Answer one question: *"does this change REQUIRE an architecture change?"* → NO: proceed with the current ARCHITECTURE.md; lightweight ADR only when a small new decision is made. → YES: stop, switch to the B5 flow. |
 | B5 architecture/technology upgrade | **REDESIGN** | The **only** time proactive changes are allowed: propose **minimal** changes + **mandatory ADR** (supersede old ADR if needed, with v2-trigger) + **migration plan** (strangler-fig per `rules/brownfield.md`). |
 
@@ -336,7 +246,7 @@ Before proceeding to `/plan`:
 
 Invoke: **Systems Architect**
 
-For UI-heavy features, also consult: **UI/UX Designer** (design system, tokens, key user flows)
+For UI-heavy features, also consult: **UI/UX Designer** (design system, tokens, key user flows). The **state-per-component matrix** (default / hover / focus / active / disabled / loading / error / empty) is owned here — see [`../agents/ui-ux-designer.md`](../agents/ui-ux-designer.md) §States; `/spec` only produces the 5 page-level states.
 
 ```text
 "As Systems Architect, design the architecture for [feature].

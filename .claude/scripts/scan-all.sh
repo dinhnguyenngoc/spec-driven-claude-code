@@ -44,6 +44,11 @@ source "$SCANNERS_DIR/_common.sh"
 
 log "=== scan-all.sh started ==="
 log "Repo root: $REPO_ROOT"
+if [ -n "${SCAN_DIFF_BASE:-}" ]; then
+    log "Mode: DIFF-SCOPED semgrep vs $SCAN_DIFF_BASE (SCA + secrets + Roslyn + ESLint + grep remain whole-repo)"
+else
+    log "Mode: WHOLE-REPO (full scan)"
+fi
 
 # ---------------------------------------------------------------------------
 # Phase 1: Tool inventory + stack auto-detect

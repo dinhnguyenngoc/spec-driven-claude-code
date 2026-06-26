@@ -141,40 +141,9 @@ dotnet test  # No regressions
 
 ---
 
-## Test Pyramid
+## Test patterns & assertions — canonical in `testing.md`
 
-```
-         ┌─────────┐
-         │   E2E   │  5%  — Critical user flows
-         │  Tests  │       Full system, minutes
-         ├─────────┤
-         │ Integr. │  15% — API + DB interactions
-         │  Tests  │       Seconds
-         ├─────────┤
-         │  Unit   │  80% — Pure logic
-         │  Tests  │       Milliseconds
-         └─────────┘
-```
-
----
-
-## Test Structure: AAA Pattern
-
-```csharp
-[Fact]
-public void CalculateTax_ForCaliforniaOrder_ReturnsCorrectRate()
-{
-    // Arrange — Setup
-    var order = new Order { State = "CA", Subtotal = 100m };
-    var taxService = new TaxService();
-    
-    // Act — Execute
-    var tax = taxService.Calculate(order);
-    
-    // Assert — Verify
-    tax.Should().Be(7.25m);
-}
-```
+> The pattern catalog — **Test Pyramid, AAA structure, Test Doubles preference order, naming convention, `WebApplicationFactory` integration templates, FluentAssertions, coverage thresholds, and the full `dotnet test` command list** — lives in [`../../rules/testing.md`](../../rules/testing.md). This skill owns the **RED-GREEN-REFACTOR cycle + Prove-It bug-fix pattern** above; do not re-document the catalog here.
 
 ---
 
@@ -208,102 +177,6 @@ public void RejectsInvalidPassword()
 
 ---
 
-## Test Doubles (Preference Order)
-
-1. **Real implementations** — Best, but may be slow
-2. **Fakes** — In-memory DB, simplified implementations
-3. **Stubs** — Return canned responses
-4. **Mocks** — Verify interactions (use sparingly)
-
-```csharp
-// ✅ Prefer: Real or fake (In-Memory EF Core)
-var options = new DbContextOptionsBuilder<AppDbContext>()
-    .UseInMemoryDatabase(Guid.NewGuid().ToString())
-    .Options;
-await using var context = new AppDbContext(options);
-var user = await userService.CreateAsync(context, userData);
-
-// ⚠️ Use sparingly: Mocks
-var mockRepo = new Mock<IUserRepository>();
-mockRepo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>()))
-    .ReturnsAsync(expectedUser);
-```
-
----
-
-## Naming Conventions
-
-```csharp
-// Pattern: Method_Scenario_ExpectedResult
-
-// ✅ Good
-"GetByIdAsync_WhenUserExists_ReturnsUser"
-"CreateAsync_WithInvalidEmail_ThrowsValidationException"
-"SendWelcomeEmailAsync_AfterRegistration_SendsEmail"
-
-// ❌ Bad
-"WorksCorrectly"
-"TestUserCreation"
-"HandlesError"
-```
-
----
-
-## Integration Tests with WebApplicationFactory
-
-```csharp
-public class UsersControllerTests : IClassFixture<CustomWebApplicationFactory>
-{
-    private readonly HttpClient _client;
-
-    public UsersControllerTests(CustomWebApplicationFactory factory)
-    {
-        _client = factory.CreateClient();
-    }
-
-    [Fact]
-    public async Task GetById_WhenUserExists_Returns200WithUser()
-    {
-        // Arrange
-        var userId = Guid.Parse("...");
-
-        // Act
-        var response = await _client.GetAsync($"/api/v1/users/{userId}");
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var user = await response.Content.ReadFromJsonAsync<UserDto>();
-        user.Should().NotBeNull();
-    }
-}
-```
-
----
-
-## FluentAssertions Cheatsheet
-
-```csharp
-// Basic
-result.Should().NotBeNull();
-result.Should().Be(expected);
-result.Should().BeEquivalentTo(expected);
-
-// Collections
-items.Should().HaveCount(3);
-items.Should().Contain(x => x.IsActive);
-items.Should().BeInAscendingOrder(x => x.Name);
-
-// Exceptions
-var act = () => _sut.Process(null);
-act.Should().Throw<ArgumentNullException>();
-
-// Async exceptions
-var act = async () => await _sut.ProcessAsync(null);
-await act.Should().ThrowAsync<ValidationException>();
-```
-
----
-
 ## Anti-Patterns
 
 | Pattern | Problem | Solution |
@@ -314,30 +187,6 @@ await act.Should().ThrowAsync<ValidationException>();
 | Snapshot abuse | Large diffs ignored | Use sparingly |
 | Shared mutable state | Tests affect each other | Use fresh instances or IClassFixture |
 | Testing frameworks | Wasted effort | Only test your code |
-
----
-
-## Test Commands
-
-```bash
-# Run all tests
-dotnet test
-
-# Run with verbosity
-dotnet test --logger "console;verbosity=detailed"
-
-# Run specific project
-dotnet test tests/MyApp.UnitTests
-
-# Run with filter
-dotnet test --filter "FullyQualifiedName~DiscountCalculator"
-
-# Run with coverage
-dotnet test --collect:"XPlat Code Coverage"
-
-# Watch mode
-dotnet watch test --project tests/MyApp.UnitTests
-```
 
 ---
 

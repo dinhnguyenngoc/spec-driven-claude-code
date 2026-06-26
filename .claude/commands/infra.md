@@ -60,8 +60,10 @@ RUN dotnet publish "MyApp.Api.csproj" -c Release -o /app/publish /p:UseAppHost=f
 FROM base AS final
 WORKDIR /app
 
-# wget needed by the HEALTHCHECK below; full wget (not BusyBox) gives correct exit codes.
-RUN apk add --no-cache wget && \
+# icu-libs + DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false: Alpine .NET defaults to invariant-mode →
+# SqlClient/Npgsql CRASH on connect. Required for any DB driver. (wget: needed by the HEALTHCHECK below.)
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+RUN apk add --no-cache wget icu-libs tzdata && \
     addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 appuser --ingroup appgroup
 USER appuser
@@ -135,6 +137,17 @@ volumes:
 ```
 
 > **Apple Silicon (arm64) developers** — `mssql/server` is amd64-only and will run under emulation (slow, occasional crashes). Use `mcr.microsoft.com/azure-sql-edge:<pinned>` instead; replace the sqlcmd healthcheck with a TCP probe (`timeout 1 bash -c '</dev/tcp/localhost/1433' || exit 1`) because Edge does not ship sqlcmd. EF Core migrations have been verified to apply cleanly on Edge for our schema surface — if your schema uses features missing from Edge (e.g., certain CLR types), gate that behind an ADR.
+
+> **Frontend (if `Project Profile → Frontend` ≠ none):** add a `web` service to the compose + `docker/Dockerfile.web` (multi-stage: `node:20-alpine` `npm ci && npm run build` → `nginx:<pinned>-alpine` serving `dist/`, non-root, SPA fallback `try_files $uri /index.html` + proxy `/api` → `http://api:8080` so the SPA is same-origin with the API — no CORS). nginx/networking detail: [`../references/docker-patterns.md`](../references/docker-patterns.md).
+>
+> ```yaml
+>   web:
+>     build: { context: ., dockerfile: docker/Dockerfile.web }
+>     ports: ["3000:8080"]
+>     depends_on: [api]
+> ```
+
+> **Migrations on first run (Gate 9):** the app must create its schema when the container starts. Apply migrations on startup behind a config flag — e.g. `Database:MigrateOnStartup=true` (set in `api.environment`), guarded by `db.Database.IsRelational()` so InMemory tests skip — **or** use a dedicated migrator / init container. Never bake `dotnet ef database update` into the image. Verify by hitting a DB-backed endpoint, not just `/health`.
 
 ### Phase 3: Environment Configuration
 
@@ -323,17 +336,25 @@ When the codebase already exists, `/infra` **auto-detects** behavior based on th
 | `docker/Dockerfile` or `docker-compose.yml` already exists | **CONFORMANCE-CHECK** | Read existing artifacts, cross-check against actual code, FLAG drift to `reports/INFRA_DRIFT.md`. Do NOT modify existing infra since the team has committed it. |
 
 **REVERSE-BOOTSTRAP — notes:**
-- Discovery replaces the template's hard-coded source. Minimum reads: `find src -name "*.csproj"` (naming), `[ -d web/ ] || [ -d client/ ] || [ -d frontend/ ]` (FE), `uname -m` (arch), `grep "UseSqlServer\|UseNpgsql\|UseMySql\|UseOracle" src/**/*.cs` (DB engine), `architecture/adr/*-no-*.md` or Rejection ADR (component scope).
+- **Consume `/discover` artifacts first** — do NOT re-derive what they already declare:
+  - DB engine → `Project Profile → Database` (not `grep Use<Db>`).
+  - Frontend presence/stack → `Project Profile → Frontend` (not `[ -d web/ ]`).
+  - Core language/framework + layering → `Project Profile → Core/Structure` + `docs/CODEBASE_MAP.md`.
+  - csproj names / module layout → `docs/CODEBASE_MAP.md` module map.
+  - Rejected components → the Rejection ADR (`architecture/adr/`), as before.
+- **Probe directly only for what `/discover` does NOT capture:** `uname -m` (host arch), and exact csproj paths if the map lacks them.
+- **Fallback:** if `Project Profile` / `CODEBASE_MAP.md` is missing or stale (no `/discover` run), fall back to the direct probes (`find src -name "*.csproj"`, `grep Use<Db>`, `[ -d web/ ]`) — do not block. A stale Profile that produces a wrong service is caught by **Gate 9** (compose won't reach `healthy`); log any code↔Profile disagreement to `reports/INFRA_ADAPTATIONS.md`.
 - **arm64 host** (Apple Silicon, AWS Graviton) → DB image must be arm64-compatible: SQL Server → `azure-sql-edge` + TCP probe healthcheck (Edge has no sqlcmd); Oracle → arm64 tag.
 - **.NET Alpine globalization**: Alpine base = invariant-mode → SqlClient/Npgsql crash on connect. Fix: `apk add --no-cache icu-libs` + `ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false`.
 - **Multi-csproj without `.sln`** → COPY each csproj individually, then `dotnet restore <api>.csproj` (resolves transitive). Do NOT use the default template's `COPY *.sln && dotnet restore`.
-- **Frontend Dockerfile** (not in the skill template): if a FE folder is detected, generate a separate `docker/Dockerfile.<fe-name>`. Next.js without `output: 'standalone'` → flag for user confirmation before modifying source code; if the user does not confirm → generate non-standalone (larger image, but works out-of-the-box).
+- **Frontend Dockerfile** (not in the skill template): if the `web/` frontend folder is detected, generate a separate `docker/Dockerfile.web`. Next.js without `output: 'standalone'` → flag for user confirmation before modifying source code; if the user does not confirm → generate non-standalone (larger image, but works out-of-the-box).
 - **ADR Rejection compliance**: honor Rejection ADRs (e.g. ADR-008 rejects Redis/Kafka/YARP/Hangfire/Polly). Do NOT add any service already rejected to compose, even if the default template includes it.
 - **Migration strategy**: grep `Database.Migrate\|MigrateAsync` in `Program.cs` — if present → app self-applies (single-replica dev OK); if absent → suggest the user add it or use an init container. Do NOT modify source.
 - Any adaptation that diverges from the default template → log to `reports/INFRA_ADAPTATIONS.md` (aspect | template | override | reason) for team review.
 
 **CONFORMANCE-CHECK — notes:**
 - Output a drift table in `reports/INFRA_DRIFT.md`: `Aspect | Existing artifact | Actual code | Drift? | Recommendation`.
+- Derive the **"Actual code" column from `/discover` artifacts** where they cover it (Profile → Database/Frontend/Core; CODEBASE_MAP → modules; Rejection ADR → component scope); probe code directly only for aspects they don't capture (host arch, exact csproj paths). Fallback to direct inspection if artifacts are absent.
 - Do NOT modify existing artifacts (the team has committed them); only flag for review.
 - Serious drift (e.g. Dockerfile referencing a csproj that does not exist, compose containing a service rejected by ADR) → escalate to the user, recommend rerunning in REVERSE-BOOTSTRAP mode after the user removes the old artifacts.
 

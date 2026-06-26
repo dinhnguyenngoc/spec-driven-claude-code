@@ -11,7 +11,7 @@ description: QA verification with real dependencies — the quality gate before 
 
 Verify code works correctly in **production-like environment** with real dependencies (database, cache). This is the quality gate before `/review`.
 
-> **Stack Profile note:** TestContainers image follows the `Project Profile`. Default = SQL Server; if Oracle is declared → Oracle XE/Free, MySQL → `mysql:8.0` (see `rules/overrides/database-*.md`). Observability ELK → `rules/overrides/monitoring-elk.md`. Core test stack (xUnit/Moq/FluentAssertions) does not change.
+> **Stack Profile note:** TestContainers image follows the `Project Profile`. Default = SQL Server; if Oracle is declared → Oracle XE/Free, MySQL → `mysql:8.0` (see `rules/overrides/database-*.md`). Observability ELK → `rules/overrides/monitoring-elk.md`. Core test stack (xUnit/Moq/FluentAssertions) does not change. **On Apple Silicon (arm64):** swap the SQL Server image to `azure-sql-edge` + a TCP/port-wait — the default `mssql/server:2022` image segfaults under qemu; see `rules/testing.md` Template B arm64 note.
 
 ## Prerequisites
 
@@ -90,8 +90,13 @@ Verify code works correctly in **production-like environment** with real depende
 
 ```bash
 docker info                                                # verify Docker daemon
-dotnet test                                                # run full suite
-dotnet test --filter "Category=RequiresDocker"             # TestContainers only
+
+# ONE full run — covers unit + in-memory + TestContainers AND collects coverage.
+# Do NOT also run a plain `dotnet test` or `dotnet test --filter "Category=RequiresDocker"`:
+# the full suite already includes them, and re-running spins the TestContainers SQL Server/Redis up redundantly.
+dotnet test --collect:"XPlat Code Coverage" --settings coverlet.runsettings --results-directory ./coverage
+
+# Stack-level E2E (separate from dotnet test — cannot be folded into the run above)
 docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
 docker-compose -f docker-compose.test.yml down -v
 ```
@@ -151,7 +156,6 @@ Use the Bug Report Template (Severity / Steps / Expected / Actual / Root cause `
 
 > Patterns (AAA, DAMP, naming `Method_Scenario_ExpectedResult`), test doubles, `CustomWebApplicationFactory`/TestContainers fixture code, and anti-patterns are defined in:
 > - [`rules/testing.md`](../rules/testing.md) — mandatory standards + fixture templates
-> - [`references/testing-patterns.md`](../references/testing-patterns.md) — quick-lookup checklist
 
 In `/test`, the rule is simple: **prefer real implementations over fakes**. `/build` uses In-Memory providers; `/test` swaps them for TestContainers-backed real engines and re-runs the full suite.
 
@@ -228,13 +232,14 @@ open ./coverage/report/index.html
 
 **12 sections:** 1 Summary (verdict PASS / PASS-WITH-CONDITIONS / FAIL — PWC = baseline green + ≥1 BUG-### + no Critical blocker) · 2 Backend in-memory re-run · 3 TestContainers (NEW) · 4 Frontend Vitest re-run · 5 E2E live · 6 Coverage (scope policy + metrics + top-5 uncovered có rationale) · 7 Gate-6 checklist · 8 Bug reports (BUG-###, Prove-It) · 9 Gaps deferred (mỗi dòng nêu next owner) · 10 Files added (+ boundary statement) · 11 Gate 6 verdict · 12 Open items for `/review`.
 
-> **Boundary rule:** `/test` MUST NOT modify production code under `src/` or `client/src/`. Bugs found during `/test` are filed as reports in §8 with a proposed fix; the fix happens in `/review` (or `/fix-issue` for production hotfixes). This is what makes the regression net in §3 trustworthy — the TestContainers tests are written against unchanged production code.
+> **Boundary rule:** `/test` MUST NOT modify production code under `src/` or `web/src/`. Bugs found during `/test` are filed as reports in §8 with a proposed fix; the fix happens in `/review` (or `/fix-issue` for production hotfixes). This is what makes the regression net in §3 trustworthy — the TestContainers tests are written against unchanged production code.
 
 ## Quality Gate 6 — Exit Criteria
 
 Before proceeding to `/review`:
 
-- [ ] All tests pass (including Docker-required tests)
+- [ ] All tests pass — **confirmed by the canonical commands exiting 0** (`dotnet test` AND `npm test`), not merely asserted in `TEST_REPORT.md`. A green report with a red command = gate FAIL.
+- [ ] **Adding a new test runner did NOT break the unit-test command** — when scaffolding Playwright/visual/E2E tooling, `npm test` (vitest) MUST still exit 0 (runner isolation: exclude `e2e/`/Playwright specs from the unit runner's glob). The unit command staying green is part of this gate.
 - [ ] **Every `@US-XXX-Snn` has a test asserting its observable *Then*** (effect, not presence); scenarios needing UI-layer proof and deferred to `/verify` are listed in §9, not counted as covered
 - [ ] **Consumer↔API contract conformance checked** — first-party client/SDK/BFF calls match the contract's method/path/status (no `PUT`-vs-`PATCH`-style drift)
 - [ ] Code coverage ≥ 80% (with `coverlet.runsettings` scope applied — exemptions documented)
@@ -243,16 +248,17 @@ Before proceeding to `/review`:
 - [ ] Edge cases covered
 - [ ] E2E tests for critical paths
 - [ ] `reports/TEST_REPORT.md` produced with all 12 sections populated
-- [ ] No production code under `src/` or `client/src/` modified during `/test`
+- [ ] No production code under `src/` or `web/src/` modified during `/test`
 
 ## Verification Checklist (Test Engineer)
 
-| Check | Command |
-|-------|---------|
-| All tests pass | `dotnet test` |
-| Docker tests pass | `dotnet test --filter "Category=RequiresDocker"` |
-| Coverage ≥ 80% | `dotnet test --collect:"XPlat Code Coverage"` |
-| E2E tests pass | `docker-compose -f docker-compose.test.yml up` |
+> The first three checks are all satisfied by the **single** coverage run in "Running Tests in /test" — do not run the suite three times (it would spin up the TestContainers engines redundantly).
+
+| Check | Satisfied by |
+|-------|--------------|
+| All tests pass (unit + in-memory + TestContainers) | `dotnet test --collect:"XPlat Code Coverage" --settings coverlet.runsettings` (the one run) |
+| Coverage ≥ 80% | same run (`--collect` output) |
+| E2E tests pass | `docker-compose -f docker-compose.test.yml up` (separate) |
 
 ## Agent
 

@@ -331,8 +331,11 @@ catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx)
     // Check constraint type
     if (sqlEx.Number == 2627) // Unique constraint
         throw new ConflictException("Duplicate entry");
-    if (sqlEx.Number == 547)  // FK constraint
-        throw new BadRequestException("Referenced entity not found");
+    if (sqlEx.Number == 547)  // FK constraint — invalid reference (kit maps bad input → 400 ValidationException)
+        throw new ValidationException(new Dictionary<string, string[]>
+        {
+            ["reference"] = new[] { "Referenced entity not found" }
+        });
     throw;
 }
 ```

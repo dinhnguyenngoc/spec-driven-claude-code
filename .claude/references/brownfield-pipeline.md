@@ -1,19 +1,38 @@
 # Brownfield Pipeline — Quick Reference
 
-> Tra cứu nhanh thứ tự lệnh cho Phase A (discovery) và 5 luồng Phase B (task lặp lại).
-> Chi tiết kỷ luật: [`../rules/brownfield.md`](../rules/brownfield.md) · Mode/Profile: [`../CLAUDE.md`](../CLAUDE.md) §Project Mode & Profile.
+> **Tóm tắt:** Đây là **bảng tra nhanh "việc này thì chạy lệnh nào, theo thứ tự nào"** khi làm trên một dự án đã có sẵn code (*brownfield*). Có **1 lần onboard** (Phase A) và **5 luồng công việc lặp lại** (Phase B). Dành cho người vận hành pipeline — cứ tìm tình huống của bạn trong [Cây quyết định](#cây-quyết-định) rồi theo checklist lệnh của luồng tương ứng.
+>
+> Kỷ luật chi tiết (vì sao phải làm vậy): [`../rules/brownfield.md`](../rules/brownfield.md) · Khai báo Mode/Profile: [`../CLAUDE.md`](../CLAUDE.md) §Project Mode & Profile.
+
+---
+
+## Thuật ngữ nhanh (đọc 1 lần là hiểu cả file)
+
+| Thuật ngữ | Nghĩa gọn |
+|-----------|-----------|
+| **Brownfield** | Làm trên codebase **đã tồn tại / đang chạy production** (đối lập với *greenfield* = xây từ đầu). |
+| **Legacy code** | Code đang chạy nhưng **thiếu test / spec / tài liệu** mô tả ý định → rủi ro lớn nhất là "lỡ làm hỏng thứ đang chạy". |
+| **Phase A (discovery)** | Giai đoạn **onboard repo legacy — làm MỘT lần**, chỉ đọc (read-only) code, để dựng tài liệu nền (baseline). |
+| **Phase B** | Các **luồng công việc lặp lại** sau khi đã onboard (thêm/sửa tính năng, fix bug, hotfix, nâng cấp). |
+| **delta** | **Chỉ phần thay đổi** (tính năng mới hoặc phần sửa) — không phải toàn hệ thống. |
+| **reverse** (mode của `/spec`, `/arch`) | Chạy "ngược": sinh spec/kiến trúc **từ code đã có**, thay vì sinh code từ spec. |
+| **conformance-gate** (mode của `/arch`) | `/arch` chỉ **kiểm tra thay đổi có khớp kiến trúc hiện tại không** — mặc định không đổi kiến trúc. |
+| **characterization test** | Test **chụp lại behavior code *đang chạy*** (PASS ngay) — làm lưới chống regression *trước khi* sửa. |
+| **backward-compat** | **Không phá** API / contract / dữ liệu / schema mà client và dữ liệu hiện hành đang dựa vào. |
+| **strangler-fig** | Thay thế **dần dần**: dựng cái mới song song sau một lớp trừu tượng, chuyển dần qua — **không viết lại một phát** (big-bang). |
+| **ADR** | *Architecture Decision Record* — bản ghi một quyết định kiến trúc (bối cảnh, lựa chọn, hệ quả). |
 
 ---
 
 ## Mẹo nhớ — 1 spine + 5 entry
 
-**Spine chung** của các luồng phát triển (B1/B2/B5):
+Ba luồng phát triển (B1/B2/B5) **đi chung một "xương sống" (spine)** ở cuối — chỉ khác nhau ở *cửa vào*:
 
 ```
 /build → /test → /review → /verify → /deploy
 ```
 
-Mỗi luồng B chỉ khác ở **cửa vào spine**. Memorize spine 1 lần, nhớ cửa vào cho từng luồng.
+→ Nhớ spine một lần, rồi chỉ cần nhớ **cửa vào** của từng luồng.
 
 ---
 
@@ -35,6 +54,8 @@ Mỗi luồng B chỉ khác ở **cửa vào spine**. Memorize spine 1 lần, nh
 
 ## Phase A — Discovery (MỘT lần khi nhận repo, READ-ONLY với source)
 
+> **Mục đích:** onboard một repo lạ — khảo sát stack/cấu trúc, xác nhận build/chạy được, và dựng tài liệu nền (spec + kiến trúc + infra) khớp với code thực tế. Làm **một lần**, **không sửa code business**.
+
 ```
 /discover  →  /spec (reverse)  →  /arch (reverse)  →  /infra (reverse-bootstrap)
               [/scan khuyến nghị, độc lập — trước lần deploy đầu]
@@ -42,6 +63,7 @@ Mỗi luồng B chỉ khác ở **cửa vào spine**. Memorize spine 1 lần, nh
 
 **Output:**
 - `Project Profile` (mode + DB + observability + structure) trong [`CLAUDE.md`](../CLAUDE.md)
+- `docs/CODEBASE_MAP.md` (endpoint inventory + red-flag list) — `/spec` reverse và `/arch` reverse **tiêu thụ làm mục lục**, không quét lại cây
 - `specs/SPEC.md` baseline (as-is user stories)
 - `architecture/` baseline (kiến trúc thật + ADR inferred)
 - `docker/Dockerfile` + `docker-compose.yml` + `.dockerignore` + `.env.example` (infra khớp code thực tế, chạy được local)
@@ -63,10 +85,11 @@ Mỗi luồng B chỉ khác ở **cửa vào spine**. Memorize spine 1 lần, nh
 /spec(delta) → /arch(conformance) → /plan → [/secure] → /build → /test → /review → [/scan] → /verify → /deploy
 ```
 
+**Phải nhớ:**
 - `/spec(delta)`: chỉ đặc tả tính năng mới, reference story cũ — KHÔNG viết lại.
-- `/arch(conformance)`: mặc định **no-op**; ADR nhẹ chỉ nếu có quyết định nhỏ mới.
+- `/arch(conformance)`: mặc định **no-op** (không đổi kiến trúc); ADR nhẹ chỉ nếu có quyết định nhỏ mới.
 - `/build`: TDD bình thường (code mới); characterization test **chỉ khi** đụng vùng legacy chưa test.
-- Tính năng mới mở **surface ngoài** (payment, SSO, webhook, URL-fetch) → **nên chạy `/secure`** — surface mới chính là ứng viên "Highest-Risk Active Surface" (Phase 3.5).
+- Tính năng mới mở **surface ngoài** (payment, SSO, webhook, URL-fetch) → **nên chạy `/secure`** — surface mới chính là ứng viên "Highest-Risk Active Surface" (Phase 3.5). `/secure` chạy **delta-scoped**: chỉ model surface mới/đổi, cite control baseline đã có, assert không regress posture cũ (xem `commands/secure.md` §Brownfield Mode).
 
 ### B2 — Sửa tính năng ĐÃ CÓ
 
@@ -74,8 +97,9 @@ Mỗi luồng B chỉ khác ở **cửa vào spine**. Memorize spine 1 lần, nh
 [characterization test TRƯỚC]  →  /spec(delta) → /arch(conformance) → /plan → /build → /test(backward-compat) → /review → /verify → /deploy
 ```
 
-- **Khác B1**: bắt buộc viết characterization test chụp behavior hiện tại (PASS) trước khi đụng code.
-- `/test`: thêm test backward-compat — contract/data/API cũ không đổi.
+**Phải nhớ (khác B1):**
+- **Bắt buộc**: trước khi đụng code, viết **characterization test** chụp behavior hiện tại của vùng sắp sửa, cho chạy **PASS** — đây là lưới để phân biệt thay đổi cố ý vs regression vô tình. (Bước này nằm *trong* `/build`, do agent tự làm — không phải lệnh riêng bạn gõ.)
+- `/test`: thêm test backward-compat — contract / data / API cũ không đổi.
 
 ### B3 — Fix bug (dev-time, chưa release)
 
@@ -83,6 +107,7 @@ Mỗi luồng B chỉ khác ở **cửa vào spine**. Memorize spine 1 lần, nh
 /fix-issue → /test → /review → /verify → /deploy
 ```
 
+**Phải nhớ:**
 - Bỏ qua `/spec`/`/arch`/`/plan` — không có yêu cầu nghiệp vụ mới.
 - `/fix-issue`: reproduce → regression test (fail trước fix) → root cause → fix.
 
@@ -97,6 +122,7 @@ Mỗi luồng B chỉ khác ở **cửa vào spine**. Memorize spine 1 lần, nh
          →  post-incident (runbook + test phòng ngừa vĩnh viễn)
 ```
 
+**Phải nhớ:**
 - `/hotfix` là **thin orchestrator** — câu hỏi đầu: rollback hay fix-forward.
 - Bản vá phải có version riêng + audit trail; re-verify trên digest mới trước redeploy.
 
@@ -110,6 +136,7 @@ Mỗi luồng B chỉ khác ở **cửa vào spine**. Memorize spine 1 lần, nh
    → /test → /review → /scan → /verify → /deploy
 ```
 
+**Phải nhớ:**
 - **Lần duy nhất `/arch` được chủ động đổi kiến trúc** — bắt buộc ADR (supersede ADR cũ nếu cần) + migration plan.
 - Strangler-fig: không big-bang rewrite — dựng song song sau abstraction, feature-flag, mở rộng dần.
 - Backward-compat suốt quá trình migration.
@@ -129,14 +156,14 @@ Mỗi luồng B chỉ khác ở **cửa vào spine**. Memorize spine 1 lần, nh
 
 ## 2 kỷ luật brownfield xuyên MỌI luồng B
 
-1. **Characterization test trước khi sửa** code legacy chưa có test (đặc biệt B2)
-2. **Backward-compat mặc định** — không phá API/contract/data/schema đang chạy (phá vỡ → ADR + migration)
+1. **Characterization test trước khi sửa** code legacy chưa có test (đặc biệt B2) — chụp behavior hiện tại làm lưới chống regression.
+2. **Backward-compat mặc định** — không phá API/contract/data/schema đang chạy (phá vỡ → bắt buộc ADR + migration).
 
 ---
 
 ## Scope per-change — VIẾT theo delta, CHẠY toàn bộ
 
-> Trả lời câu *"`/test`, `/review`, `/verify` thực hiện trên toàn bộ source hay chỉ phần thay đổi?"* — nguyên tắc gốc: [`../rules/brownfield.md`](../rules/brownfield.md) §Upfront-vs-Per-change. Phân biệt then chốt: **VIẾT (đắt) ≠ CHẠY (rẻ)**.
+> **Trả lời câu:** *"`/test`, `/review`, `/verify` chạy trên toàn bộ source hay chỉ phần thay đổi?"* — Phân biệt then chốt: **VIẾT mới (tốn công) thì chỉ làm cho phần thay đổi; còn CHẠY (rẻ) thì chạy toàn bộ** để chứng minh phần không đổi vẫn nguyên vẹn. Nguyên tắc gốc: [`../rules/brownfield.md`](../rules/brownfield.md) §Upfront-vs-Per-change.
 
 | Lệnh | VIẾT mới — CHỈ phần thay đổi | CHẠY — TOÀN BỘ những gì đã automated |
 |------|------------------------------|----------------------------------------|

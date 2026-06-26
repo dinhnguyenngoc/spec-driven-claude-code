@@ -89,7 +89,7 @@ Chạy các lệnh theo thứ tự, đọc duyệt từng artifact trên đườ
 /arch      → thiết kế hệ thống, ADR, API contract   → architecture/
 /plan      → chia task thành các vertical slice       → plans/todo.md
 /secure    → STRIDE threat model (optional)           → security/
-/build     → implement theo TDD                       → src/ + tests/
+/build     → implement theo TDD                       → src/ + web/ + tests/
 /test      → QA với dependency thật                   → tests/
 /review    → code review năm trục                     → reports/
 /scan      → quét lỗ hổng bảo mật                     → security/
@@ -117,7 +117,7 @@ Mở [plans/todo.md](plans/todo.md) bất cứ lúc nào để xem việc đã x
 | 2 | `/arch` | Systems Architect | Kiến trúc, diagram, ADR, API contract | `architecture/` |
 | 3 | `/plan` | Project Manager | Chia nhỏ thành task có thứ tự phụ thuộc | `plans/` |
 | 4 | `/secure` ⃰ | Security Auditor | Threat model trước phát triển (STRIDE) | `security/PRE_DEV_REVIEW` |
-| 5 | `/build` | Frontend/Backend Dev | Implement theo TDD, vertical slice | `src/`, `tests/` |
+| 5 | `/build` | Frontend/Backend Dev | Implement theo TDD, vertical slice | `src/`, `web/`, `tests/` |
 | 6 | `/test` | Test Engineer | QA với dependency thật (TestContainers) | `tests/` |
 | 7 | `/review` ⃰ | Code Reviewer | Review năm trục cho thay đổi | `reports/CODE_REVIEW` |
 | 8 | `/scan` ⃰ | Security Auditor | Quét lỗ hổng sau phát triển | `security/SCAN_REPORT` |
@@ -128,11 +128,16 @@ Mở [plans/todo.md](plans/todo.md) bất cứ lúc nào để xem việc đã x
 
 <sub>⃰ = bước optional, nhưng **blocking nếu chạy** (security gate là không thể thương lượng).</sub>
 
+**Tham số optional (để bạn biết mà dùng):**
+- **`/spec`** — với sản phẩm có UI, **ASCII wireframes sinh mặc định**; thêm **`--prototype`** (hoặc nói *"kèm prototype"*) để sinh thêm clickable HTML prototype cho stakeholder click-through duyệt.
+- **`/arch`** — Rejection ADR (component stack cố ý loại trừ) mặc định gộp **một bảng**; thêm **`--adr=per-component`** (hoặc nói *"ADR riêng cho từng component"*) để mỗi component loại trừ là một ADR đầy đủ (vd audit/compliance).
+
 ### Lệnh hỗ trợ
 
 | Lệnh | Mục đích |
 |------|----------|
 | `/discover` | **Onboard brownfield** — khảo sát codebase có sẵn, verify build/run, sinh Project Profile |
+| `/discover-system` | **Multi-repo** — gom discovery per-repo thành bản đồ hệ thống (service catalog, call-graph, journey xuyên service); read-only, tài liệu một chiều |
 | `/debug` | Debug có hệ thống — tìm root cause, không vá triệu chứng |
 | `/simplify` | Giảm độ phức tạp mà không đổi behavior |
 | `/fix-issue` | Phân tích và sửa bug trong chu kỳ dev (kết thúc ở `/review`) |
@@ -217,18 +222,18 @@ Override chỉ thay phần dialect/backend-specific — mọi nguyên lý agnost
 ```
 .claude/
 ├── CLAUDE.md          # Bộ não — pipeline, gate, Project Profile, index rules
-├── commands/          # 17 workflow slash-command (/spec, /arch, /build, …)
+├── commands/          # 18 workflow slash-command (/spec, /arch, /build, …)
 ├── agents/            # 11 playbook agent chuyên biệt
 ├── rules/             # 17 quy tắc kỹ thuật bắt buộc
 │   └── overrides/     # 8 override theo stack (Postgres, Node.js, ELK, …)
 ├── skills/            # Kỹ thuật tái dùng (tdd, code-review, …)
-├── references/        # 10 checklist (security, testing, docker, a11y, …)
-├── templates/         # Template STRIDE & OWASP
+├── references/        # 10 reference/checklist (security, testing, docker, a11y, multi-repo, …)
+├── templates/         # template fill-only: STRIDE · OWASP · TEST_REPORT · VERIFY_REPORT · CODE_REVIEW · RUNBOOK_RELEASE · wireframes
 ├── hooks/             # Lifecycle hook (thống kê lệnh)
 └── scripts/           # Scanner bảo mật (dotnet, nodejs, python, docker)
 
 # Sinh ra trong quá trình làm việc:
-specs/  architecture/  plans/  security/  src/  tests/  reports/  docker/  docs/
+specs/  architecture/  plans/  security/  src/  web/  tests/  reports/  docker/  docs/
 ```
 
 > 📖 Nguồn chân lý duy nhất cho toàn bộ workflow là [.claude/CLAUDE.md](.claude/CLAUDE.md) — bắt đầu từ đó nếu bạn muốn tìm hiểu sâu.

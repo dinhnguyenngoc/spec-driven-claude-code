@@ -25,6 +25,8 @@ The full set of `@US-XXX-Snn` IDs **is** the acceptance checklist of the feature
 
 A scenario's test must assert the **observable *Then*** — the effect / state change, surviving a round-trip (reload / re-fetch) — not merely that an endpoint/class exists or returns `200 OK`. A test that would still pass if the feature were silently removed does **NOT** satisfy the scenario. **One scenario : its own test** — never conflate two scenarios into one test (e.g. a "favorite filter" test does not cover the "click-favorite-to-mark" action).
 
+> **Handoff producer→consumer — test the join, not each side.** When one unit produces a value another consumes (navigation state key, React context, event/message name, shared prop contract), ≥ 1 test MUST exercise **both ends together** (producer acts → assert the consumer's observable effect). Two sides each unit-passing in isolation does **NOT** cover the join — a key/name mismatch passes both yet breaks the feature. (This is the intra-app analogue of the consumer↔API contract check, and what let the register-success banner break: producer set `justRegistered`, consumer read `fromProtected`, both green alone.)
+
 ### 4. UI-observable needs UI-layer proof
 
 A scenario whose *Then* is user-observable in the UI requires a **UI / E2E-layer** test; an API-layer test alone proves the endpoint, not that the user can reach the behaviour. If deep UI E2E is deferred to `/verify`, record the gap explicitly (TEST_REPORT §9) — never count it as covered.

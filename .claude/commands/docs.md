@@ -21,6 +21,17 @@ Consolidate existing documentation and complete missing pieces before deployment
 
 ## Workflow
 
+> **Run mode — first-run vs incremental.**
+> - `docs/` largely absent → **first-run:** generate the full set (Phases 1-6).
+> - `docs/` already exists → **incremental:** update only the docs the change touched + `CHANGELOG.md`; leave unchanged docs alone. Delta → doc map:
+>   - new/changed endpoint → `docs/api/` + `CHANGELOG.md`
+>   - new env var → `configuration.md`
+>   - fixed bug (BUG-### in `TEST_REPORT.md`) → `troubleshooting.md`
+>   - setup / run / deploy steps changed → `getting-started.md` + `deployment.md`
+>   - any release → `CHANGELOG.md`
+> - **When unsure whether a doc is affected → regenerate it** (don't risk staleness).
+> - **Before a major release, do a full-set pass** (treat as first-run) to catch drift.
+
 ### Phase 0: Audit Existing Documentation
 
 Before creating new docs, review what already exists from previous phases:
@@ -31,6 +42,7 @@ Before creating new docs, review what already exists from previous phases:
 | `architecture/ARCHITECTURE.md` | System design | `docs/architecture.md` |
 | `architecture/adr/` | Decision records | Link from architecture.md |
 | `architecture/api/` | API contracts | `docs/api/` |
+| `docs/CODEBASE_MAP.md` (brownfield, from `/discover`) | API / module surface inventory | `docs/api/` + `docs/architecture.md` — use instead of re-reading every controller (consume-`/discover` chain) |
 | `security/THREAT_MODEL.md` | Threats + STRIDE | `docs/security.md` |
 | `security/SCAN_REPORT.md` | Accepted Risks + Findings (F-#) | `docs/deployment.md` Production hardening backlog |
 | `reports/CODE_REVIEW.md` | Findings + carry-forward warnings | `docs/troubleshooting.md`, deployment backlog |
@@ -39,6 +51,7 @@ Before creating new docs, review what already exists from previous phases:
 | `reports/DEPLOY_RUNBOOK.md` | Operator procedures | Link from `docs/deployment.md` |
 | `plans/todo.md` | Bug + hotfix audit trail, backlog | `docs/troubleshooting.md`, `CHANGELOG.md` |
 | `docker-compose.yml` (repo root) | Service dependencies | `docs/deployment.md` |
+| `docker/Dockerfile` + `docker-compose.yml` + `.env.example` | Platform/setup gotchas encoded in the build (DB image choice on arm64, Alpine globalization env, migration-on-first-run, DB volume + password) | `docs/getting-started.md` Prerequisites + `docs/troubleshooting.md` — surface the platform-specific setup steps a newcomer hits; **derive from the project's own build files, don't re-author** |
 | Existing root `README.md` / `CHANGELOG.md` | Pre-existing? Framework-level? | **PRESERVE** if it serves a wider scope (monorepo / framework parent) — author product-level `docs/README.md` instead. Never blindly overwrite. |
 
 ### Phase 1: Documentation Inventory
@@ -263,7 +276,7 @@ export VERSION="v1.0.0"
 docker build -t app:${VERSION} -f docker/Dockerfile .
 
 # Run (docker-compose.deploy.yml lives at repo root, alongside docker-compose.yml)
-IMAGE_TAG=${VERSION} docker-compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
+IMAGE_TAG=${VERSION} docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
 \`\`\`
 
 ## Manual Deployment
@@ -275,8 +288,9 @@ dotnet restore
 # Build release
 dotnet publish -c Release -o ./publish
 
-# Run migrations
-dotnet ef database update --project src/MyApp.Infrastructure
+# Run migrations — generate idempotent script, review, then apply (never `database update` straight to prod)
+dotnet ef migrations script --idempotent --project src/MyApp.Infrastructure -o migrate.sql
+# review migrate.sql → apply via DB tooling / CI
 
 # Start
 dotnet ./publish/MyApp.Api.dll
@@ -298,6 +312,8 @@ dotnet ./publish/MyApp.Api.dll
 ## Quality Gate 10 — Documentation Checklist
 
 Before proceeding to `/deploy`:
+
+> **Incremental run:** items already satisfied by a prior `/docs` run stay checked if still accurate; only re-verify the docs the change touched. The link-check + no-duplication (Integrity) below run over the **whole** set regardless — so integrity holds even when only part was regenerated.
 
 ### Audit (Phase 0)
 - [ ] Reviewed `specs/SPEC.md` for features list
@@ -335,6 +351,7 @@ Before proceeding to `/deploy`:
 ### Integrity
 - [ ] **No broken internal links** — verify with `markdown-link-check '**/*.md'` or `lychee docs/ *.md` (exit code 0 = clean)
 - [ ] **No duplication** — each fact lives in exactly one canonical place; other docs link to it
+- [ ] **Output-style conformance** (`rules/output-style.md`) — each doc opens with a plain-language summary (what / why / for-whom); register matches its reader (getting-started/api = newcomer/dev; deployment/troubleshooting = operator, step-by-step); jargon defined on first use
 - [ ] Existing root `README.md` / `CHANGELOG.md` preserved if framework-level (see Phase 0 last row)
 
 ## Auto-Generation Tools
@@ -359,7 +376,8 @@ Invoke: **Technical Writer**
 ```text
 "As Technical Writer, generate documentation for the project.
 Output language: Vietnamese for prose/artifacts, English for code and technical identifiers
-(see .claude/CLAUDE.md → Output Language)."
+(see .claude/CLAUDE.md → Output Language).
+Output clarity: follow rules/output-style.md — audience-first, plain-language summary, register per reader."
 ```
 
 ## Next Step

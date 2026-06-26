@@ -120,7 +120,7 @@ The patch must have its own **identity** for audit & rollback:
 | `reports/VERIFY_REPORT.md` | Gate 11 PASS on the new digest (including the incident-reproduction test) |
 | `reports/verify-artifact.lock` | digest verified == digest promoted |
 | `reports/DEPLOY_RUNBOOK.md` (§Troubleshooting) | new failure mode |
-| `reports/incidents/INC-<id>.md` (recommended) | timeline + MTTR + prevention |
+| Incident note — `reports/incidents/INC-<id>.md` (recommended location) **or** folded into the release notes (per Step 6) | timeline + detection→recovery MTTR + root cause + preventive action — **content mandatory; location flexible** |
 | Regression test | test that failed-before-fix, now green (in `tests/` — inherited from `/fix-issue`) |
 
 ---
@@ -133,6 +133,7 @@ The patch must have its own **identity** for audit & rollback:
 - [ ] **`/verify` Gate 11 PASS on the new digest**, including a test that reproduces the incident scenario
 - [ ] `/deploy` promotes the verified digest, rollback-ready, post-deploy smoke passes on live
 - [ ] DEPLOY_RUNBOOK §Troubleshooting updated with the new failure mode
+- [ ] **Incident note recorded** — timeline + detection→recovery (MTTR) + root cause + preventive action, in `reports/incidents/INC-<id>.md` (recommended) or the release notes — do not skip (audit trail is a core deliverable of `/hotfix`)
 - [ ] Permanent preventive test added at the layer that should-have-caught (not just a regression for this case)
 
 ---

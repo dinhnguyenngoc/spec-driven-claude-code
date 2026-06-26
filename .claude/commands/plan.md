@@ -27,7 +27,7 @@ Transform a specification into an ordered list of small, verifiable tasks. Each 
 
 1. **Spec-readiness pre-check** — confirm the spec passed Gate 1: every scenario has a stable ID (`@US-XXX-Snn`) and a testable, observable AC. If a scenario is missing an ID, has a vague/untestable AC, or a needed behaviour isn't in the spec at all → **do not start decomposing it.**
 2. **Read the spec** — Understand objectives and acceptance criteria
-3. **Survey the codebase** — Identify relevant files, patterns, and integration points
+3. **Survey the codebase** — Identify relevant files, patterns, and integration points. *(Brownfield: consume `/discover` artifacts as the index — see §Brownfield Mode — do not re-survey the tree.)*
 4. **Review architecture (if exists)** — Check ADRs, API contracts, diagrams
 5. **Map dependencies** — Which components depend on which?
 
@@ -83,13 +83,12 @@ Each task must include:
 > AC describes the **observable behavior**; Tests to add lists the **specific test files/names** that prove each AC. Keep them in 1-to-1 (or 1-to-many) correspondence — every AC should be backed by at least one named test.
 >
 > **One scenario : its own effect-asserting test** — per [`references/scenario-traceability.md`](../references/scenario-traceability.md) §3–4: each scenario ID maps to a test asserting **that scenario's observable *Then*** (never conflate two scenarios into one test); a UI-observable scenario requires a UI/E2E-layer test, not an API test alone.
+>
+> **Test the handoff** — if a slice has one unit that *produces* a value another *consumes* (navigation-state key, React context, event/message name, shared prop contract), list ≥ 1 test exercising **both ends together** (producer acts → consumer's observable effect asserted), not two isolated per-side tests — per [`references/scenario-traceability.md`](../references/scenario-traceability.md) §3 (handoff clause). A key/name mismatch passes both sides alone yet breaks the feature.
 
 **Dependencies**: [Task IDs this depends on]
 
-**Verification**:
-- [ ] Unit tests pass
-- [ ] Integration test added
-- [ ] Manual verification: [steps a human/agent runs to confirm done]
+**Verification**: Done when every test under "Tests to add" passes, plus manual check: [steps a human/agent runs to confirm done]
 
 **Estimate**: S | M | L  *(S ≤ 2 h, M 2–6 h, L 6–12 h — task-level. Stories > 12 h must be split.)*
 ```
@@ -126,6 +125,8 @@ Save to `plans/` directory:
 - `plans/plan.md` — Full planning document with context
 - `plans/todo.md` — Actionable task checklist
 
+> **Single source of truth = the Task blocks (Phase 3)** in `plans/plan.md`. The **Summary table** and **`todo.md`** are **pure projections** — they reuse each task's id + title **verbatim** and add no new scope/detail. When a task changes, edit the Task block, then re-project; never let the three drift.
+
 ### `plans/plan.md` — required structure
 
 The plan document MUST include the following sections, in this order:
@@ -138,7 +139,7 @@ The plan document MUST include the following sections, in this order:
    - `/build`: Unit tests (xUnit + Moq) + Integration tests using the **InMemory** `WebApplicationFactory` template (no Docker).
    - Deferred to `/test`: TestContainers + Playwright E2E.
 
-3. **Summary table** — every task in one scan:
+3. **Summary table** — every task in one scan (**projection** of the Task blocks; reuse id + title verbatim, no new detail):
 
    | # | Task | User story | Estimate | Phase |
    |---|------|------------|---------:|-------|
@@ -168,6 +169,8 @@ The plan document MUST include the following sections, in this order:
 
 ### `plans/todo.md` — template
 
+> **Projection only:** each line is `- [ ] Task <id>: <same title as its Task block>` — do not re-describe or add scope. Update `plan.md` first, then re-project.
+
 ```markdown
 # TODO: [Feature Name]
 
@@ -195,19 +198,21 @@ Before proceeding to `/secure`:
 - [ ] Tasks broken into vertical slices (no horizontal "all DB → all API → all UI" tasks)
 - [ ] Every task traces to a user story (or is flagged "Foundation" with reason)
 - [ ] **Scenario coverage 100% — every `@US-XXX-Snn` from the spec is listed under some task's "Scenarios covered", or in a Deferred/Waived table (reason + owner). No scenario hidden inside a bundled task.**
+- [ ] **NFR coverage — every NFR from the spec and every mechanism in `/arch`'s NFR-mechanism table (e.g. rate limiter on `/auth/login`, Redis cache + indexed read path for a P95 target) is either a task, folded into a task's AC, or listed in Out of scope / Deferred (reason + owner). No NFR drops silently.** This closes the `spec NFR → arch mechanism → plan task` chain — the symmetric counterpart of the scenario-coverage rule above. **Baseline NFR sweep:** also cross-check a baseline set (security headers / CSP / HSTS, CORS, rate-limiting — `security.md`; accessibility — `accessibility-checklist.md`); a baseline NFR absent from *both* spec and arch is **not** silently passed — route it back to `/spec` / `/arch` or record a blocking Open item. Do **not** invent a task (honor No-invented-scope above) — this sweep *exposes* a gap, it does not *fill* it.
 - [ ] Each task has acceptance criteria
 - [ ] Each task lists explicit **Tests to add** (file + name per AC)
 - [ ] **Each scenario ID → its own test asserting that scenario's *Then* (no conflation); UI-observable scenarios have a UI/E2E-layer test, not an API test alone**
 - [ ] **No invented scope** — every task traces to a spec scenario/NFR; any spec gap or ambiguity was routed back to `/spec` (or asked), not filled by guessing. Spec-readiness pre-check passed (every scenario has an ID + testable AC).
 - [ ] Dependencies mapped between tasks
 - [ ] Checkpoints inserted between phases
-- [ ] `plans/plan.md` includes: Inputs consumed · Build-time testing scope · Summary table · Risk register · Out of scope
+- [ ] `plans/plan.md` includes: Inputs consumed · Build-time testing scope · Summary table · Phases/Tasks · Risk register · Out of scope
 - [ ] `plans/todo.md` is actionable
 
 ## Brownfield Mode (when `Project Profile → Mode: brownfield`)
 
 Planning on legacy differs from greenfield in that it must **protect what is already running**, not just build new things:
 
+- **Consume `/discover` artifacts, don't re-survey (Phase 1):** read `docs/CODEBASE_MAP.md` (endpoint inventory + red-flag list) + baseline `specs/SPEC.md` + `architecture/ARCHITECTURE.md` as the navigation index → go directly to the slice of code the change touches. Do **NOT** re-scan the whole tree (that was `/discover`'s job; `/plan` is per-change). **Fallback:** if `CODEBASE_MAP.md` is missing/incomplete → re-run `/discover` (or scan only the missing area), don't silently full-scan.
 - **Characterization-test-first for the area being touched:** every task that touches legacy code without tests must include a sub-step "write a characterization test capturing current behavior (PASS) before modifying" — per `rules/brownfield.md`. Include it in the task's "Tests to add".
 - **Backward compatibility is an acceptance criterion:** every task that modifies an existing feature (B2) adds an AC "old behavior/contract unchanged" + a corresponding backward-compat test.
 - **Migration plan for B5 (upgrade):** use **strangler-fig** — split the task into: (1) build the new implementation behind an abstraction/seam, (2) route some traffic via feature flag, (3) measure + expand gradually, (4) remove the old version. No big-bang rewrite in a single task.

@@ -34,8 +34,8 @@ Users should achieve their goals without fighting the UI. Performance, accessibi
 > | Behind auth wall only? | ❌ | ✅ |
 > | Heavy server data fetching at request time? | ✅ | ❌ |
 > | Mostly CRUD admin tooling? | ❌ | ✅ |
-| Static marketing + blog? | ✅ | ❌ |
-| Latency-sensitive desktop-style app? | ❌ | ✅ |
+> | Static marketing + blog? | ✅ | ❌ |
+> | Latency-sensitive desktop-style app? | ❌ | ✅ |
 
 > If both surfaces exist in the same repo, use a monorepo layout: `apps/web` (Next.js) + `apps/admin` (Vite SPA) sharing `packages/ui` and `packages/types`.
 

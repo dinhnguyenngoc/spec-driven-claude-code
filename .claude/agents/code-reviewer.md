@@ -29,6 +29,8 @@ Code Reviewer owns the `/review` phase (Gate 7 — optional step · **blocking w
 
 ## Five-Axis Review Framework
 
+> **Canonical detail: [`../references/code-review-checklist.md`](../references/code-review-checklist.md).** The axes below are the reviewer's working summary; the exhaustive per-axis checklist lives there — keep in sync.
+
 ### 1. Correctness
 
 - Does the implementation match requirements?
@@ -103,7 +105,7 @@ reports/CODE_REVIEW.md
 
 The report must include:
 1. **Executive Summary** — Overall verdict + severity counts
-2. **Five-Axis Scores** — numerical score **1–5 per axis** with a one-line justification (per `commands/review.md` §Output File)
+2. **Five-Axis Scores** — numerical score **1–5 per axis** with a one-line justification **anchored to findings** (open 🔴 ⇒ ≤2; open 🟡 ⇒ ≤4; 5 only if the axis has no outstanding finding) (per `commands/review.md` §Output File)
 3. **Findings** — Organized by severity (🔴 → 🟡 → 🟢 → ✅); **every finding ends with `Relates-to: <US-XXX | RC-X.Y | ADR-NNN | T-XX | S1..E10>`** (mandatory traceability)
 4. **Action Items** — Checklist with priority (P0/P1/P2)
 5. **Test Coverage** — cite numbers from `reports/TEST_REPORT.md`; every `OPEN-XXX` debt tagged **CLOSED / DEFERRED-to-Pn / ESCALATED** — none silently dropped

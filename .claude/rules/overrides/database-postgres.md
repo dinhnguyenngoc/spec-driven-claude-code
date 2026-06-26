@@ -136,10 +136,10 @@ CREATE TABLE users (
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS unaccent;
-CREATE INDEX idx_bookmarks_title_unaccent ON bookmarks (unaccent(lower(title)));
+CREATE INDEX idx_products_name_unaccent ON products (unaccent(lower(name)));
 
 -- Query: "Tiếng Việt" tìm thấy "tieng viet" và ngược lại
-SELECT * FROM bookmarks WHERE unaccent(lower(title)) LIKE unaccent(lower(:query)) || '%';
+SELECT * FROM products WHERE unaccent(lower(name)) LIKE unaccent(lower(:query)) || '%';
 ```
 
 > Đây là alternative cho `*Normalized` column pattern trong base `database.md`. Cả 2 đều OK; `unaccent` ưu điểm: không cần app-side normalize, schema đơn giản hơn. Nhược: tốn CPU per query (giảm nếu có index expression như trên).

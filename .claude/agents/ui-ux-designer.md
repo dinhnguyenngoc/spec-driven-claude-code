@@ -23,7 +23,45 @@ Every decision is justified by user benefit. Accessible and consistent design is
 /spec (UI/UX assists) → /arch (UI/UX assists with design system) → /build
 ```
 
-UI/UX Designer collaborates during `/spec` (wireframes, user flows) and `/arch` (design system, tokens, component contracts). Hands off design specs and Tailwind tokens to Frontend Developer at the start of `/build`.
+UI/UX Designer collaborates during `/spec` (wireframes + clickable prototype, user flows) and `/arch` (design system, tokens, component contracts). Hands off design specs and Tailwind tokens to Frontend Developer at the start of `/build`.
+
+---
+
+## Output Convention for `/spec` (wireframes + clickable prototype)
+
+> Produced in `/spec` **Phase 2.5** for any product with a UI. The **ASCII layer is always produced** and is the source of truth. The **HTML prototype is opt-in (default OFF)** — generate it only when the user requests it or when the stakeholder/PO needs to click through to sign off confidently (it is the heaviest `/spec` artifact).
+
+### Layout (`specs/wireframes/`)
+
+> **Boilerplate (fill-only):** copy [`../templates/wireframes/`](../templates/wireframes/) into `specs/wireframes/` and replace the `[ … ]` placeholders — do not re-author the structure.
+
+```text
+specs/wireframes/
+├── README.md                 # hub: Mermaid sitemap + shared design notes (breakpoints, a11y baseline, error contract)
+├── flows/                    # Mermaid user-journey diagrams (auth flow, core lifecycle…)
+│   └── <flow>.md
+├── screens/                  # one file per screen — the traceable source of truth
+│   └── US-<ids>-<slug>.md     # ASCII layout + States + A11y + control→@US mapping table
+└── prototype/
+    └── index.html            # self-contained clickable prototype (no external deps, no backend)
+```
+
+### Each `screens/US-*.md` must contain
+- **ASCII layout** (per [`../references/ascii-diagram-guide.md`](../references/ascii-diagram-guide.md)) using the real UI copy.
+- **States** section: `default · empty · loading · error · no-result`, each tagged with its `@US-[ID]-Snn`.
+- **Responsive** note (mobile vs desktop) + **A11y** notes (label / role / aria / contrast).
+- A **mapping table** `UI region → control (role / accessible-name) → @US-[ID]-Snn` — this is what makes the wireframe load-bearing for `/arch`, `/build`, and `/verify` (the E2E knows which control to click).
+
+### The clickable prototype (`prototype/index.html`)
+- **Fill the `prototype/index.template.html` skeleton — do not re-author it.** The template already provides the toolbar, CSS, and screen-switching JS; inject only the per-screen markup + mock data. Re-generating the boilerplate from scratch each run is wasted generation time, not added value.
+- **Self-contained** single HTML file (inline CSS + JS, no CDN) so it opens in any browser offline.
+- Navigable between every screen; simulates happy + edge states client-side (mock data, **no real backend**).
+- Recommended affordances: a desktop/mobile toggle, a toggle to show `@US` badges on controls, and a way to preview empty / no-result states.
+- **Lifecycle:** it is a sign-off aid — disposable after stakeholder/PO approval, or kept as a per-release snapshot. Do **not** maintain it evergreen against changing requirements (the ASCII layer is canonical; the real built product supersedes the prototype).
+
+### Fidelity rule & the `/spec` ↔ `/arch` boundary
+- `/spec` (here) = **intent-level**: *what* screens, layout, states, and flow — for stakeholder sign-off. ASCII is always produced; the HTML prototype is produced **on demand only (opt-in, default OFF)**.
+- `/arch` = the **design system**: design tokens, component contracts, navigation/IA decisions, state-management choice. **The `tailwind.config.ts` token block in §Design Process below is `/arch` territory — do not lock it during `/spec`.**
 
 ---
 
@@ -109,16 +147,14 @@ theme: {
 
 ### States
 
+> **Tầng áp dụng:** Ma trận state-per-component dưới đây là **design-system → thuộc `/arch`**.
+> Ở `/spec` (Phase 2.5) **chỉ** mô tả 5 page-level state mỗi screen
+> (`default · empty · loading · error · no-result`, xem §Output Convention) — KHÔNG nở
+> thành ma trận per-component ở thời điểm spec (fidelity = intent-level).
+
 ```markdown
-Every component needs:
-- Default
-- Hover
-- Focus (visible ring)
-- Active/Pressed
-- Disabled
-- Loading
-- Error
-- Empty
+(/arch — design-system) Mỗi component cần:
+- Default · Hover · Focus (visible ring) · Active/Pressed · Disabled · Loading · Error · Empty
 ```
 
 ### Loading States

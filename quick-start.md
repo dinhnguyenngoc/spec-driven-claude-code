@@ -4,7 +4,7 @@
 
 ## Kit này là gì?
 
-Một bộ "harness" SDLC cho Claude Code: **12 lệnh pipeline** (`/spec` → `/arch` → `/plan` → `/secure` → `/build` → `/test` → `/review` → `/scan` → `/infra` → `/docs` → `/verify` → `/deploy`) + 5 lệnh hỗ trợ, mỗi lệnh do một **agent chuyên trách** đảm nhiệm và kết thúc bằng một **Quality Gate**. Mục tiêu: output tái lập được, có truy vết spec → code → test → deploy, không phụ thuộc trí nhớ của người chạy.
+Một bộ "harness" SDLC cho Claude Code: **12 lệnh pipeline** (`/spec` → `/arch` → `/plan` → `/secure` → `/build` → `/test` → `/review` → `/scan` → `/infra` → `/docs` → `/verify` → `/deploy`) + 6 lệnh hỗ trợ, mỗi lệnh do một **agent chuyên trách** đảm nhiệm và kết thúc bằng một **Quality Gate**. Mục tiêu: output tái lập được, có truy vết spec → code → test → deploy, không phụ thuộc trí nhớ của người chạy.
 
 ## Cách bắt đầu — KHÔNG cần nhớ lệnh nào
 
@@ -32,6 +32,7 @@ Sau đó Claude hỏi bạn chọn **chế độ thực thi**:
 | Bạn nói | Luồng | Kỷ luật then chốt |
 |---------|-------|-------------------|
 | "Nhận repo legacy này lần đầu" | **Phase A** | Read-only: `/discover` → `/spec`(reverse) → `/arch`(reverse) → `/infra`(reverse-bootstrap) |
+| "Sản phẩm microservices nhiều repo" | **Multi-repo** | Per repo chạy Phase A; rồi `/discover-system` 1 lần trong workspace → bản đồ hệ thống (một chiều). Xem [`brownfield-pipeline`](.claude/references/brownfield-pipeline.md) + [`microservices-multirepo`](.claude/references/microservices-multirepo.md) |
 | "Thêm tính năng MỚI" | **B1** | Spec chỉ phần delta; mở surface ngoài (payment/SSO/webhook) → nên chạy `/secure` |
 | "Sửa tính năng ĐÃ CÓ" | **B2** | **Characterization test TRƯỚC khi sửa** (chụp behavior hiện tại, PASS) |
 | "Fix bug" (chưa release) | **B3** | `/fix-issue`: regression test fail-trước-fix, root cause `file:line` |
@@ -47,6 +48,15 @@ Bảng đầy đủ + thứ tự lệnh từng luồng: [`.claude/references/bro
 1. **Không skip gate đang BLOCKING** — gate optional (`/secure`, `/review`, `/scan`, `/verify`) có thể bỏ qua, nhưng **đã chạy thì phải pass** mới đi tiếp.
 2. **`plans/todo.md` là sự thật** — task xong phải tick `- [x]` trước khi báo done; chưa tick = chưa xong.
 3. **Hỏi, không đoán** — yêu cầu thiếu/mơ hồ thì Claude sẽ hỏi lại hoặc ghi thành Assumption chờ bạn confirm; đừng ngại trả lời, đó là cách spec không bị "đoán bừa".
+
+## Tham số optional hay dùng (biết để dùng khi cần)
+
+Hầu hết việc mô tả bằng câu thường là đủ, nhưng 2 lệnh có tham số đáng nhớ:
+
+| Lệnh | Mặc định | Bật thêm khi cần |
+|------|----------|------------------|
+| `/spec` | Sản phẩm UI: **ASCII wireframes sinh sẵn** | `--prototype` (hoặc nói *"kèm prototype"*) → thêm clickable HTML prototype cho stakeholder duyệt click-through |
+| `/arch` | Component stack loại trừ → **1 Rejection ADR gộp bảng** | `--adr=per-component` (hoặc *"ADR riêng từng component"*) → mỗi component loại trừ 1 ADR đầy đủ (audit/compliance) |
 
 ## Scope khi làm brownfield — câu hỏi hay gặp nhất
 

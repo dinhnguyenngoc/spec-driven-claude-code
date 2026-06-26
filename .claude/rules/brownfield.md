@@ -1,18 +1,14 @@
 # Brownfield Rules — Làm việc trên Legacy Code
 
-> **Scope:** kỷ luật bắt buộc khi `Project Profile → Mode: brownfield` (làm việc trên codebase đã tồn tại / đang chạy production). Stack-agnostic về nguyên lý; ví dụ dùng C#/ASP.NET cho khớp kit này.
+> **Tóm tắt:** Bộ kỷ luật **bắt buộc khi sửa code đang chạy / đã release** (`Project Profile → Mode: brownfield`). Ràng buộc số một đổi từ *"tôi xây gì"* (greenfield) sang **"tôi phải KHÔNG phá gì"** — nên mọi nguyên tắc dưới đây xoay quanh việc **dựng lưới an toàn trước khi đụng code**. **Greenfield bỏ qua toàn bộ file này.**
 >
-> **Greenfield không áp dụng file này.** Khi `Mode: greenfield`, bỏ qua toàn bộ rule ở đây.
-
-Nguồn nguyên lý: Michael Feathers — *Working Effectively with Legacy Code* (characterization test, seams), strangler-fig pattern, và các nguyên tắc vận hành an toàn cho hệ thống đang chạy.
+> Nguồn nguyên lý: Michael Feathers — *Working Effectively with Legacy Code* (characterization test, seams) + strangler-fig pattern.
 
 ---
 
 ## Định nghĩa
 
-> **Legacy code** = code đang chạy / đã release nhưng **thiếu tài liệu, thiếu test, hoặc thiếu spec** mô tả ý định. Vấn đề cốt lõi không phải "code cũ" mà là **thiếu lưới an toàn để thay đổi tự tin**.
-
-Ràng buộc lớn nhất chuyển từ *"tôi xây gì"* (greenfield) sang **"tôi phải KHÔNG phá gì"** (brownfield).
+**Legacy code** = code đang chạy / đã release nhưng **thiếu test, spec, hoặc tài liệu** mô tả ý định. Vấn đề cốt lõi không phải "code cũ" mà là **thiếu lưới an toàn để thay đổi tự tin**.
 
 ---
 
@@ -20,16 +16,18 @@ Ràng buộc lớn nhất chuyển từ *"tôi xây gì"* (greenfield) sang **"t
 
 ### 1. Measure vs Verify — phân biệt rõ
 
-Cùng một lệnh làm hai việc khác nhau tùy ngữ cảnh:
+**Nghĩa là:** cùng một lệnh có thể đang *đo hiện trạng* (measure) hoặc *kiểm đúng yêu cầu* (verify) — chỉ "verify" mới cần spec. Phân biệt để không đi kiểm "đúng/sai" khi còn chưa có spec định nghĩa "đúng" là gì.
 
 | Hoạt động | Cần spec? | Thuộc giai đoạn |
 |-----------|:---------:|-----------------|
 | **Measure** — đo hiện trạng (coverage hiện có, suite pass?, complexity, vuln) | ❌ Không | Discovery (read-only) |
 | **Verify** — kiểm behavior khớp acceptance criteria | ✅ Có | Per-change (sau khi có spec) |
 
-> Hệ quả: bất kỳ bước nào dính tới acceptance criteria (`/test` verify, `/review` trục Correctness) **không thể đứng trước reverse-`/spec`**. Trong Discovery chỉ làm *measure*; *verify* để per-change.
+> **Hệ quả:** bước nào dính acceptance criteria (`/test` verify, `/review` trục Correctness) **không thể đứng trước reverse-`/spec`** — chưa có spec thì chưa có "đúng" để kiểm. Discovery chỉ *measure*; *verify* để per-change.
 
 ### 2. Upfront vs Per-change — không làm hàng loạt trước
+
+**Nghĩa là:** việc *một lần* (bản đồ code, baseline) làm ở Discovery; việc *theo từng thay đổi* chỉ làm cho **đúng vùng đang đụng** — không retrofit cả repo.
 
 | Làm 1 lần upfront (Discovery) | Làm per-change (luồng B) |
 |-------------------------------|--------------------------|
@@ -37,11 +35,13 @@ Cùng một lệnh làm hai việc khác nhau tùy ngữ cảnh:
 | Baseline spec/arch (reverse) | Full `/review` Five-Axis cho **slice mình sửa** |
 | Health snapshot nhẹ + red-flag | `/test` verify cho thay đổi cụ thể |
 
-> Đừng viết characterization test cho cả codebase, đừng review toàn repo. Chỉ làm cho vùng thay đổi chạm tới — đúng lúc, đúng chỗ.
+> Đừng viết characterization test cho cả codebase, đừng review toàn repo — chỉ cho vùng thay đổi chạm tới.
 >
-> **VIẾT theo delta — CHẠY toàn bộ:** quy tắc trên giới hạn phần *viết mới* (test, characterization, review effort); còn suite/verify-suite **đã automated** thì CHẠY full mỗi vòng — regression net xanh mới chứng minh phần không đổi không bị ảnh hưởng. Bảng tra cho `/test` · `/review` · `/verify` + cây quyết định 9 tình huống: [`../references/brownfield-pipeline.md`](../references/brownfield-pipeline.md) §Scope per-change.
+> **VIẾT theo delta — CHẠY toàn bộ:** quy tắc trên chỉ giới hạn phần *viết mới* (test, characterization, review effort); còn suite/verify-suite **đã automated** thì CHẠY full mỗi vòng — regression net xanh mới chứng minh phần không đổi không bị ảnh hưởng. Bảng tra `/test` · `/review` · `/verify` + cây quyết định 9 tình huống: [`../references/brownfield-pipeline.md`](../references/brownfield-pipeline.md) §Scope per-change.
 
 ### 3. Backward compatibility mặc định
+
+**Nghĩa là:** mặc định **không phá** thứ mà client / dữ liệu / hệ thống tích hợp đang dựa vào.
 
 - API contract, response shape, DB schema, event/message format, public behavior **không được phá** trừ khi có ADR + migration plan.
 - Thay đổi phá vỡ (breaking change) → bump major version + deprecation window + migration path.
@@ -49,7 +49,9 @@ Cùng một lệnh làm hai việc khác nhau tùy ngữ cảnh:
 
 ### 4. ADR mới mới được đổi kiến trúc
 
-- Luồng phát triển tính năng / sửa tính năng (B1, B2): **giữ nguyên kiến trúc** — `/arch` ở chế độ conformance-gate.
+**Nghĩa là:** chỉ đổi kiến trúc khi có **ADR** (Architecture Decision Record — bản ghi quyết định kiến trúc) — không "tiện tay" đổi khi đang làm việc khác.
+
+- Luồng phát triển / sửa tính năng (B1, B2): **giữ nguyên kiến trúc** — `/arch` ở chế độ conformance-gate.
 - Chỉ luồng nâng cấp (B5) được đổi kiến trúc, **bắt buộc ADR** (kèm v2-trigger) + migration plan.
 - Không "tiện tay" đổi pattern/structure khi đang làm việc khác.
 
@@ -57,7 +59,7 @@ Cùng một lệnh làm hai việc khác nhau tùy ngữ cảnh:
 
 ## Characterization Test — kỹ thuật trung tâm
 
-> **Định nghĩa:** test chụp lại **behavior hiện tại của code** (không phải behavior *đúng* theo spec), làm lưới an toàn trước khi sửa.
+> **Định nghĩa:** test chụp lại **behavior hiện tại của code** (không phải behavior *đúng* theo spec), làm lưới an toàn trước khi sửa. Cần vì legacy thường thiếu cả test lẫn spec — phải biết "code *đang* làm gì" mới phân biệt được thay đổi cố ý vs regression vô tình.
 
 Khác với TDD greenfield:
 
@@ -80,27 +82,30 @@ Khác với TDD greenfield:
 
 ### Seams (điểm cắt để test code khó test)
 
-Legacy thường có dependency cứng (new trực tiếp, static call, no DI). Để test được mà **không sửa behavior**:
-- Tìm **seam** — chỗ có thể thay đổi behavior mà không sửa code tại đó (extract interface, virtual method, parameterize constructor).
-- Ưu tiên seam ít rủi ro nhất; ghi lại nếu phải refactor để tạo seam (refactor tạo-seam là ngoại lệ duy nhất của "no gratuitous refactor", và phải có characterization test bao quanh trước).
+**Seam** = chỗ có thể thay đổi behavior mà **không sửa code tại đó**. Legacy thường có dependency cứng (new trực tiếp, static call, no DI) → cần seam để test được mà **không đổi behavior**:
+
+- Tạo seam bằng: extract interface, virtual method, parameterize constructor.
+- Ưu tiên seam ít rủi ro nhất; ghi lại nếu phải refactor để tạo seam — đây là **ngoại lệ duy nhất** của "no gratuitous refactor", và **phải có characterization test bao quanh trước**.
 
 ---
 
 ## Strangler-Fig — thay thế dần (cho B5)
 
-Khi nâng cấp/thay công nghệ, **không big-bang rewrite**:
+**Strangler-fig** = thay thế **dần dần**, không viết lại một phát (big-bang):
+
 1. Dựng implementation mới **song song** sau abstraction/interface.
 2. Định tuyến một phần traffic/call qua bản mới (feature-flag).
 3. Đo, mở rộng dần; bản cũ co lại tới khi bỏ được.
 4. Backward-compat suốt quá trình — cache miss / path mới lỗi → fallthrough bản cũ.
 
-> Ví dụ (LinkVault): `ICacheService` được thiết kế sẵn từ ngày đầu (ghi nhận bằng ADR khi chạy `/arch`) để sau này cắm Redis vào mà không đụng caller — đó là seam cho strangler-fig.
+> Ví dụ: `ICacheService` được thiết kế sẵn từ ngày đầu (ghi nhận bằng ADR khi chạy `/arch`) để sau này cắm Redis vào mà không đụng caller — đó là seam cho strangler-fig.
 
 ---
 
 ## No Gratuitous Refactor
 
-- Chỉ refactor trong **phạm vi đang đụng tới**, phục vụ thay đổi hiện tại.
+Chỉ refactor **trong phạm vi đang đụng tới**, phục vụ thay đổi hiện tại:
+
 - Không "dọn dẹp" code không liên quan trong cùng PR (làm vỡ review + tăng rủi ro regression).
 - Tech debt phát hiện → ghi vào backlog (`/simplify` riêng), không gộp vào feature/fix.
 - Ngoại lệ: refactor tạo-seam tối thiểu để test được code sắp sửa — phải có characterization test trước.

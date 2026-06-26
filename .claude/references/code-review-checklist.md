@@ -3,6 +3,8 @@
 > Quick reference for `/review` phase. Evaluate code across 5 axes.
 >
 > **Scoring:** findings are recorded in `reports/CODE_REVIEW.md` with a **numerical score 1–5 per axis** + one-line justification (per `commands/review.md` §Output File) — the checkboxes below feed those scores; they do not replace them.
+>
+> **Canonical Five-Axis source.** The per-axis checklist below is the source of truth for the Five-Axis framework. `agents/code-reviewer.md` and `skills/code-review/SKILL.md` carry a working summary of the same axes — when an axis changes here, update those two to match (same discipline as the four severity labels).
 
 ## Five-Axis Overview
 
@@ -19,6 +21,8 @@
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+> **Score honesty:** mỗi trục 1–5 **neo bằng finding** — còn 🔴 mở ⇒ ≤2; còn 🟡 chưa-đóng (kể cả accept-with-tracking / Action Item mở) ⇒ ≤4; **5 chỉ khi trục đó không còn finding**. Justification phải cite finding/Evidence, không cảm tính. (Canonical: `commands/review.md` §Output File.)
 
 ---
 
@@ -159,6 +163,12 @@ public async Task<IActionResult> Create(CreateUserRequest request)
 - [ ] Sensitive data not in responses
 - [ ] PII not logged
 - [ ] HTTPS enforced
+
+### Cross-cutting controls — wired, not just defined
+> Một control **được định nghĩa nhưng không đăng ký vào pipeline** = vô tác dụng trên artifact thật. Verify **đã wired** (cite `file:line`), không suy diễn từ "có file đó".
+- [ ] Security headers middleware **registered** in the request pipeline (cite where) + test assert presence — `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`
+- [ ] CORS / HTTPS-redirect / rate-limiter / auth middleware / global exception handler đều **wired** (cite), không chỉ defined
+- [ ] Mỗi PASS trong Compliance table có `Evidence` (file:line / test) — defined-but-unregistered ⇒ 🔴/🟡, **không** PASS
 
 ```csharp
 // ❌ Bad: IDOR vulnerability
