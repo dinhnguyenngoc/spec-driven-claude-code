@@ -77,6 +77,19 @@
 13. **ADR — Documentation as code** — every architectural decision recorded with context, options, consequences, v2 trigger
 14. **Postmortem (blameless)** — after every incident; document root cause + lessons; update runbook
 
+### 2.5 Execution discipline (while hands are on code)
+
+> Behavioral rules for the moment code is being written or changed — active in `/build`, `/fix-issue`, and any hands-on-code step of other commands. They target the classic LLM failure modes (silent wrong assumptions, overcomplication, out-of-scope edits); derived from Karpathy's observations, adapted to this kit's gate model.
+
+15. **Route ambiguity by type — never guess silently.** When the spec/plan is silent or contradictory at implementation time:
+    - **Implementation detail** (naming, file placement, internal structure) → decide via rules + conventions + YAGNI. Never ask.
+    - **Behavior/contract gap, non-blocking** → implement the most conservative interpretation, record it in the **Assumptions log** (`/build` report §Assumptions · `/fix-issue`: commit body + completion summary), and continue; the batch is reviewed at the gate.
+    - **Behavior/contract gap, blocking or expensive-if-wrong** (API contract shape, data-model semantics, security posture) → stop; a sub-agent returns early with the question. If this happens often, the spec phase is too thin — fix `/spec`, not the asker.
+    - Every **approved** assumption that changes behavior flows back into `specs/` as a one-line AC amendment **plus an `Amended` row in the spec's Revision History** (semantics: BA agent §Revision History semantics) — no behavior decision may live only in code.
+16. **Simplicity self-checks** (sharpens §1.2 YAGNI/KISS): no error handling for scenarios that cannot occur; no configurability nobody asked for; if 200 lines could be 50, rewrite before presenting. Test: *"Would a senior engineer call this overcomplicated?"*
+17. **Surgical changes — all modes, not only brownfield.** Every changed line must trace to the current request/task. Don't "improve" adjacent code, comments, or formatting; don't refactor what isn't broken; match the existing style. Orphans **your** change created (now-unused imports/variables/functions) → remove in the same change; **pre-existing** dead code → report it (backlog / `/simplify`), never delete unless asked. Brownfield keeps its stricter version ([`brownfield.md`](brownfield.md) §No Gratuitous Refactor).
+18. **Goal-driven execution.** Already the kit's backbone: turn tasks into verifiable goals (failing test first — TDD; regression test first — `/fix-issue`) and loop until the check passes on disk (`CLAUDE.md` §Verification After Delegation). Listed here so the four disciplines read as one set; details live in [`testing.md`](testing.md) and the `tdd` skill.
+
 ---
 
 ## 3. Architecture Decision

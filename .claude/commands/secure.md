@@ -30,7 +30,7 @@ If a finding requires reading source code to confirm, defer it to `/scan`.
 - `plans/plan.md` — for mitigation → task ID mapping (see Phase 4)
 - `.claude/rules/security.md` — non-negotiables
 
-**Boilerplate templates (cố định — agent fill data, không re-author structure):**
+**Boilerplate templates (fixed — the agent fills in data, does not re-author structure):**
 
 - `.claude/templates/STRIDE_TEMPLATE.md` — Asset inventory, STRIDE reference, Risk matrix, Threat block, Highest-Risk Surface table, THREAT_MODEL skeleton
 - `.claude/templates/OWASP_TEMPLATE.md` — OWASP Top 10 (2021) 10-row table, Security Requirements 6-domain checklist, Residual Risks table
@@ -46,59 +46,59 @@ If a finding requires reading source code to confirm, defer it to `/scan`.
 
 ## Workflow
 
-> **Nguyên tắc tối ưu thời gian:** Mọi structure cố định (STRIDE 6 categories, Risk matrix, OWASP Top 10 hàng, Security Requirements 6 domain, Residual Risk table) đã được template hoá trong `.claude/templates/`. Agent **chỉ fill data feature-specific** — KHÔNG re-write template structure mỗi lần `/secure`.
+> **Time-optimization principle:** Every fixed structure (STRIDE 6 categories, Risk matrix, OWASP Top 10 rows, Security Requirements 6 domains, Residual Risk table) is already templated in `.claude/templates/`. The agent **only fills in feature-specific data** — do NOT re-write the template structure on every `/secure`.
 
 ### Phase 1: Asset Identification
 
 **Template:** `STRIDE_TEMPLATE.md §A`
 
-1. Đọc reference asset categories ở `§A.1` (10 loại asset chuẩn) — chọn loại có trong feature.
-2. Bổ sung asset feature-specific (vd: `Uploaded document URL`, `Shared resource token`).
-3. Copy `§A.2` table vào `THREAT_MODEL.md §Assets`, fill rows.
+1. Read the reference asset categories in `§A.1` (10 standard asset types) — select the ones present in the feature.
+2. Add feature-specific assets (e.g. `Uploaded document URL`, `Shared resource token`).
+3. Copy the `§A.2` table into `THREAT_MODEL.md §Assets`, fill in rows.
 
-**Output:** Bảng `Assets` trong `THREAT_MODEL.md`.
+**Output:** The `Assets` table in `THREAT_MODEL.md`.
 
 ### Phase 2: STRIDE Reference
 
 **Template:** `STRIDE_TEMPLATE.md §B`
 
-KHÔNG re-write bảng STRIDE 6 categories. Agent dùng `§B` như reference khi phân tích từng component để xác định threat thuộc loại nào. Bảng này là constant — không copy vào THREAT_MODEL trừ khi cần in-line.
+Do NOT re-write the STRIDE 6-category table. The agent uses `§B` as a reference when analyzing each component to determine which category a threat belongs to. This table is a constant — do not copy it into THREAT_MODEL unless an in-line copy is needed.
 
 ### Phase 3: Threat Analysis
 
 **Template:** `STRIDE_TEMPLATE.md §C` (Risk matrix) + `§D` (Threat block)
 
-1. Copy Risk matrix `§C` vào `THREAT_MODEL.md` — bảng này CỐ ĐỊNH, không sửa.
-2. Với mỗi threat phát hiện: copy `§D` block, fill `[…]` placeholder.
-3. Áp dụng đồng nhất rule trong `§C`:
+1. Copy the Risk matrix `§C` into `THREAT_MODEL.md` — this table is FIXED, do not modify it.
+2. For each threat identified: copy the `§D` block, fill in the `[…]` placeholders.
+3. Apply the rule in `§C` consistently:
    - **Critical/High** → MUST `[Required for v1]` mitigation
-   - **Medium** → `[Required for v1]` HOẶC `[Deferred to v2 with trigger]`
-   - **Low** → `[Accepted]` được phép (kèm lý do)
-4. Mỗi mitigation MUST map tới task ID có sẵn trong `plans/plan.md`. Không fit → escalate PM trước khi expand scope.
+   - **Medium** → `[Required for v1]` OR `[Deferred to v2 with trigger]`
+   - **Low** → `[Accepted]` allowed (with a rationale)
+4. Each mitigation MUST map to an existing task ID in `plans/plan.md`. If it does not fit → escalate to the PM before expanding scope.
 
-**Output:** Một hoặc nhiều threat block trong `THREAT_MODEL.md §Threats (STRIDE)`, nhóm theo S/T/R/I/D/E.
+**Output:** One or more threat blocks in `THREAT_MODEL.md §Threats (STRIDE)`, grouped by S/T/R/I/D/E.
 
 ### Phase 3.5: Highest-Risk Active Surface — Deep Dive
 
 **Template:** `STRIDE_TEMPLATE.md §E`
 
-BẮT BUỘC identify **1 surface** rủi ro cao nhất:
+You MUST identify **1 surface** with the highest risk:
 
-1. Tham khảo `§E.1` candidate list (10 loại surface thường gặp). Chọn 1.
-2. Copy `§E.2` table, fill ≥3 controls (nếu <3, surface chưa đủ rủi ro để gọi là "highest"). Mỗi control nhận **id ổn định `RC-N`** (N tuần tự trong `PRE_DEV_REVIEW.md`) — đây là **Required Control id** mà `/review` cite (`Relates-to: RC-N`) và `/build` implement theo. Control từ ADR có sẵn có thể cite ADR-id thay vì RC-N.
-3. Mỗi control `[NEW]` (ngoài ADR có sẵn) **PHẢI** có `RC-N` và xuất hiện lại trong `PRE_DEV_REVIEW.md §"Controls added beyond ADRs"` với cùng `RC-N`.
+1. Consult the `§E.1` candidate list (10 commonly encountered surface types). Pick 1.
+2. Copy the `§E.2` table, fill in ≥3 controls (if <3, the surface is not risky enough to be called the "highest"). Each control gets a **stable id `RC-N`** (N sequential within `PRE_DEV_REVIEW.md`) — this is the **Required Control id** that `/review` cites (`Relates-to: RC-N`) and `/build` implements against. A control from an existing ADR may cite the ADR-id instead of RC-N.
+3. Each `[NEW]` control (beyond existing ADRs) **MUST** have an `RC-N` and reappear in `PRE_DEV_REVIEW.md §"Controls added beyond ADRs"` with the same `RC-N`.
 
-Một deep table hơn 15 paragraph shallow.
+One deep table beats 15 shallow paragraphs.
 
 ### Phase 4: Security Requirements
 
 **Template:** `OWASP_TEMPLATE.md §B`
 
-1. Copy checklist 6 domain `§B` vào `SECURITY_REQUIREMENTS.md`.
-2. Đánh dấu `[x]` cho mọi control áp dụng + thêm evidence (file/attribute/header/flag cụ thể).
-3. Đánh `[N/A]` cho control không áp dụng + lý do.
+1. Copy the 6-domain checklist `§B` into `SECURITY_REQUIREMENTS.md`.
+2. Mark `[x]` for every applicable control + add evidence (specific file/attribute/header/flag).
+3. Mark `[N/A]` for controls that do not apply + a rationale.
 
-**Actionability rule:** Mỗi requirement phải **mechanically implementable**. Backend Developer phải copy-paste được vào code.
+**Actionability rule:** Every requirement must be **mechanically implementable**. The Backend Developer must be able to copy-paste it into code.
 
 > ❌ Bad: "Validate JWTs properly."
 > ✅ Good: "In `Program.cs`, `AddJwtBearer` MUST set `TokenValidationParameters.ValidAlgorithms = new[] { \"HS256\" }` and `ClockSkew = TimeSpan.Zero`."
@@ -107,19 +107,19 @@ Một deep table hơn 15 paragraph shallow.
 
 **Templates:** `OWASP_TEMPLATE.md §A` (OWASP Top 10) + `§C` (Residual Risks)
 
-1. Copy `§A` bảng 10 hàng vào `PRE_DEV_REVIEW.md`. Fill cột **Status** và **Evidence** cho **đủ 10 hàng** (A01–A10), không bỏ trống.
-   - Chỉ A06 được `Deferred to /scan`. Các category khác phải `Addressed` / `Partial` / `N/A` với lý do.
-2. Copy `§C` Residual Risks table vào `PRE_DEV_REVIEW.md`. Mỗi `[Deferred to v2]` hoặc `[Accepted]` mitigation từ Phase 3 NÊN có 1 row RR-N.
-3. v2 trigger PHẢI là **observable condition** (đo được, kiểm tra được), không vague ("when we have time").
+1. Copy the `§A` 10-row table into `PRE_DEV_REVIEW.md`. Fill in the **Status** and **Evidence** columns for **all 10 rows** (A01–A10), leaving none blank.
+   - Only A06 may be `Deferred to /scan`. The other categories must be `Addressed` / `Partial` / `N/A` with a rationale.
+2. Copy the `§C` Residual Risks table into `PRE_DEV_REVIEW.md`. Each `[Deferred to v2]` or `[Accepted]` mitigation from Phase 3 SHOULD have one RR-N row.
+3. The v2 trigger MUST be an **observable condition** (measurable, verifiable), not vague ("when we have time").
 
 ### Phase 6: Output Structure
 
 ```text
 security/
-├── THREAT_MODEL.md              # Sinh từ STRIDE_TEMPLATE §F skeleton (Asset + STRIDE block + Highest-Risk Surface)
-├── SECURITY_REQUIREMENTS.md     # Sinh từ OWASP_TEMPLATE §B checklist
-├── PRE_DEV_REVIEW.md            # Chứa OWASP Top 10 (§A) + Residual Risks (§C) + Controls added beyond ADRs + Approval
-└── data-flow/                   # Data flow diagrams (optional, nếu có sensitive data flow)
+├── THREAT_MODEL.md              # Generated from STRIDE_TEMPLATE §F skeleton (Asset + STRIDE block + Highest-Risk Surface)
+├── SECURITY_REQUIREMENTS.md     # Generated from OWASP_TEMPLATE §B checklist
+├── PRE_DEV_REVIEW.md            # Contains OWASP Top 10 (§A) + Residual Risks (§C) + Controls added beyond ADRs + Approval
+└── data-flow/                   # Data flow diagrams (optional, if there is sensitive data flow)
     └── sensitive-data-flow.md
 ```
 
@@ -127,7 +127,7 @@ security/
 
 ## Threat Model Document Skeleton
 
-Đã được định nghĩa ở `STRIDE_TEMPLATE.md §F` — copy nguyên xi, agent chỉ fill `[…]` placeholder.
+Already defined in `STRIDE_TEMPLATE.md §F` — copy it verbatim; the agent only fills in the `[…]` placeholders.
 
 ---
 
@@ -152,17 +152,17 @@ security/
 
 **Development CANNOT proceed** without:
 
-- [ ] Threat model completed — every threat có ID duy nhất, risk rating từ matrix `STRIDE_TEMPLATE §C`, và `Required for v1?` decision
-- [ ] All Critical/High risks có `[Required for v1]` mitigation
-- [ ] Every mitigation map tới `plans/plan.md` task ID (Phase 3 Owner field)
-- [ ] All `ARCHITECTURE.md §Open Questions` resolved hoặc explicitly deferred với ack
-- [ ] Phase 3.5 deep-dive table sinh từ `STRIDE_TEMPLATE §E.2` (≥3 controls), **mỗi control có `RC-N` id**; control `[NEW]` cũng có `RC-N`
-- [ ] OWASP Top 10 (2021) table filled đủ 10 hàng theo `OWASP_TEMPLATE §A` (Status + Evidence, no blanks)
-- [ ] **A05 (Security Misconfiguration)** đánh giá explicit **security headers + CORS** (Status ≠ blank, không để mơ hồ/`N/A` thiếu lý do) — đây là tuyến pre-dev chặn lớp "thiếu security headers"
-- [ ] Security Requirements checklist từ `OWASP_TEMPLATE §B` đã đánh dấu (control áp dụng có evidence, control N/A có lý do)
-- [ ] Residual risks từ `OWASP_TEMPLATE §C` documented với observable v2 trigger
+- [ ] Threat model completed — every threat has a unique ID, a risk rating from the `STRIDE_TEMPLATE §C` matrix, and a `Required for v1?` decision
+- [ ] All Critical/High risks have a `[Required for v1]` mitigation
+- [ ] Every mitigation maps to a `plans/plan.md` task ID (Phase 3 Owner field)
+- [ ] All `ARCHITECTURE.md §Open Questions` resolved or explicitly deferred with ack
+- [ ] Phase 3.5 deep-dive table generated from `STRIDE_TEMPLATE §E.2` (≥3 controls), **each control has an `RC-N` id**; `[NEW]` controls also have an `RC-N`
+- [ ] OWASP Top 10 (2021) table filled in for all 10 rows per `OWASP_TEMPLATE §A` (Status + Evidence, no blanks)
+- [ ] **A05 (Security Misconfiguration)** explicitly assesses **security headers + CORS** (Status ≠ blank, no ambiguity / `N/A` without a rationale) — this is the pre-dev line that blocks the "missing security headers" class
+- [ ] Security Requirements checklist from `OWASP_TEMPLATE §B` marked (applicable controls have evidence, N/A controls have a rationale)
+- [ ] Residual risks from `OWASP_TEMPLATE §C` documented with an observable v2 trigger
 - [ ] Security requirements mechanically implementable (file/attribute/header/flag specified)
-- [ ] Controls `[NEW]` trong Phase 3.5 đã được liệt kê lại trong `PRE_DEV_REVIEW.md §"Controls added beyond ADRs"`
+- [ ] `[NEW]` controls in Phase 3.5 relisted in `PRE_DEV_REVIEW.md §"Controls added beyond ADRs"`
 - [ ] Security Auditor approval recorded in `PRE_DEV_REVIEW.md`
 - [ ] PRE_DEV_REVIEW.md marked as APPROVED
 

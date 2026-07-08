@@ -6,7 +6,7 @@
 
 ### 1. Stable IDs
 
-Every Gherkin scenario in the spec carries a stable tag — `@US-[ID]-S01` (happy path), `-S02…` (each edge/failure case). IDs never change once assigned; new scenarios get new IDs. IDs are identical across monolithic (`specs/SPEC.md`) and split (`specs/user-stories/US-*.md`) layouts.
+Every Gherkin scenario in the spec carries a stable tag — `@US-[ID]-S01` (happy path), `-S02…` (each edge/failure case). IDs never change once assigned; new scenarios get new IDs. IDs are identical across monolithic (`specs/SPEC.md`) and split (`specs/user-stories/US-*.md`) layouts. When a story is later extended or superseded, that evolution is recorded as a **Revision History** row plus a one-line marker on the story (canonical: BA agent §Revision History semantics) — the IDs themselves still never change.
 
 ### 2. Canonical acceptance checklist
 

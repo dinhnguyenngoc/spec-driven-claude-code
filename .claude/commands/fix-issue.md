@@ -37,6 +37,8 @@ Analyze and fix a **reported** bug or issue systematically. This command handles
 - Identify the affected component(s)
 - Reproduce the issue locally if possible
 
+> **Expected behavior must have a source — ambiguity in a fix is a spec question.** If the *expected* behavior cannot be derived from `specs/`, existing tests, or the bug report — i.e. there is no *test oracle*: no authoritative answer to "what is correct here?" — treat it as **blocking**: stop and ask before writing the fix (per `principles-and-practices.md` §2.5); a wrong guess here ships fast. Implementation details follow the standard ladder; any non-blocking behavior assumption you do make is recorded as `A-xx` in the commit body + completion summary for review.
+
 ### 2. Issue Source Analysis
 
 **Identify the source and context of the issue:**
@@ -150,6 +152,7 @@ git bisect good <last-known-good-commit>
 
 - [ ] Issue reproduced locally
 - [ ] Root cause identified (`file:line`)
+- [ ] Expected behavior sourced from spec/tests/report — any assumption made is recorded (`A-xx`) and surfaced for review
 - [ ] Regression test written (fails before fix)
 - [ ] If the bug is a **handoff** (producer→consumer: nav-state key / context / event name / shared prop) → the regression test exercises **both ends together** (`references/scenario-traceability.md` §3) — two sides passing in isolation does not cover the join
 - [ ] Fix implemented
@@ -233,6 +236,8 @@ public async Task<Order> CreateOrderAsync(CreateOrderRequest request)
 Invoke: **Backend Developer** or **Frontend Developer** depending on the issue location.
 
 > Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+
+> Sub-agent prompt MUST also include: "Ambiguity policy: implementation details → decide per rules, never ask; non-blocking behavior/contract gaps → implement the most conservative interpretation and add an Assumptions-log entry (`A-xx`); blocking or expensive-if-wrong gaps → stop and return early with the question (see `rules/principles-and-practices.md` §2.5)."
 
 ## Next Step
 

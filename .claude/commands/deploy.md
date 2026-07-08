@@ -3,19 +3,21 @@ name: deploy
 description: Build, test, deploy with staged rollout
 ---
 
-# /deploy — Release & Deployment
+# /deploy — Release & Deployment (STAGING)
 
 > "Ship with confidence."
 
 ## Purpose
 
-Execute deployment to Docker Desktop: build images, run containers, verify health, rollback if needed.
+Execute deployment to the **STAGING** environment (Docker Desktop / staging server): build images, run containers, verify health, rollback if needed.
+
+> **The kit's boundary (by design):** `/deploy` is the last automated step — it pushes the artifact to **staging** with Status = **`STAGED`**, NOT production. After `STAGED`: the human test team checks it manually on staging (using `reports/VERIFY_MATRIX.md` as the test script) → decides go/no-go → **promoting to production is a MANUAL step outside the kit**, carried out per `DEPLOY_RUNBOOK §8 Promote production`. The kit never needs (and should never have) production credentials — least privilege. If you want to automate further later → add a separate `/promote` command, do not extend this one.
 
 > **Note**: Dockerfile and docker compose are created in `/infra`. This command **executes** deployment.
 
 > **Stack Profile note:** the `sqlcmd`/DB commands below use the **default profile** (SQL Server). If `Project Profile` declares Oracle/MySQL → swap to the corresponding client (`sqlplus`/`mysql`) per `rules/overrides/database-*.md`.
 
-> **`/verify` policy:** `/verify` is **step optional · BLOCKING if run** (Gate 11). Strongly recommended before production promote (especially brownfield, or releases with infra/config changes). **Required when `/deploy` is invoked from the `/hotfix` orchestrator** — hotfix Step 4 requires re-verify on the patched digest. If `/verify` runs, `/deploy` may only promote a digest with a VERIFY_REPORT PASS for **that exact digest** (digest match enforced).
+> **`/verify` policy:** `/verify` is **step optional · BLOCKING if run** (Gate 11). Strongly recommended before `/deploy` stages the artifact (especially brownfield, or releases with infra/config changes). **Required when `/deploy` is invoked from the `/hotfix` orchestrator** — hotfix Step 4 requires re-verify on the patched digest. If `/verify` runs, `/deploy` may only stage a digest with a VERIFY_REPORT PASS for **that exact digest** (digest match enforced). Run `/verify` with **staging-config** — the same env as `/deploy` ⇒ within the kit's scope the env always matches; differences between staging↔production belong to the manual checklist (RUNBOOK §8).
 
 ## Scope Clarification
 
@@ -83,8 +85,19 @@ if [ "${HOTFIX_MODE:-0}" = "1" ] && [ ! -f reports/VERIFY_REPORT.md ]; then
     exit 1
 fi
 
-# Block deploy if SCAN_REPORT.md still has open P0 / Critical items
-if grep -qE '^\s*-\s*\[ \].*(P0|Critical)' security/SCAN_REPORT.md; then
+# SCAN_REPORT: 3 states — do NOT lump "not scanned" together with "scan clean".
+# (If the file is missing and you only grep, grep exits non-zero → if false → silently pass: that's a bug.
+#  A SKIPped optional gate must be explicitly acknowledged, it must not look like a PASS.)
+if [ ! -f security/SCAN_REPORT.md ]; then
+    echo "⚠ /scan has NOT been run — no SCAN_REPORT (optional gate skipped)."
+    if [ "${ACK_NO_SCAN:-0}" != "1" ]; then
+        echo "✗ A no-scan deploy needs explicit acknowledgement: set ACK_NO_SCAN=1"
+        echo "  (this will REQUIRE recording the exception 'security scan skipped' in RELEASE_NOTES §Known risks), or run /scan first."
+        exit 1
+    fi
+    echo "  → acknowledged (ACK_NO_SCAN=1); RELEASE_NOTES MUST record the exception 'security scan skipped'."
+elif grep -qE '^\s*-\s*\[ \].*(P0|Critical)' security/SCAN_REPORT.md; then
+    # Block deploy if SCAN_REPORT.md still has open P0 / Critical items
     echo "✗ Open P0/Critical security items — refuse to deploy"
     exit 1
 fi
@@ -362,7 +375,7 @@ done
 **Requirements for a partial deploy:**
 - Release notes must include a dedicated "Partial deploy rationale" section with reason + ETA for the excluded service
 - DO NOT use a plain semver tag (`v1.2.0`) — enforce a pre-release suffix (`v1.2.0-partial.api-db`)
-- DO NOT mark `SUCCEEDED` in RELEASE_NOTES — use `PARTIAL` or `DEV BUILD`
+- DO NOT mark `STAGED` in RELEASE_NOTES — use `PARTIAL` or `DEV BUILD`
 
 ### Access Container Shell
 
@@ -464,9 +477,9 @@ lsof -i :6379
 
 ---
 
-## Quality Gate — Exit Criteria (before declaring DEPLOYED)
+## Quality Gate — Exit Criteria (before declaring STAGED)
 
-All boxes must be ticked. A deploy with any box open is **not done** and produces no "SUCCEEDED" release notes:
+All boxes must be ticked. A deploy with any box open is **not done** and produces no "STAGED" release notes. (`STAGED` is the highest Status `/deploy` is allowed to declare — "SUCCEEDED (production)" is only filled in MANUALLY after the manual promote + prod smoke, see RUNBOOK §8):
 
 - [ ] Every service in compose is `Up (healthy)` (or `Up` + documented whitelist note)
 - [ ] Smoke pack passes (DEPLOY_RUNBOOK §3): `/health`, `/health/ready`, version endpoint + 1–2 happy-path calls
@@ -491,11 +504,11 @@ All boxes must be ticked. A deploy with any box open is **not done** and produce
 
 `/deploy` MUST produce the following files. These are the audit trail and operator handoff — without them, the deploy is incomplete.
 
-**1. `reports/DEPLOY_RUNBOOK.md`** — operator-facing procedure. Minimum 7 sections — **skeleton: [`templates/RUNBOOK_RELEASE_TEMPLATE.md`](../templates/RUNBOOK_RELEASE_TEMPLATE.md) §A (fill-only, KHÔNG re-author):**
-1 Pre-deploy checklist · 2 Deploy (semver tag, never `:latest`) · 3 Post-deploy smoke (**bảng MỌI service** `Service | Image tag | Expected | Actual | Healthcheck` + curl pack — thiếu service = không có "SUCCEEDED") · 4 Rollback < 1 phút (re-run §3 sau rollback) · 5 Common operations · 6 Troubleshooting (top 3-5 failure modes) · 7 Escalation.
+**1. `reports/DEPLOY_RUNBOOK.md`** — operator-facing procedure. Minimum **8 sections** — **skeleton: [`templates/RUNBOOK_RELEASE_TEMPLATE.md`](../templates/RUNBOOK_RELEASE_TEMPLATE.md) §A (fill-only, do NOT re-author):**
+1 Pre-deploy checklist · 2 Deploy (semver tag, never `:latest`) · 3 Post-deploy smoke (**a table of EVERY service** `Service | Image tag | Expected | Actual | Healthcheck` + curl pack — a missing service = no "STAGED") · 4 Rollback < 1 minute (re-run §3 after rollback) · 5 Common operations · 6 Troubleshooting (top 3-5 failure modes) · 7 Escalation · **8 Promote production (MANUAL — handed off to a human: digest pin + no-rebuild + diff config + prod smoke + rollback)**.
 
-**2. `reports/RELEASE_NOTES_v<X.Y.Z>.md`** — one file per release tag. Minimum 5 sections — **skeleton: [`templates/RUNBOOK_RELEASE_TEMPLATE.md`](../templates/RUNBOOK_RELEASE_TEMPLATE.md) §B (fill-only):**
-1 Summary (scope boundary, what's NOT in it) · 2 Quality gates passed (link artifacts, nêu exception) · 3 Hardening landed (mọi P0/P1 từ SCAN_REPORT, cross-ref `F-#`) · 4 Rollback procedure (link RUNBOOK §4) · 5 Sign-off (Release Manager + Tech Lead + Security Auditor, mỗi người date + decision).
+**2. `reports/RELEASE_NOTES_v<X.Y.Z>.md`** — one file per release tag. **6 sections** (§1–5 filled by the kit at STAGED; §6 "Production promote (manual)" filled in MANUALLY later) — **skeleton: [`templates/RUNBOOK_RELEASE_TEMPLATE.md`](../templates/RUNBOOK_RELEASE_TEMPLATE.md) §B (fill-only):**
+1 Summary (scope boundary, what's NOT in it) · 2 Quality gates passed (link artifacts, note exceptions) · 3 Hardening landed (every P0/P1 from SCAN_REPORT, cross-ref `F-#`) · 4 Rollback procedure (link RUNBOOK §4) · 5 Sign-off (Release Manager + Tech Lead + Security Auditor + **QA/UAT lead after the staging test round**, each with date + decision) — the kit's Status stops at **`STAGED`**; the "Production promote (manual)" section is filled in MANUALLY after the promote.
 
 **3. `CHANGELOG.md`** — updated with a new entry per release (Keep a Changelog format — Added / Changed / Fixed / Security). Acts as the rollup index over the per-release notes above.
 
@@ -513,4 +526,9 @@ Output language: Vietnamese for prose/artifacts, English for code and technical 
 
 ## Next Step
 
-After deployment verified and health checks passing, monitor logs/metrics and start the next feature cycle with `/spec`.
+After Status = `STAGED` (every service healthy + smoke pass):
+
+1. **Hand off to the human test team:** provide the staging URL + `reports/VERIFY_MATRIX.md` (the test script keyed to `@US-XXX-Snn`) + the list of exceptions/known-risks in RELEASE_NOTES.
+2. **The test team checks manually on staging** → decides go/no-go (recommended: record the result + signer in RELEASE_NOTES §5).
+3. **Promoting to production = a MANUAL step outside the kit** — carried out per `DEPLOY_RUNBOOK §8` (keep exactly the approved digest, do NOT rebuild; diff config; prod smoke; fill in the "Production promote (manual)" section in RELEASE_NOTES).
+4. Monitor logs/metrics, then start the next feature cycle with `/spec`.

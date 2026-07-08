@@ -9,9 +9,9 @@ description: Post-deploy verification — exercise every feature against the rea
 
 ## Purpose
 
-> **Status: step optional · BLOCKING if run.** Strongly recommended before `/deploy` to production, especially for brownfield (missing legacy test suite) or releases with infra/config changes. **Required** when called from the `/hotfix` orchestrator (Step 4 re-verify on the patched digest).
+> **Status: step optional · BLOCKING if run.** Strongly recommended before `/deploy` stages the artifact, especially for brownfield (missing legacy test suite) or releases with infra/config changes. **Required** when called from the `/hotfix` orchestrator (Step 4 re-verify on the patched digest).
 
-Verifies **every user-observable feature** works correctly on **the exact artifact about to be promoted** (correct image/build, production config, over real network) — before `/deploy` declares `SUCCEEDED`.
+Verifies **every user-observable feature** works correctly on **the exact artifact about to be staged** (correct image/build, **staging config** — the same env that `/deploy` will use ⇒ within the kit's scope the env always matches, over real network) — before `/deploy` declares `STAGED`. The kit stops at staging; promoting to production is a manual step (see `deploy.md` §The kit's boundary) — config differences between staging↔production belong to the manual checklist `DEPLOY_RUNBOOK §8`.
 
 `/verify` closes the **fidelity gap** that earlier test layers cannot touch: `/build` (in-memory) and `/test` (TestContainers + in-process host) both run in a test-environment via in-process transport. A class of bugs only surfaces at **(production environment) × (real network) × (real client)**: CORS, security headers, env-gating middleware, TLS, reverse-proxy headers, container networking, env-var injection, build-time config baking. `/verify` is the only layer that exercises that intersection.
 
@@ -60,11 +60,13 @@ Ensure we are testing **exactly what will ship**, not a different rebuild.
 #    fresh lock for THIS release from a stale one, and enforce digest match at Gate 11)
 echo "<candidate-version> <image digest / build hash>" > reports/verify-artifact.lock
 
-# 3. Assert production config (NOT dev/test)
-<assert APP_ENV / ASPNETCORE_ENVIRONMENT / NODE_ENV == production>
+# 3. Assert STAGING config (NOT dev/test) — the same env that /deploy will use.
+#    Record the actual env in the lock; if the app has no Staging profile yet → honestly record the current env
+#    (waiver, owner=infra) — do NOT pretend.
+<assert APP_ENV / ASPNETCORE_ENVIRONMENT / NODE_ENV == Staging>
 ```
 
-> **Invariant rule:** `/deploy` may only promote a digest **with a PASSing verify report matching that digest**. `/verify` and `/deploy` must use the **same digest** — if `/deploy` rebuilds after verify, the lock is broken and the verdict is void. The lock pairs `version + digest` so `/deploy` keys on the candidate (not mere file presence) — a stale lock from a prior release does NOT force a verify-gated deploy, keeping `/verify` optional.
+> **Invariant rule:** `/deploy` may only stage a digest **with a PASSing verify report matching that digest**. `/verify` and `/deploy` must use the **same digest** — if `/deploy` rebuilds after verify, the lock is broken and the verdict is void. The lock pairs `version + digest` so `/deploy` keys on the candidate (not mere file presence) — a stale lock from a prior release does NOT force a verify-gated deploy, keeping `/verify` optional. **The digest chain extends into the manual step too:** the production promote (RUNBOOK §8) must use exactly this digest — whichever digest the human test team approves is the digest production runs.
 
 ### Phase 1 — Liveness smoke (fail-fast)
 
@@ -178,9 +180,9 @@ reports/
 
 ## Output — `reports/VERIFY_REPORT.md` (MANDATORY)
 
-> **Boilerplate template (fill-only — tối ưu thời gian):** copy [`templates/VERIFY_REPORT_TEMPLATE.md`](../templates/VERIFY_REPORT_TEMPLATE.md) — §A report skeleton + §B VERIFY_MATRIX skeleton — và fill placeholder; KHÔNG re-author structure.
+> **Boilerplate template (fill-only — saves time):** copy [`templates/VERIFY_REPORT_TEMPLATE.md`](../templates/VERIFY_REPORT_TEMPLATE.md) — §A report skeleton + §B VERIFY_MATRIX skeleton — and fill in the placeholders; do NOT re-author the structure.
 
-**5 sections:** 1 Summary (bảng per-phase + gate verdict) · 2 Traceability matrix (link VERIFY_MATRIX; assert 100% hoặc liệt kê waivers kèm reason + approver) · 3 Failures & evidence (read-only — fixes → `/fix-issue` / `/hotfix`) · 4 NFR results (số đo thực vs threshold của spec) · 5 Gate decision (SUCCEEDED ⟺ Phase 1-5 PASS + 100% coverage; otherwise blocker + recommendation).
+**5 sections:** 1 Summary (per-phase table + gate verdict) · 2 Traceability matrix (link VERIFY_MATRIX; assert 100% or list waivers with reason + approver) · 3 Failures & evidence (read-only — fixes → `/fix-issue` / `/hotfix`) · 4 NFR results (actual measurements vs the spec's thresholds) · 5 Gate decision (SUCCEEDED ⟺ Phase 1-5 PASS + 100% coverage; otherwise blocker + recommendation).
 
 ---
 
@@ -234,5 +236,5 @@ Output language: Vietnamese for prose/artifacts, English for code and technical 
 
 ## Next Step
 
-- `SUCCEEDED` → `/deploy` promotes the verified digest.
+- `SUCCEEDED` → `/deploy` stages the verified digest (Status `STAGED`); after that the human test team checks it on staging → manually promote to production (RUNBOOK §8, keeping the digest).
 - `FAILED` / `PASS WITH CONDITIONS` → `/fix-issue` (or `/hotfix`) the root cause, rebuild, re-run `/verify` from Phase 0.

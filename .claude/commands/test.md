@@ -228,9 +228,9 @@ open ./coverage/report/index.html
 
 `/test` produces ONE primary artifact: `reports/TEST_REPORT.md`. It is the handoff document to `/review` and `/scan`.
 
-> **Boilerplate template (fill-only — tối ưu thời gian):** copy [`templates/TEST_REPORT_TEMPLATE.md`](../templates/TEST_REPORT_TEMPLATE.md) và fill placeholder — KHÔNG re-author structure 12 section mỗi lần chạy. Mọi section phải hiện diện kể cả khi là "n/a, see §X".
+> **Boilerplate template (fill-only — saves time):** copy [`templates/TEST_REPORT_TEMPLATE.md`](../templates/TEST_REPORT_TEMPLATE.md) and fill in the placeholders — do NOT re-author the 12-section structure on every run. Every section must be present even when it is "n/a, see §X".
 
-**12 sections:** 1 Summary (verdict PASS / PASS-WITH-CONDITIONS / FAIL — PWC = baseline green + ≥1 BUG-### + no Critical blocker) · 2 Backend in-memory re-run · 3 TestContainers (NEW) · 4 Frontend Vitest re-run · 5 E2E live · 6 Coverage (scope policy + metrics + top-5 uncovered có rationale) · 7 Gate-6 checklist · 8 Bug reports (BUG-###, Prove-It) · 9 Gaps deferred (mỗi dòng nêu next owner) · 10 Files added (+ boundary statement) · 11 Gate 6 verdict · 12 Open items for `/review`.
+**12 sections:** 1 Summary (verdict PASS / PASS-WITH-CONDITIONS / FAIL — PWC = baseline green + ≥1 BUG-### + no Critical blocker) · 2 Backend in-memory re-run · 3 TestContainers (NEW) · 4 Frontend Vitest re-run · 5 E2E live · 6 Coverage (scope policy + metrics + top-5 uncovered with rationale) · 7 Gate-6 checklist · 8 Bug reports (BUG-###, Prove-It) · 9 Gaps deferred (each line names the next owner) · 10 Files added (+ boundary statement) · 11 Gate 6 verdict · 12 Open items for `/review`.
 
 > **Boundary rule:** `/test` MUST NOT modify production code under `src/` or `web/src/`. Bugs found during `/test` are filed as reports in §8 with a proposed fix; the fix happens in `/review` (or `/fix-issue` for production hotfixes). This is what makes the regression net in §3 trustworthy — the TestContainers tests are written against unchanged production code.
 
@@ -240,9 +240,10 @@ Before proceeding to `/review`:
 
 - [ ] All tests pass — **confirmed by the canonical commands exiting 0** (`dotnet test` AND `npm test`), not merely asserted in `TEST_REPORT.md`. A green report with a red command = gate FAIL.
 - [ ] **Adding a new test runner did NOT break the unit-test command** — when scaffolding Playwright/visual/E2E tooling, `npm test` (vitest) MUST still exit 0 (runner isolation: exclude `e2e/`/Playwright specs from the unit runner's glob). The unit command staying green is part of this gate.
+- [ ] **No production config mutated for test isolation** — `git diff` shows no changes to `appsettings*.json` / `Program.cs` / `docker-compose*.yml` originating from test setup; isolation was achieved runtime-only (fixture DI swap / env vars / `appsettings.Testing.json`), so the artifact deploys with its **original** connections
 - [ ] **Every `@US-XXX-Snn` has a test asserting its observable *Then*** (effect, not presence); scenarios needing UI-layer proof and deferred to `/verify` are listed in §9, not counted as covered
 - [ ] **Consumer↔API contract conformance checked** — first-party client/SDK/BFF calls match the contract's method/path/status (no `PUT`-vs-`PATCH`-style drift)
-- [ ] Code coverage ≥ 80% (with `coverlet.runsettings` scope applied — exemptions documented)
+- [ ] Code coverage meets the threshold **per Mode** (`rules/testing.md §Coverage Thresholds`): greenfield = whole-repo ≥ 80% · brownfield per-change = **delta-coverage ≥ 80%** (files changed) + whole-repo **does not drop** (ratchet) — TEST_REPORT §Coverage records BOTH numbers + states clearly which one is the gate (with `coverlet.runsettings` scope applied — exemptions documented)
 - [ ] No skipped or disabled tests
 - [ ] Bug fixes have reproduction tests
 - [ ] Edge cases covered

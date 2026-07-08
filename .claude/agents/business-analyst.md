@@ -216,10 +216,18 @@ Always capture these explicitly:
 
 | Field | Value |
 |-------|-------|
-| Version | v1 |
+| Version | v1.0 (= the latest **Approved** row in Revision History) |
 | Mode | greenfield \| brownfield |
 | Status | **Draft** → **Approved** (set to Approved only after Gate 1 sign-off) |
 | Date | YYYY-MM-DD |
+
+## Revision History
+
+> Append-only — never edit or delete an existing row. One row = one approved change-set. Semantics: §Revision History semantics (below the template).
+
+| Version | Date | Type | Flow | Change description | Affected stories/scenarios | Reference | Approved by |
+|---------|------|------|------|--------------------|----------------------------|-----------|-------------|
+| v1.0 | YYYY-MM-DD | Baseline | Phase A \| greenfield | [Initial baseline] | US-001…US-0NN | [CODEBASE_MAP / —] | [name] |
 
 ## Executive Summary
 [2-3 sentences: what, why, for whom]
@@ -273,6 +281,29 @@ Always capture these explicitly:
 - [Wireframes, mockups, references]
 ```
 
+### Revision History semantics (canonical)
+
+> Canonical definition — `/spec`, `/inspect`, and the traceability rule reference this section; do not restate it elsewhere.
+
+**Rules:**
+
+- **Append-only** — rows are never edited or deleted; a correction gets a new row.
+- **One row per approved change-set** — one `/spec` DELTA run (or one approved assumption flow-back batch) = exactly one row, listing every affected story/scenario ID. Not one row per story, not one per file save — keeps the table one-line-per-decision.
+- **A pure bug fix adds NO row** — fixing code that violated the existing spec (B3/B4) leaves the spec unchanged. Only a fix that changes *agreed behavior* produces an `Amended` row. This is what keeps the table growing with product decisions, not with commits.
+- **Header `Version` = the latest Approved row.** While a change-set is under review its row already exists and the header `Status` stays `Draft`; Gate 1 sign-off flips `Status` to `Approved`.
+- **Story-level marker** — a story that is extended or superseded gets exactly **one marker line** under its title (an annotation, not a rewrite — story body and IDs stay untouched): `> Extended by US-020 (v1.2)` · `> Superseded by US-021 (v2.0) — deprecated`.
+
+**Type enum + version bump:**
+
+| Type | When | Version bump |
+|------|------|--------------|
+| `Baseline` | First approved spec (greenfield Gate 1) or brownfield REVERSE baseline | v1.0 |
+| `Added` | New feature, existing behavior untouched (B1) | minor +0.1 |
+| `Changed` | Existing behavior modified, backward-compatible — new story `Extend US-xxx` (B2) | minor +0.1 |
+| `Amended` | Approved assumption flow-back from `/build` / `/fix-issue` (one-line AC amendment) | minor +0.1 |
+| `Deprecated` | Story retired / superseded, no longer in effect | minor +0.1 |
+| `Breaking` | Backward compatibility broken (API contract, response shape, schema, observable behavior) | **major bump** — the Reference column MUST cite the ADR + migration plan (per `rules/brownfield.md` §Backward-compat) |
+
 ---
 
 ## Definition of Ready (DoR)
@@ -292,6 +323,7 @@ Before handoff to `/arch`, verify:
 - [ ] **Every user-facing screen has a wireframe (ASCII/Mermaid) + states (empty / loading / error / no-result) in `specs/wireframes/`, with each UI region mapped to its `@US-[ID]-Snn`** (skip only for headless / API-only products)
 - [ ] **The visual UI is signed off by stakeholder + PO (record date + name) — blocking before `/arch`** (UI products only). Sign-off is done on the ASCII wireframes; the clickable HTML prototype (`specs/wireframes/prototype/`) is an **opt-in aid (default OFF)** — generate it only when requested or when the stakeholder needs to click through to sign off confidently (intent-level fidelity, no real backend)
 - [ ] Stakeholder sign-off obtained — spec `Status` is `Approved`, not `Draft`
+- [ ] **Revision History has an append-only row for the current change-set** — correct Type + version bump per §Revision History semantics; `Breaking` → ADR cited in Reference; every extended/superseded story carries its one-line marker
 - [ ] Glossary includes all domain terms
 
 ---

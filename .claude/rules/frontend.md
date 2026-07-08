@@ -302,18 +302,18 @@ export function cn(...inputs: ClassValue[]) {
 
 ### Breakpoint & class validity (single-source)
 
-Component chỉ được dùng **breakpoint / variant đã khai báo trong `tailwind.config`**. Tailwind **âm thầm bỏ** class biến thể không khớp config (vd `sm:flex-row` khi `screens` chỉ có `md`/`lg`) — không báo lỗi, không warning, layout vỡ ngầm. Bật `eslint-plugin-tailwindcss` để bắt **ở build**:
+A component may only use a **breakpoint / variant declared in `tailwind.config`**. Tailwind **silently drops** a variant class that does not match the config (e.g. `sm:flex-row` when `screens` only has `md`/`lg`) — no error, no warning, the layout breaks silently. Enable `eslint-plugin-tailwindcss` to catch this **at build time**:
 
 ```js
 // eslint config
 plugins: ["tailwindcss"],
 rules: {
-  "tailwindcss/no-custom-classname": "error",        // class không resolve theo config: breakpoint/variant lạ, typo
-  "tailwindcss/no-contradicting-classname": "error", // class đối nghịch (vd 2 width)
+  "tailwindcss/no-custom-classname": "error",        // class that does not resolve against the config: unknown breakpoint/variant, typo
+  "tailwindcss/no-contradicting-classname": "error", // contradicting classes (e.g. two widths)
 }
 ```
 
-> `npm run lint` đã là gate ở `/build` (Gate 5) và được `/test` re-run (Gate 6) → **cùng 1 rule chặn ở cả hai bước, trước commit**. Đây là họ lỗi *tĩnh* về class; lỗi *render* responsive (đúng config nhưng vỡ layout) được bắt ở `/verify` Phase 4 (no-overflow per breakpoint).
+> `npm run lint` is already a gate at `/build` (Gate 5) and is re-run by `/test` (Gate 6) → **the same rule blocks at both steps, before commit**. This is the *static* class of class errors; *render* responsive errors (config is correct but the layout breaks) are caught at `/verify` Phase 4 (no-overflow per breakpoint).
 
 ---
 
@@ -520,5 +520,5 @@ src/
 - [ ] `error.tsx` and `loading.tsx` exist for async routes
 - [ ] Backend errors rendered via `ProblemDetails` contract
 - [ ] Components tested by role/label, not implementation
-- [ ] No Tailwind class dùng breakpoint/variant ngoài `tailwind.config` (`tailwindcss/no-custom-classname` pass) — see §Styling
-- [ ] Responsive verified — no horizontal overflow ở mỗi breakpoint khai báo (đo ở `/verify` Phase 4)
+- [ ] No Tailwind class using a breakpoint/variant outside `tailwind.config` (`tailwindcss/no-custom-classname` passes) — see §Styling
+- [ ] Responsive verified — no horizontal overflow at each declared breakpoint (measured at `/verify` Phase 4)

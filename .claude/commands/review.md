@@ -91,6 +91,7 @@ The reviewer MUST ingest these artifacts before scoring. A finding without trace
 - [ ] **No orphan / everything wired** — every acceptance behavior is **reachable from the app entry point**; flag any component / handler / endpoint that exists but is never mounted, passed, or routed. "Exists in code" ≠ "wired".
 - [ ] **Scenario coverage** — every `@US-XXX-Snn` from the spec maps to a **wired** path **and** to a test that asserts that scenario's observable *Then* (not just an isolated unit / endpoint) — rule: [`references/scenario-traceability.md`](../references/scenario-traceability.md).
 - [ ] **Anti-vacuous audit** — for each scenario, open its mapped test and confirm it asserts the observable outcome (effect/state, persisted across a round-trip) — **a test that would still pass if the feature were silently removed does NOT satisfy the scenario**.
+- [ ] **Dual-implementation parity** — if the diff reimplements a rule in a second representation (SQL migration backfill, client validation mirror, cache-key across multiple services, serialize↔parse format…): confirm there is a **differential test** per `rules/testing.md §Dual-Implementation Parity` (one test that runs BOTH implementations over the same input table enumerating every variant class), OR that it has been unified into a single source (backfill calls the app code itself). Missing → 🟡 finding, at least P1. *(Per-side tests both passing on each side is NOT enough — drift still slips through.)*
 
 ## Output Format
 Provide feedback as:
@@ -109,7 +110,7 @@ Provide feedback as:
 reports/CODE_REVIEW.md
 ```
 
-> **Boilerplate template (fill-only — tối ưu thời gian):** copy [`templates/CODE_REVIEW_TEMPLATE.md`](../templates/CODE_REVIEW_TEMPLATE.md) và fill — KHÔNG re-author structure 7 mục mỗi lần review.
+> **Boilerplate template (fill-only — saves time):** copy [`templates/CODE_REVIEW_TEMPLATE.md`](../templates/CODE_REVIEW_TEMPLATE.md) and fill it in — do NOT re-author the 7-section structure on every review.
 
 The report MUST include:
 1. **Executive Summary** with severity counts

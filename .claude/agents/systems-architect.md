@@ -101,8 +101,9 @@ Concrete guidance for `/build`: which library, which config knob, which rule in 
 > **Rejection ADR pattern**: when this phase decides **not** to adopt components listed in `.claude/rules/tech-stack.md` (Redis, Kafka, YARP, Hangfire, Polly, etc.):
 > - **Default — ONE consolidated ADR** (`ADR-NNN-excluded-stack-v1.md`) in **table form, one row per component**. Do NOT use the full Context → Options → Decision template per component; the table row carries all that is needed.
 > - **Escape hatch:** if a specific exclusion was genuinely contested (multiple real options / significant tradeoff), promote that one row into its own full Decision-ADR; keep the rest in the table.
-> - **`/arch --adr=per-component` (or NL "ADR riêng cho từng component"):** user opt-in to make EVERY excluded component its own full Decision-ADR (e.g. audit / compliance contexts).
+> - **`/arch --adr=per-component` (or NL "a separate ADR for each component"):** user opt-in to make EVERY excluded component its own full Decision-ADR (e.g. audit / compliance contexts).
 > - **v2 Upgrade Trigger source:** derive from `principles-and-practices.md §5` (NFR-dependent infra triggers) — it does **NOT** come from the requirements. If no measurable trigger exists, write "None identified — revisit if <need> arises" (or log it in Open Questions); never fabricate a number.
+> - **Reimplementation flag (dual-implementation parity):** if the Decision entails the same rule existing in a **second representation** (e.g. a SQL migration backfill for a computed column, a client-side mirror of server validation, a cache-key across several services), the **Implementation Notes MUST state the choice explicitly** per `rules/testing.md §Dual-Implementation Parity`: (1) call the app code itself (preferred), or (2) reimplement + a **differential test** enumerating every input class — so that `/plan` generates the corresponding test task and `/test`/`/review` have a basis to check. Leaving this flag blank when there is a reimplementation = an incomplete ADR.
 >
 > Prevents scope-creep at `/plan` and `/build`.
 
@@ -179,7 +180,7 @@ These tech-stack.md components are intentionally NOT adopted in v1 — one row e
 
 ### 3. Data Model Design
 
-> **Phạm vi ở `/arch` = design-level.** Capture the data model as **decisions**: entities, fields, **keys, indexes, precision, relationships (FK + cardinality)** — as an ER diagram or a constraints table. The `IEntityTypeConfiguration` C# below is **illustrative of which constraints to decide**; the actual config code + migrations are written in `/build`. Do not hand-write `Configure()` bodies here.
+> **Scope at `/arch` = design-level.** Capture the data model as **decisions**: entities, fields, **keys, indexes, precision, relationships (FK + cardinality)** — as an ER diagram or a constraints table. The `IEntityTypeConfiguration` C# below is **illustrative of which constraints to decide**; the actual config code + migrations are written in `/build`. Do not hand-write `Configure()` bodies here.
 
 ```csharp
 // Entity Relationship

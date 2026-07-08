@@ -11,7 +11,7 @@ description: Implement tasks incrementally using TDD and vertical slices
 
 Implement tasks one at a time using Test-Driven Development. Each increment leaves the system in a working, testable state.
 
-> **Stack Profile note:** examples use the **default profile** (SQL Server). If `Project Profile` (CLAUDE.md) declares Oracle/MySQL → follow `rules/overrides/database-*.md` for data access + test setup. Core C#/ASP.NET Core/EF Core does not change. Brownfield: follow `rules/brownfield.md` (characterization test before modifying legacy code that has no tests).
+> **Stack Profile note:** examples use the **default profile** (SQL Server). If `Project Profile` (`.claude/PROJECT_PROFILE.md`) declares Oracle/MySQL → follow `rules/overrides/database-*.md` for data access + test setup. Core C#/ASP.NET Core/EF Core does not change. Brownfield: follow `rules/brownfield.md` (characterization test before modifying legacy code that has no tests).
 
 ## Prerequisites
 
@@ -32,6 +32,8 @@ Implement tasks one at a time using Test-Driven Development. Each increment leav
 | Components, pages, routing, UI | 🖥️ Frontend Developer |
 
 > Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+
+> Sub-agent prompt MUST also include: "Ambiguity policy: implementation details → decide per rules, never ask; non-blocking behavior/contract gaps → implement the most conservative interpretation and add an Assumptions-log entry (`A-xx`); blocking or expensive-if-wrong gaps → stop and return early with the question (see `rules/principles-and-practices.md` §2.5)."
 
 ## Testing Strategy for /build
 
@@ -104,6 +106,19 @@ dotnet test
 1. Read the task's acceptance criteria
 2. Identify relevant existing code and patterns
 3. Understand types and interfaces involved
+```
+
+#### Step 1.5: Ambiguity gate — before writing any code
+
+If the AC/plan is silent or contradictory on something this task needs, apply the **ambiguity ladder** from [`principles-and-practices.md`](../rules/principles-and-practices.md) §2.5 — implementation detail → decide, never ask · non-blocking behavior gap → conservative choice + log entry below · blocking gap → sub-agent returns early with the question.
+
+For every non-blocking behavior gap, add an entry to the **Assumptions log** (collected in the `/build` completion report; mark the task in `plans/todo.md` with `[A-xx]`):
+
+```text
+A-01 · Task T-07 (@US-003-S02)
+  Gap:     SPEC does not define the response when a duplicate email is registered
+  Chosen:  409 Conflict with ProblemDetails (reject, don't merge)
+  Why:     Most conservative — reversible; silently merging would destroy data if wrong
 ```
 
 #### Step 2: RED — Write Failing Test
@@ -278,6 +293,7 @@ Stop and reassess if you find yourself:
 - Working, tested code
 - Updated `plans/todo.md` with completed items
 - Clean git history with atomic commits
+- **Assumptions log** — every `A-xx` recorded during the run (state "None" if empty), presented as a batch for Gate 5 review
 
 ## Quality Gate 5 — Exit Criteria
 
@@ -286,6 +302,7 @@ Before proceeding to `/test`:
 - [ ] All tasks in `plans/todo.md` marked complete
 - [ ] **Every `@US-XXX-Snn` claimed by the completed tasks is reachable from the app entry (no orphan) and backed by a passing test asserting its observable *Then*** — a scenario whose code exists but is unwired, or has only a presence-level test, is NOT done
 - [ ] All unit tests pass (`dotnet test`)
+- [ ] **Assumptions log dispositioned** — every `A-xx` reviewed by the user: approved → one-line AC amendment appended to the affected story in `specs/` (marked `amended @ Gate 5, A-xx`); rejected → the task returns to rework. No silent assumption survives the gate
 - [ ] Code compiles without errors in Release (`dotnet build --configuration Release`)
 - [ ] **(If `web/` exists) Frontend gate green** — `npm run typecheck && npm run lint && npm run build && npm run test` all pass, including `tailwindcss/no-custom-classname` (no undefined breakpoint/variant class)
 - [ ] No red flags present (see Red Flags section)

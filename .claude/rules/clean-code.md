@@ -235,9 +235,12 @@ if (!IsNotDomNodePresent(node)) { }
 if (IsDomNodePresent(node)) { }
 ```
 
-### Remove dead code immediately
+### Remove dead code — yours immediately, pre-existing only on request
 
 Don't comment out code — delete it. Git has history.
+
+- **Orphans created by YOUR change** (imports, variables, functions that just became unused) → delete them in the same change.
+- **Pre-existing dead code you happen to notice** → report it (backlog / `/simplify`); do **not** delete it inside an unrelated change — deleting code you don't fully understand is how regressions ship. (Canonical: `principles-and-practices.md` §2.5.)
 
 ---
 

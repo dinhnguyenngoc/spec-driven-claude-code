@@ -1,8 +1,8 @@
 # CODE_REVIEW Template — `/review` Output Boilerplate
 
-> **Mục đích:** Khung cố định 7 section cho `reports/CODE_REVIEW.md`. Agent `/review` **chỉ fill** — KHÔNG re-author structure.
+> **Purpose:** Fixed 7-section framework for `reports/CODE_REVIEW.md`. The `/review` agent **only fills** — does NOT re-author the structure.
 >
-> Quy tắc chi tiết (Five-Axis, `Relates-to` mandatory, OPEN-XXX closure): [`../commands/review.md`](../commands/review.md) §Output File. Nhãn canonical: 🔴 Critical · 🟡 Warning · 🟢 Suggestion · ✅ Good.
+> Detailed rules (Five-Axis, `Relates-to` mandatory, OPEN-XXX closure): [`../commands/review.md`](../commands/review.md) §Output File. Canonical labels: 🔴 Critical · 🟡 Warning · 🟢 Suggestion · ✅ Good.
 
 ---
 
@@ -14,7 +14,7 @@
 **Inputs**: specs/SPEC.md · architecture/adr/* · plans/todo.md · security/PRE_DEV_REVIEW.md · reports/TEST_REPORT.md
 
 ## 1. Executive Summary
-[Overall verdict 1-2 câu] — 🔴 N · 🟡 N · 🟢 N · ✅ N
+[Overall verdict 1-2 sentences] — 🔴 N · 🟡 N · 🟢 N · ✅ N
 
 ## 2. Five-Axis Scores
 
@@ -26,7 +26,7 @@
 | 4 | Security | … | … |
 | 5 | Performance | … | … |
 
-[Nếu REQUEST CHANGES → APPROVED sau fix: re-score và ghi số mới]
+[If REQUEST CHANGES → APPROVED after fix: re-score and record the new numbers]
 
 ## 3. Findings (by severity: 🔴 → 🟡 → 🟢 → ✅)
 
@@ -48,15 +48,15 @@
 - [ ] **P2**: [item]
 
 ## 5. Test Coverage
-[Cite numbers từ reports/TEST_REPORT.md]. Mọi `OPEN-XXX` debt từ `/test`:
+[Cite numbers from reports/TEST_REPORT.md]. Every `OPEN-XXX` debt from `/test`:
 
 | OPEN-XXX | Disposition |
 |----------|-------------|
-| OPEN-001 | CLOSED / DEFERRED-to-Pn / ESCALATED — [lý do] |
+| OPEN-001 | CLOSED / DEFERRED-to-Pn / ESCALATED — [reason] |
 
 ## 6. Compliance Check
 
-> `PASS` **phải có `Evidence`** (file:line / wired-pipeline ref / tên test). PASS rỗng Evidence = không hợp lệ. Cross-cutting control (security headers, CORS, rate-limit, auth, exception handler) phải cite **nơi wired trong pipeline**, không chỉ "defined".
+> `PASS` **must have `Evidence`** (file:line / wired-pipeline ref / test name). PASS with empty Evidence = invalid. Cross-cutting controls (security headers, CORS, rate-limit, auth, exception handler) must cite **where they are wired in the pipeline**, not just "defined".
 
 | Rule | Status | Evidence (file:line / test) | Notes |
 |------|--------|-----------------------------|-------|
@@ -67,7 +67,7 @@
 | database.md | … | … | … |
 | api-conventions.md | … | … | … |
 | testing.md | … | … | … |
-| [mọi rule còn lại trong .claude/rules/] | … | … | … |
+| [every remaining rule in .claude/rules/] | … | … | … |
 
 ## 7. Approval Status
 
@@ -75,5 +75,5 @@
 |----------|----------------------------------------------|
 | Conditions (if any) | … |
 
-[Nếu verdict flipped sau fix → §Resolution: (a) what changed, (b) verification numbers từ re-run, (c) re-scored axes]
+[If the verdict flipped after fix → §Resolution: (a) what changed, (b) verification numbers from the re-run, (c) re-scored axes]
 ````

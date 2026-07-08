@@ -21,13 +21,33 @@ The testing strategy splits across two SDLC phases (per [CLAUDE.md](../CLAUDE.md
 
 ## Requirements
 
-- Unit test coverage: **minimum 80%**
+- Unit test coverage: **minimum 80%** (scope theo Mode — xem §Coverage Thresholds: greenfield = whole-repo; brownfield per-change = delta-coverage + ratchet)
 - All new features must have tests
 - All bug fixes must have a regression test
 - Tests run in CI before any merge
 - Use **xUnit** for testing framework
 - Use **FluentAssertions** for readable assertions
 - Use **Moq** for mocking dependencies
+
+---
+
+## Dual-Implementation Parity (MANDATORY when a rule has ≥ 2 representations)
+
+> **Why this rule exists:** when the same rule is written in two places, they **drift independently** — and per-side tests (each side green on its own) **never** catch the drift. This bug class has escaped both `/build` and `/test` in practice (a T-SQL backfill diverged from the C# `UrlCanonicalizer` at the default-port case — only caught at `/review`). This rule turns "caught by luck" into "caught systematically".
+
+**When it applies** — the same rule/formula exists in two representations that can drift independently:
+
+- SQL migration **backfill** ≈ computed logic in app code (e.g. the `*Canonical` / `*Normalized` column)
+- Client-side validation **mirror** ≈ server validation (Zod FE ↔ FluentValidation BE)
+- **Cache-key / partition-key** computed in ≥ 2 services
+- **Serialize/format** on the producer ↔ parse on the consumer
+
+**Priority order (pick 1, record the choice in the ADR/plan):**
+
+1. **Eliminate the second representation (preferred):** the backfill CALLS the app code itself (a data-migration console / `IDesignTimeDbContextFactory` running C#) instead of reimplementing it in SQL — there is nothing left to drift.
+2. **If you must reimplement → differential test is MANDATORY:** ONE test runs BOTH representations over the SAME input table and asserts each output pair is equal. The input table MUST enumerate every variant class of the rule — **each clause in the rule's definition ≥ 1 input** (e.g. URL-canonical: host-case · default-port `:80`/`:443` · non-default port · trailing slash · slash-before-query · fragment · empty path · query-case).
+
+> **Per-side tests DO NOT replace the differential test** — two sides green on their own can still drift. For a reimplementation, "edge cases covered" means: each clause of the rule has an input pair in the parity table.
 
 ---
 
@@ -144,7 +164,12 @@ There are **two templates** for `CustomWebApplicationFactory`. Pick by which pha
 | `/build` | `UseInMemoryDatabase` | ❌ No | ms | Logic, mapping, validation |
 | `/test` | `MsSqlContainer` (TestContainers) | ✅ Yes | seconds | Collation, indexes, transactions, SQL-specific bugs |
 
-> **Host-isolation contract:** Both templates spin up their own isolated dependency (RAM-backed or container-backed). **Neither template should ever connect to `localhost` SQL Server / Redis on the host machine.** If you see `UseSqlServer("Server=localhost;…")` in a test setup, that's a bug.
+> **Host-isolation contract (all external I/O):** Both templates spin up their own isolated dependencies (RAM-backed or container-backed). **No test may ever connect to pre-existing infrastructure** — not `localhost` SQL Server / Redis on the host machine, and not any shared DB / Redis / **Kafka broker** / email / storage / outbound endpoint referenced by connection strings in `appsettings.json`. If you see `UseSqlServer("Server=localhost;…")` — or a hosted Kafka consumer booting with the real bootstrap servers — in a test run, that's a bug. Brownfield additions:
+>
+> - **Hosted services:** `WebApplicationFactory` boots the real `Program.cs`, so every `IHostedService` (Kafka consumer/producer, queue worker, scheduler) starts too. The fixture MUST disable them or point them at a TestContainers-backed broker — never let them read the real `appsettings.json` values. A green suite that silently published test events to a real topic is the worst failure mode: invisible until a downstream consumer acts on garbage.
+> - **Test environment config:** run the test host with `ASPNETCORE_ENVIRONMENT=Testing` + a dedicated `appsettings.Testing.json` (a NEW test-only file) containing **no real connection string** — failing fast on missing config beats silently reaching real infrastructure.
+> - **Auto-migrate on startup:** legacy `Program.cs` often calls `context.Database.Migrate()` at boot — in the test host this must target the container DB (or be disabled for tests), never the configured real DB.
+> - **Runtime-only override — nothing to "restore":** all replacement happens **in-memory** (`ConfigureWebHost` DI swap, env vars, the new test-only config file). NEVER edit existing production config (`appsettings.json` / `appsettings.Production.json` / `Program.cs` / `docker-compose.yml`) to make tests pass — the deployed artifact must keep its original connections exactly as-is. Proof is checkable: `git status` after the suite shows production config files unchanged (cross-checked at the gate per `CLAUDE.md` §Verification After Delegation).
 
 ### Template A — InMemory (for `/build`)
 
@@ -179,9 +204,11 @@ public class InMemoryWebApplicationFactory : WebApplicationFactory<Program>
 
 ### Template B — TestContainers (for `/test`)
 
-> **Tối ưu thời gian — collection fixture (mặc định):** đăng ký factory qua `ICollectionFixture` để **MỘT container phục vụ TOÀN BỘ integration suite**. Per-class `IClassFixture` = N test class × (~30–60s khởi động SQL Server) lãng phí. Reset state giữa các test bằng Respawn / transaction rollback / unique keys per test. Chỉ rơi về per-class khi một test phá state container không khôi phục được.
+> **Time optimization — collection fixture (default):** register the factory via `ICollectionFixture` so that **ONE container serves the ENTIRE integration suite**. Per-class `IClassFixture` = N test classes × (~30–60s SQL Server startup) wasted. Reset state between tests with Respawn / transaction rollback / unique keys per test. Fall back to per-class only when a test corrupts the container state unrecoverably.
 
-> **arm64 (Apple Silicon):** `mcr.microsoft.com/mssql/server:2022-latest` (dùng trong fixture dưới) **không có image arm64 → segfault dưới qemu**. Trên máy arm64, đổi `.WithImage("mcr.microsoft.com/azure-sql-edge:1.0.7")` + wait strategy `Wait.ForUnixContainer().UntilPortIsAvailable(1433)` (azure-sql-edge thiếu `sqlcmd` nên readiness mặc định của `MsSqlBuilder` không dùng được). EF Core migrations apply OK trên Edge cho schema thường; nếu schema dùng tính năng SQL Server đặc thù thiếu ở Edge → gate sau ADR.
+> **arm64 (Apple Silicon):** `mcr.microsoft.com/mssql/server:2022-latest` (used in the fixture below) **has no arm64 image → segfaults under qemu**. On an arm64 machine, switch to `.WithImage("mcr.microsoft.com/azure-sql-edge:1.0.7")` + wait strategy `Wait.ForUnixContainer().UntilPortIsAvailable(1433)` (azure-sql-edge lacks `sqlcmd`, so the default `MsSqlBuilder` readiness check cannot be used). EF Core migrations apply fine on Edge for ordinary schemas; if the schema uses SQL Server-specific features missing from Edge → gate after an ADR.
+
+> **Schema/procs defined by raw DDL (no ORM migration):** when tables / stored procedures / triggers live as DDL scripts in the repo (brownfield snapshot — locations vary, see `CODEBASE_MAP.md` §DB-object inventory), the fixture MUST execute those scripts into the container after startup, in dependency order (tables → indexes → functions/procs/triggers) — `dotnet ef database update` / `prisma migrate deploy` alone will NOT create them, and the suite would silently run against a database missing the very logic under test.
 
 ```csharp
 // tests/MyApp.IntegrationTests/CustomWebApplicationFactory.cs
@@ -225,7 +252,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 }
 
 // tests/MyApp.IntegrationTests/IntegrationCollection.cs
-// MỘT container cho cả suite — mọi test class gắn [Collection("Integration")]
+// ONE container for the whole suite — every test class marked [Collection("Integration")]
 [CollectionDefinition("Integration")]
 public class IntegrationCollection : ICollectionFixture<CustomWebApplicationFactory> { }
 
@@ -510,13 +537,22 @@ actual.Should().BeEquivalentTo(expected, options =>
 </PropertyGroup>
 ```
 
-### Coverage Thresholds
+### Coverage Thresholds (Quality Gate 6)
 
-| Metric | Minimum |
-|--------|---------|
-| Line coverage | 80% |
-| Branch coverage | 75% |
-| Method coverage | 80% |
+The gate reads `Project Profile → Mode` to choose the **scope** — the 80/75 numbers stay the same, the scope changes:
+
+| Mode | GATE (blocking) | Informational (non-blocking, MUST be reported) |
+|------|-------------|-------------------------------------------|
+| **greenfield** | whole-repo: line ≥ 80% · branch ≥ 75% · method ≥ 80% | — |
+| **brownfield per-change** | **delta-coverage** — computed only over the files changed/added in the change-set: line ≥ 80% · branch ≥ 75% | **whole-repo** = baseline debt, plus a **ratchet**: must not DECREASE from the previous measurement |
+
+- **delta-coverage** = coverage filtered by `git diff --name-only <base>..HEAD` (base = merge-base with main / the previous release tag). Filter on the cobertura report or scope coverlet `Include` to the changed files.
+- **Whole-repo ratchet:** record the previous run's whole-repo number in `TEST_REPORT.md §Coverage`; if the next run is **lower** than the previous one → GATE FAIL (prevents new untested code from hiding behind legacy debt). Baseline debt (e.g. R1 from `/discover`) is paid down gradually through the characterization backlog — it is **NOT** the obligation of a single PR (per `brownfield.md` §Upfront-vs-Per-change: no mass retrofit).
+- `TEST_REPORT.md §Coverage` MUST record **both numbers** + the ratchet result, stating clearly which number is the gate.
+- **Prerequisite:** delta needs a base commit for `git diff` → the source must be git-tracked. A repo not yet committed (e.g. a just-onboarded brownfield) → measure delta manually against the file list in `plans/plan.md` and note the measurement method in the TEST_REPORT.
+- Per-file waiver (diff too small / hard to test) → record the reason in TEST_REPORT §Coverage, using the same mechanism as the exclusion-rationale in `coverlet.runsettings`.
+
+> **Why the split by Mode:** demanding 80% whole-repo on a brownfield with a 0% test baseline forces every per-change PR to retrofit legacy — a direct conflict with `brownfield.md` (WRITE by delta). The gate is meaningful as "is the code I changed covered?"; whole-repo is a debt/trend metric, and the ratchet keeps the direction upward.
 
 ---
 

@@ -147,13 +147,13 @@ theme: {
 
 ### States
 
-> **Tầng áp dụng:** Ma trận state-per-component dưới đây là **design-system → thuộc `/arch`**.
-> Ở `/spec` (Phase 2.5) **chỉ** mô tả 5 page-level state mỗi screen
-> (`default · empty · loading · error · no-result`, xem §Output Convention) — KHÔNG nở
-> thành ma trận per-component ở thời điểm spec (fidelity = intent-level).
+> **Applicable layer:** The state-per-component matrix below belongs to the **design-system → part of `/arch`**.
+> At `/spec` (Phase 2.5), **only** describe the 5 page-level states per screen
+> (`default · empty · loading · error · no-result`, see §Output Convention) — do NOT expand
+> into a per-component matrix at spec time (fidelity = intent-level).
 
 ```markdown
-(/arch — design-system) Mỗi component cần:
+(/arch — design-system) Each component needs:
 - Default · Hover · Focus (visible ring) · Active/Pressed · Disabled · Loading · Error · Empty
 ```
 

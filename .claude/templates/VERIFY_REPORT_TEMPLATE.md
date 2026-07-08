@@ -1,8 +1,8 @@
 # VERIFY_REPORT + VERIFY_MATRIX Template — `/verify` Output Boilerplate
 
-> **Mục đích:** Khung cố định cho 2 artifact tracked của `/verify`. Agent **chỉ fill** placeholder — KHÔNG re-author structure.
+> **Purpose:** Fixed framework for the 2 tracked `/verify` artifacts. The agent **only fills** placeholders — does NOT re-author the structure.
 >
-> Quy tắc chi tiết (artifact lock, traceability gate, Layer rule): [`../commands/verify.md`](../commands/verify.md).
+> Detailed rules (artifact lock, traceability gate, Layer rule): [`../commands/verify.md`](../commands/verify.md).
 
 ---
 
@@ -41,7 +41,7 @@ SUCCEEDED ⟺ Phase 1-5 PASS + 100% coverage. Otherwise, name the blocker + reco
 
 ## §B. `reports/VERIFY_MATRIX.md` skeleton
 
-> Cột **Layer** là chốt chống "API test giả danh coverage UI" — Layer rule: UI-observable scenario chỉ được thỏa bởi test E2E-UI (Phase 3) đạt E2E assertion contract.
+> The **Layer** column is the safeguard against "an API test masquerading as UI coverage" — Layer rule: a UI-observable scenario can only be satisfied by an E2E-UI test (Phase 3) that meets the E2E assertion contract.
 
 ````markdown
 # Verify Matrix — <product> <candidate-tag>
@@ -52,5 +52,5 @@ SUCCEEDED ⟺ Phase 1-5 PASS + 100% coverage. Otherwise, name the blocker + reco
 | US-001-S02 | [edge/failure] | `@US-001-S02` | API | 2 | PASS |
 | … | … | … | … | … | … |
 
-**Coverage**: NN/NN scenarios mapped (100%) — [hoặc liệt kê scenario waived kèm reason + approver]
+**Coverage**: NN/NN scenarios mapped (100%) — [or list waived scenarios with reason + approver]
 ````

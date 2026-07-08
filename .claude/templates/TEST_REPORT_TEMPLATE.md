@@ -1,8 +1,8 @@
 # TEST_REPORT Template — `/test` Output Boilerplate
 
-> **Mục đích:** Khung cố định 12 section cho `reports/TEST_REPORT.md`. Agent `/test` **chỉ fill** `[…]`/`<…>` placeholder — KHÔNG re-author structure mỗi lần chạy.
+> **Purpose:** Fixed 12-section framework for `reports/TEST_REPORT.md`. The `/test` agent **only fills** the `[…]`/`<…>` placeholders — does NOT re-author the structure on each run.
 >
-> **Quy tắc:** Mọi section phải hiện diện, kể cả khi câu trả lời là "n/a, see §X". Yêu cầu chi tiết từng section: [`../commands/test.md`](../commands/test.md) §Output.
+> **Rule:** Every section must be present, even when the answer is "n/a, see §X". Detailed requirements per section: [`../commands/test.md`](../commands/test.md) §Output.
 
 ---
 
@@ -39,6 +39,14 @@ Setup steps + result + artifact paths (screenshot/video/trace) on failure.
 ## 6. Coverage report
 - `coverlet.runsettings` scope policy (link to file + list of exclusions with rationale)
 - Top-level metrics: line / branch / critical-path vs gates
+- **Coverage by Mode** (`rules/testing.md §Coverage Thresholds`) — fill all 3 rows, clearly stating which row is the gate:
+
+  | Metric | Result | Role |
+  |-------|---------|---------|
+  | Delta coverage (files changed in the change-set) | line \_\_% / branch \_\_% | **GATE** when Mode=brownfield per-change (≥80/≥75) |
+  | Whole-repo coverage | line \_\_% / branch \_\_% | **GATE** when greenfield; informational + ratchet when brownfield |
+  | Ratchet vs previous measurement | prev \_\_% → now \_\_% (±\_\_) | brownfield: **a decrease = GATE FAIL**; first run = establishes the baseline |
+
 - Per-assembly breakdown
 - Top 5 uncovered files with **rationale** ("acceptable" / "gap-closing test added")
 - New tests added to close gaps (file → test count → rationale)

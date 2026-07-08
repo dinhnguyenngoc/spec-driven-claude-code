@@ -6,16 +6,16 @@
 
 ## Test framework choice
 
-| Framework | Best fit | Tránh khi |
+| Framework | Best fit | Avoid when |
 |-----------|----------|-----------|
-| **Jest** (default cho hầu hết) | Mature, plugin rich, dùng nhiều, NestJS default | ESM-only project (Jest cấu hình ESM còn rườm rà) |
-| **Vitest** (modern, recommend cho Vite-based / pure ESM) | Vite project, ESM native, fast, API tương thích Jest | NestJS (chính thức support Jest) |
-| **node:test** (built-in từ Node 20+) | Project muốn 0 dependency | Cần fixture / mock framework phong phú |
+| **Jest** (default for most) | Mature, plugin rich, widely used, NestJS default | ESM-only project (Jest's ESM configuration is still cumbersome) |
+| **Vitest** (modern, recommended for Vite-based / pure ESM) | Vite project, ESM native, fast, Jest-compatible API | NestJS (officially supports Jest) |
+| **node:test** (built-in from Node 20+) | Project that wants 0 dependencies | Needs a rich fixture / mock framework |
 
-**Khuyến nghị mặc định:**
-- NestJS → **Jest** (chính thức)
-- Express / Fastify → **Vitest** (greenfield) hoặc **Jest** (brownfield đã có)
-- Library / SDK package → **Vitest** hoặc **node:test**
+**Default recommendation:**
+- NestJS → **Jest** (official)
+- Express / Fastify → **Vitest** (greenfield) or **Jest** (existing brownfield)
+- Library / SDK package → **Vitest** or **node:test**
 
 ---
 
@@ -25,28 +25,28 @@
 src/
 ├── users/
 │   ├── user.service.ts
-│   ├── user.service.test.ts          # ← cạnh source (recommend)
+│   ├── user.service.test.ts          # ← next to source (recommended)
 │   └── user.controller.test.ts
 ├── orders/
 │   └── ...
 tests/
 ├── integration/                       # cross-module, in-memory DB
 │   └── users.integration.test.ts
-├── e2e/                              # full HTTP stack với TestContainers
+├── e2e/                              # full HTTP stack with TestContainers
 │   └── user-registration.e2e.test.ts
 ├── helpers/
-│   └── test-app.ts                    # build Express/NestJS/Fastify app cho test
+│   └── test-app.ts                    # build Express/NestJS/Fastify app for test
 └── fixtures/
     └── users.fixture.ts
 ```
 
-**Quy tắc:** Unit test cạnh source (`*.test.ts`), integration + E2E trong `tests/` root.
+**Rule:** Unit tests next to source (`*.test.ts`), integration + E2E in the `tests/` root.
 
 ---
 
 ## Test naming convention
 
-Giữ nguyên base: **`{method}_{scenario}_{expected}`** (hoặc dùng `describe` + `it` pattern):
+Keep the base: **`{method}_{scenario}_{expected}`** (or use the `describe` + `it` pattern):
 
 ```typescript
 describe("UserService.findById", () => {
@@ -55,7 +55,7 @@ describe("UserService.findById", () => {
 });
 ```
 
-Hoặc flat (closer to xUnit style):
+Or flat (closer to xUnit style):
 ```typescript
 test("findById_whenUserExists_returnsUser", async () => { ... });
 test("findById_whenUserNotFound_throwsNotFoundError", async () => { ... });
@@ -127,26 +127,26 @@ describe("UserService", () => {
 });
 ```
 
-### Vitest equivalent (API tương thích Jest 95%)
+### Vitest equivalent (95% Jest-compatible API)
 
 ```typescript
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { UserService } from "./user.service";
-// ... thay jest.fn() → vi.fn(), jest.Mocked → ReturnType<typeof vi.mocked>
+// ... replace jest.fn() → vi.fn(), jest.Mocked → ReturnType<typeof vi.mocked>
 ```
 
 ---
 
 ## Integration test — pick template by phase
 
-Giống base `rules/testing.md` §Integration Test Templates — có **2 template** tách theo phase:
+Same as base `rules/testing.md` §Integration Test Templates — there are **2 templates** split by phase:
 
 | Phase | DB backend | Docker | Speed | Catches |
 |-------|-----------|--------|-------|---------|
 | `/build` | In-memory (Prisma test env / SQLite memory) | ❌ | ms | Logic, mapping, validation |
 | `/test` | **TestContainers** (Postgres/MySQL real container) | ✅ | seconds | Index, transaction, collation, dialect bugs |
 
-### Template A — In-memory (cho `/build`)
+### Template A — In-memory (for `/build`)
 
 ```typescript
 // tests/helpers/in-memory-app.ts
@@ -155,7 +155,7 @@ import { execSync } from "node:child_process";
 import { buildApp } from "@/app";
 
 export async function createInMemoryApp() {
-  // SQLite memory hoặc test DB schema
+  // SQLite memory or test DB schema
   process.env.DATABASE_URL = "file::memory:?cache=shared";
   execSync("npx prisma db push --skip-generate", { stdio: "inherit" });
   const prisma = new PrismaClient();
@@ -165,7 +165,7 @@ export async function createInMemoryApp() {
 ```
 
 ```typescript
-// src/users/__tests__/users.integration.test.ts (KHÔNG có RequiresDocker tag)
+// src/users/__tests__/users.integration.test.ts (NO RequiresDocker tag)
 describe("UsersController (integration, in-memory)", () => {
   let app, prisma, cleanup;
   beforeAll(async () => ({ app, prisma, cleanup } = await createInMemoryApp()));
@@ -183,7 +183,7 @@ describe("UsersController (integration, in-memory)", () => {
 });
 ```
 
-### Template B — TestContainers (cho `/test`)
+### Template B — TestContainers (for `/test`)
 
 ```typescript
 // tests/helpers/testcontainers-app.ts
@@ -210,7 +210,7 @@ export async function stopTestApp() {
 
 ```typescript
 // tests/e2e/users.e2e.test.ts
-// @testcategory:RequiresDocker — bằng convention tên file hoặc tag
+// @testcategory:RequiresDocker — by file-name convention or tag
 describe("Users E2E (TestContainers Postgres)", () => {
   beforeAll(async () => { ({ prisma, app } = await startTestApp()); }, 60_000);
   afterAll(stopTestApp);
@@ -219,14 +219,14 @@ describe("Users E2E (TestContainers Postgres)", () => {
 });
 ```
 
-**Marking test cần Docker:** Jest dùng `testPathIgnorePatterns` per config; Vitest dùng `--exclude` hoặc test name pattern. KHÔNG dùng xUnit `[Trait]` (C#).
+**Marking a test that needs Docker:** Jest uses `testPathIgnorePatterns` per config; Vitest uses `--exclude` or a test name pattern. Do NOT use xUnit `[Trait]` (C#).
 
 Run by category:
 ```bash
-# Mặc định: chạy mọi test KHÔNG cần Docker
+# Default: run every test that does NOT need Docker
 npm test
 
-# Chỉ chạy E2E
+# Run E2E only
 npm test -- tests/e2e
 
 # Skip E2E
@@ -240,7 +240,7 @@ npm test -- --testPathIgnorePatterns="tests/e2e"
 | FluentAssertions (C#) | Jest / Vitest |
 |----------------------|---------------|
 | `result.Should().NotBeNull()` | `expect(result).not.toBeNull()` |
-| `result.Should().Be(expected)` | `expect(result).toBe(expected)` (referential) hoặc `toEqual` (deep) |
+| `result.Should().Be(expected)` | `expect(result).toBe(expected)` (referential) or `toEqual` (deep) |
 | `result.Should().BeEquivalentTo(expected)` | `expect(result).toEqual(expected)` |
 | `users.Should().HaveCount(3)` | `expect(users).toHaveLength(3)` |
 | `users.Should().Contain(u => u.email == "x")` | `expect(users).toContainEqual(expect.objectContaining({ email: "x" }))` |
@@ -253,11 +253,11 @@ npm test -- --testPathIgnorePatterns="tests/e2e"
 
 ## Mocking strategy
 
-Preference order **giữ nguyên** base:
-1. **Real implementation** (in-memory DB qua Prisma, real HTTP với supertest)
+Preference order **unchanged** from base:
+1. **Real implementation** (in-memory DB via Prisma, real HTTP with supertest)
 2. **Fake** (custom in-memory implementation)
-3. **Stub** (canned response qua `jest.fn().mockResolvedValue(...)`)
-4. **Mock** (verify interaction qua `expect(fn).toHaveBeenCalledWith(...)` — dùng tiết kiệm)
+3. **Stub** (canned response via `jest.fn().mockResolvedValue(...)`)
+4. **Mock** (verify interaction via `expect(fn).toHaveBeenCalledWith(...)` — use sparingly)
 
 ```typescript
 // Stub example
@@ -272,7 +272,7 @@ expect(mockLogger.info).toHaveBeenCalledWith(
 
 ---
 
-## Coverage thresholds (giữ nguyên base 80%)
+## Coverage thresholds (keep base 80%)
 
 ### Jest config (`jest.config.ts`)
 
@@ -286,7 +286,7 @@ export default {
     "src/**/*.{ts,tsx}",
     "!src/**/*.d.ts",
     "!src/**/*.test.ts",
-    "!src/server.ts", // bootstrap không count
+    "!src/server.ts", // bootstrap does not count
   ],
 };
 ```
@@ -320,26 +320,26 @@ npm test -- --coverage
 
 ## Common pitfalls
 
-1. **Test bị flaky vì shared state** — KHÔNG dùng module-level mutable singletons. Mỗi test tự seed data + cleanup trong `afterEach`/`afterAll`.
-2. **Async chưa await** — Jest/Vitest **không fail** test khi async assertion chưa await. Bật ESLint rule `@typescript-eslint/no-floating-promises` để bắt.
-3. **TestContainers chậm trên macOS arm64** — pin image với tag `-alpine` hoặc `arm64` để pull nhanh hơn.
-4. **`describe.only` / `it.only` lọt vào main** — Bật ESLint rule `jest/no-focused-tests` (Jest) hoặc `vitest/no-focused-tests`.
-5. **Mock không reset giữa test** — bật `clearMocks: true` trong Jest config; Vitest tự reset.
+1. **Test is flaky because of shared state** — do NOT use module-level mutable singletons. Each test should seed its own data + clean up in `afterEach`/`afterAll`.
+2. **Async not awaited** — Jest/Vitest **do not fail** a test when an async assertion is not awaited. Enable the ESLint rule `@typescript-eslint/no-floating-promises` to catch it.
+3. **TestContainers is slow on macOS arm64** — pin the image with the `-alpine` or `arm64` tag for faster pulls.
+4. **`describe.only` / `it.only` leaks into main** — enable the ESLint rule `jest/no-focused-tests` (Jest) or `vitest/no-focused-tests`.
+5. **Mock not reset between tests** — enable `clearMocks: true` in the Jest config; Vitest resets automatically.
 
 ---
 
 ## Checklist
 
-- [ ] Mọi public function/method có unit test
-- [ ] Edge case (null, empty, boundary) tested
-- [ ] Error path (exception, validation fail) tested
-- [ ] Integration test cho mỗi controller / route
-- [ ] E2E test cho user journey chính (đăng ký, login, CRUD chính)
-- [ ] Test độc lập (no shared state)
-- [ ] Tên test rõ ý nghĩa
+- [ ] Every public function/method has a unit test
+- [ ] Edge cases (null, empty, boundary) tested
+- [ ] Error paths (exception, validation fail) tested
+- [ ] Integration test for each controller / route
+- [ ] E2E test for the main user journeys (registration, login, main CRUD)
+- [ ] Independent tests (no shared state)
+- [ ] Test names are meaningful
 - [ ] Coverage ≥ 80% line, ≥ 75% branch
-- [ ] Unit test < 10s tổng
-- [ ] Không `.only` lọt vào main branch
+- [ ] Unit tests < 10s total
+- [ ] No `.only` leaks into the main branch
 
 ---
 

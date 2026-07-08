@@ -14,8 +14,8 @@ Cách hoạt động:
    - Duration: (last assistant timestamp) - (first user timestamp)
    - Command: parse từ text user message đầu turn (nếu bắt đầu bằng "/" → command name)
    - Prompt: preview <=120 ký tự nội dung prompt user (slash command → '/tên args'), sanitize cho log
-5. In stats ra stderr (terminal thấy) + append vào .claude/logs/command-stats.log
-   (log_line kết thúc bằng trường prompt="…" — luôn ghi, cho cả free-text lẫn slash command)
+5. In stats ra stderr (terminal thấy) + append 1 dòng vào .claude/logs/command-stats.log
+   (cột: ts | command | model | duration | input | cache_creation | cache_read | output | total | cost | prompt)
 
 Exit code:
 - 0: thành công (hook không block turn)
@@ -78,6 +78,61 @@ def format_duration(seconds):
 def format_number(n):
     """Format số với dấu phẩy phân nghìn."""
     return f"{n:,}"
+
+
+def format_tokens(n):
+    """Rút gọn token cho log: <1000 giữ số thô; ≥1e3 → K; ≥1e6 → M; ≥1e9 → B.
+    Bỏ số 0 thừa sau dấu thập phân: 384→'384', 29616→'29.6K', 4763973→'4.76M', 120000→'120K'."""
+    if n is None:
+        return "0"
+    n = int(n)
+    if n < 1000:
+        return str(n)
+    for div, suffix, decimals in ((1_000_000_000, "B", 2), (1_000_000, "M", 2), (1000, "K", 1)):
+        if n >= div:
+            num = f"{n / div:.{decimals}f}".rstrip("0").rstrip(".")
+            return f"{num}{suffix}"
+    return str(n)  # không tới được (n ≥ 1000 luôn khớp nhánh K)
+
+
+# Đơn giá API list-price ($/1M token): (input, output). Khớp theo prefix để chịu ID có hậu tố ngày.
+# Model lạ → None (bỏ cột cost). Cache suy ra từ input: creation ≈ 1.25×input (TTL 5'), read ≈ 0.1×input.
+def _price_for(model):
+    m = model or ""
+    if m.startswith("claude-opus-4"):
+        return (5.0, 25.0)
+    if m.startswith("claude-fable-5") or m.startswith("claude-mythos-5"):
+        return (10.0, 50.0)
+    if m.startswith("claude-sonnet"):
+        return (3.0, 15.0)
+    if m.startswith("claude-haiku"):
+        return (1.0, 5.0)
+    return None
+
+
+def estimate_cost_usd(model, inp, cache_creation, cache_read, output):
+    """Ước tính chi phí lượt theo API list-price; None nếu chưa biết đơn giá model.
+    ƯỚC TÍNH: cache_creation giả định TTL 5' (×1.25 — thực tế có thể ×2 nếu TTL 1h, nhưng
+    khoản này nhỏ); token sub-agent tính theo đơn giá model chính. Vì vậy là 'cost≈'."""
+    price = _price_for(model)
+    if price is None:
+        return None
+    in_rate, out_rate = price
+    return (
+        inp * in_rate
+        + cache_creation * in_rate * 1.25
+        + cache_read * in_rate * 0.1
+        + output * out_rate
+    ) / 1_000_000
+
+
+def format_cost(usd):
+    """'$3.22'; < 1 cent → '<$0.01'; None → 'n/a'."""
+    if usd is None:
+        return "n/a"
+    if usd < 0.005:
+        return "<$0.01"
+    return f"${usd:.2f}"
 
 
 def extract_command_name(text):
@@ -265,7 +320,7 @@ def parse_transcript(transcript_path):
 
 
 def print_stats(stats, log_file_path):
-    """In stats ra stderr + append vào log file."""
+    """In stats ra stderr + append 1 dòng vào log file."""
     if not stats:
         return
 
@@ -274,7 +329,11 @@ def print_stats(stats, log_file_path):
     total_main = sum(mu.values())
     total_sub = sum(su.values())
     total_all = total_main + total_sub
-    total_output = mu["output"] + su["output"]  # output token (main+sub) — proxy chi phí cho bản log gọn
+    total_output = mu["output"] + su["output"]  # output token (main+sub)
+    # Combined main+sub cho từng loại token — mỗi cột log = TỔNG toàn lệnh (main + mọi sub-agent).
+    all_input = mu["input"] + su["input"]
+    all_cache_read = mu["cache_read"] + su["cache_read"]
+    all_cache_creation = mu["cache_creation"] + su["cache_creation"]
 
     # Pretty print ra stderr (Claude Code display)
     lines = [
@@ -316,14 +375,27 @@ def print_stats(stats, log_file_path):
     end_ts = stats["end_ts"]
     # end_ts là datetime aware-UTC (parse từ transcript có hậu tố 'Z'). .astimezone() (không
     # tham số) đổi về múi giờ hệ thống → log hiện giờ local, nhất quán với nhánh fallback now().
-    log_ts = end_ts.astimezone().strftime("%Y-%m-%d %H:%M:%S") if end_ts else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    # Bản log gọn (pipe-delimited): ts | command | model | duration | out | total | prompt
-    # — bỏ breakdown token chi tiết (in/cache_r/cache_c) và cụm sub_* (gần như luôn 0);
-    #   breakdown đầy đủ vẫn hiện ở stderr phía trên cho ai cần xem live.
+    _dt = end_ts.astimezone() if end_ts else datetime.now()
+    log_ts = _dt.strftime("%Y-%m-%d %H:%M")  # năm đủ 4 chữ số + HH:MM (bỏ giây; tránh đọc nhầm '26-07-04')
+    # Bản log (pipe-delimited): ts | command | model | duration |
+    #   input | cache_creation | cache_read | output | total | prompt
+    # Mỗi cột token = TỔNG toàn lệnh (main-agent + mọi sub-agent), KHÔNG tách riêng sub.
+    # total = input + cache_creation + cache_read + output (== tổng usage main+sub).
+    # Token rút gọn bằng format_tokens: <1000 số thô, ≥1e3→K, ≥1e6→M, ≥1e9→B (vd 4763973→4.76M).
+    #   total humanize từ giá trị CHÍNH XÁC rồi mới rút gọn → có thể lệch vài đơn vị so với
+    #   cộng tay các cột đã rút gọn (do làm tròn). Breakdown chính xác + tách main/sub ở stderr.
+    # cost = ước tính USD theo API list-price (estimate_cost_usd); 'n/a' nếu chưa biết đơn giá model.
+    # ts: YYYY-MM-DD HH:MM (năm đủ 4 chữ số, chỉ bỏ giây). Token-col width 7 (đủ cho '999.99M').
+    cost = estimate_cost_usd(stats["model"], all_input, all_cache_creation, all_cache_read, total_output)
     log_line = (
-        f"{log_ts} | {stats['command']:<16} | {stats['model']:<18} | "
-        f"{format_duration(stats['duration_sec']):>10} | "
-        f"out={total_output:>7} | total={total_all:>9} | "
+        f"{log_ts} | {stats['command']:<12} | {stats['model']:<15} | "
+        f"{format_duration(stats['duration_sec']):>8} | "
+        f"input={format_tokens(all_input):>7} | "
+        f"cache_creation={format_tokens(all_cache_creation):>7} | "
+        f"cache_read={format_tokens(all_cache_read):>7} | "
+        f"output={format_tokens(total_output):>7} | "
+        f"total={format_tokens(total_all):>7} | "
+        f"cost={format_cost(cost):>7} | "
         f"prompt=\"{stats['user_text_preview']}\"\n"
     )
     try:

@@ -41,12 +41,14 @@ This is **Phase A** of the brownfield pipeline: `/discover` → `/spec` (reverse
 - List languages, frameworks, runtime versions (read `*.csproj`, `global.json`, `package.json`, lockfiles).
 - Map the structure: number of projects/modules, layering (Clean Architecture? N-tier? monolith?), entry points, main folders.
 - Identify peripheral technologies: database engine, cache, message broker, logging/observability backend, auth.
+- **Detect DB-resident logic** — scan the tree for database DDL by TWO signals: (a) file type — `*.sql`, `*.sqlproj`, migration/DDL folders; (b) **content** — any file (C#/TS migration, embedded resource, XML…) containing DDL statements (`CREATE|ALTER TABLE`, `CREATE PROCEDURE|PROC`, `CREATE TRIGGER`, `CREATE INDEX`, `CREATE FUNCTION|VIEW`, e.g. `migrationBuilder.Sql("CREATE PROCEDURE …")`). The location is **not fixed** (`db/`, `src/db/`, `backend/db/`, inside migrations…) — detect by signal, not by path. If the app calls stored procedures / triggers / DB functions, these in-repo scripts are the only readable source of that logic. **Never connect to a live database** (not even via a connection string found in config) — the in-repo snapshot is the only evidence source; see the DB-object inventory in Output.
 
 ### Phase 2 — Build & run verification
 
 - Run the build (`dotnet build` / `npm run build` …) — record the result, warnings/errors.
 - Run the existing test suite if present (`dotnet test` …) — **measure, do not verify**: does the suite pass? how many tests?
 - Confirm the app can start (or explicitly record blockers if it cannot).
+- **Sanitized startup (brownfield caution):** a legacy app may auto-connect — or auto-migrate (`context.Database.Migrate()`) — against the real DB / Kafka / Redis the moment it boots with its shipped config. Start it with a **sanitized environment** (env-var overrides pointing at throwaway containers, or placeholder connection strings) — never against the real shared infrastructure just to "see it run". Overrides are runtime-only (env vars / an uncommitted local file, removed afterwards) — the repo's config files are NOT edited (read-only guarantee). "Cannot start without real infra" is itself a finding to record, not a reason to point at production.
 
 ### Phase 3 — Health snapshot (light — measure, not verify)
 
@@ -57,7 +59,7 @@ Only signals **independent of the spec** (per `rules/brownfield.md` §Measure-vs
 
 ### Phase 4 — Generate Project Profile
 
-Generate / update the `## Project Profile` section in `CLAUDE.md`:
+Generate / update **`.claude/PROJECT_PROFILE.md`** (the CONFIG layer, user-owned — see `CLAUDE.md` §Kit Layering; an old repo layout that does not yet have this file → update the `## Project Profile` block in `CLAUDE.md` as before):
 
 ```markdown
 ## Project Profile
@@ -74,11 +76,12 @@ Generate / update the `## Project Profile` section in `CLAUDE.md`:
 
 ## Output
 
-- `## Project Profile` in `CLAUDE.md` (fully filled in) — the **most important artifact**.
+- `.claude/PROJECT_PROFILE.md` (fully filled in) — the **most important artifact**.
 - `docs/CODEBASE_MAP.md` — **REQUIRED** (consumed as the navigation index by `/spec` REVERSE and `/arch` reverse, so they do not re-survey the tree). Must contain at minimum:
   - Module / layering summary + entry points.
   - **Endpoint inventory** — a table `route + method → controller/handler → service` covering every externally reachable entry point. This is the skeleton `/spec` REVERSE turns into as-is user stories.
   - **Red-flag list** — the Phase 3 findings with `file:line` locations, so `/spec` REVERSE carries them over as `⚠️ suspicious behavior` instead of re-detecting.
+  - **DB-object inventory** (conditional — REQUIRED when Phase 1 detected DDL in the repo OR the code calls DB-resident logic via `EXEC` / `FromSqlRaw` / raw SQL): a table `object (table / proc / trigger / index / function / view) → defining file (actual path — locations vary per repo) → called from (file:line)`. This table is the index `/spec` REVERSE and characterization tests use to reach DB-resident behavior. Any object the code **calls** whose defining DDL is **not** in the repo → add to the red-flag list as `DB-resident logic not in repo` (blind spot; remedy = the user/DBA exports the CREATE script into the repo — the kit never auto-connects to a database to fetch it).
 - Health snapshot (build/test status, coverage baseline, red-flags) — input for deciding whether `/scan` is urgently needed.
 
 ## Quality Gate — Phase A Kickoff
@@ -88,6 +91,7 @@ Generate / update the `## Project Profile` section in `CLAUDE.md`:
 - [ ] Build status confirmed (pass / fail + reason)
 - [ ] Test suite status measured (pass count / coverage or "no tests")
 - [ ] Obvious security/technical red-flags listed (for `/scan` to dig into)
+- [ ] DDL detected in repo (by file type or content) → **DB-object inventory** present in `CODEBASE_MAP.md`; every code-called DB object missing its defining DDL → listed as `DB-resident logic not in repo` red-flag
 - [ ] No code modifications (read-only guarantee)
 
 ---

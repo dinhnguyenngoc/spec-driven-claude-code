@@ -1,132 +1,132 @@
 # Brownfield Pipeline — Quick Reference
 
-> **Tóm tắt:** Đây là **bảng tra nhanh "việc này thì chạy lệnh nào, theo thứ tự nào"** khi làm trên một dự án đã có sẵn code (*brownfield*). Có **1 lần onboard** (Phase A) và **5 luồng công việc lặp lại** (Phase B). Dành cho người vận hành pipeline — cứ tìm tình huống của bạn trong [Cây quyết định](#cây-quyết-định) rồi theo checklist lệnh của luồng tương ứng.
+> **Summary:** This is a **quick-lookup table for "which command to run for this task, and in what order"** when working on a project that already has code (*brownfield*). There is **one onboarding pass** (Phase A) and **5 recurring work flows** (Phase B). Intended for pipeline operators — just find your situation in the [Decision Tree](#decision-tree) and follow the command checklist for the corresponding flow.
 >
-> Kỷ luật chi tiết (vì sao phải làm vậy): [`../rules/brownfield.md`](../rules/brownfield.md) · Khai báo Mode/Profile: [`../CLAUDE.md`](../CLAUDE.md) §Project Mode & Profile.
+> Detailed discipline (why it must be done this way): [`../rules/brownfield.md`](../rules/brownfield.md) · Mode/Profile declaration: [`../PROJECT_PROFILE.md`](../PROJECT_PROFILE.md) (schema: [`../CLAUDE.md`](../CLAUDE.md) §Project Mode & Profile).
 
 ---
 
-## Thuật ngữ nhanh (đọc 1 lần là hiểu cả file)
+## Quick glossary (read once to understand the whole file)
 
-| Thuật ngữ | Nghĩa gọn |
+| Term | Short definition |
 |-----------|-----------|
-| **Brownfield** | Làm trên codebase **đã tồn tại / đang chạy production** (đối lập với *greenfield* = xây từ đầu). |
-| **Legacy code** | Code đang chạy nhưng **thiếu test / spec / tài liệu** mô tả ý định → rủi ro lớn nhất là "lỡ làm hỏng thứ đang chạy". |
-| **Phase A (discovery)** | Giai đoạn **onboard repo legacy — làm MỘT lần**, chỉ đọc (read-only) code, để dựng tài liệu nền (baseline). |
-| **Phase B** | Các **luồng công việc lặp lại** sau khi đã onboard (thêm/sửa tính năng, fix bug, hotfix, nâng cấp). |
-| **delta** | **Chỉ phần thay đổi** (tính năng mới hoặc phần sửa) — không phải toàn hệ thống. |
-| **reverse** (mode của `/spec`, `/arch`) | Chạy "ngược": sinh spec/kiến trúc **từ code đã có**, thay vì sinh code từ spec. |
-| **conformance-gate** (mode của `/arch`) | `/arch` chỉ **kiểm tra thay đổi có khớp kiến trúc hiện tại không** — mặc định không đổi kiến trúc. |
-| **characterization test** | Test **chụp lại behavior code *đang chạy*** (PASS ngay) — làm lưới chống regression *trước khi* sửa. |
-| **backward-compat** | **Không phá** API / contract / dữ liệu / schema mà client và dữ liệu hiện hành đang dựa vào. |
-| **strangler-fig** | Thay thế **dần dần**: dựng cái mới song song sau một lớp trừu tượng, chuyển dần qua — **không viết lại một phát** (big-bang). |
-| **ADR** | *Architecture Decision Record* — bản ghi một quyết định kiến trúc (bối cảnh, lựa chọn, hệ quả). |
+| **Brownfield** | Working on a codebase that **already exists / is running in production** (as opposed to *greenfield* = building from scratch). |
+| **Legacy code** | Code that is running but **lacks tests / spec / documentation** describing its intent → the biggest risk is "accidentally breaking something that is running". |
+| **Phase A (discovery)** | The stage that **onboards a legacy repo — done ONCE**, read-only on the code, to build the baseline documentation. |
+| **Phase B** | The **recurring work flows** after onboarding (add/modify features, fix bugs, hotfix, upgrade). |
+| **delta** | **Only the changed part** (a new feature or the modified portion) — not the whole system. |
+| **reverse** (mode of `/spec`, `/arch`) | Runs "in reverse": generates spec/architecture **from existing code**, instead of generating code from a spec. |
+| **conformance-gate** (mode of `/arch`) | `/arch` only **checks whether the change conforms to the current architecture** — by default it does not change the architecture. |
+| **characterization test** | A test that **captures the behavior of the code *as it currently runs*** (PASS right away) — a regression net set up *before* making changes. |
+| **backward-compat** | **Do not break** the API / contract / data / schema that current clients and data rely on. |
+| **strangler-fig** | Replace **gradually**: stand up the new implementation in parallel behind an abstraction layer, migrate over progressively — **do not rewrite in one shot** (big-bang). |
+| **ADR** | *Architecture Decision Record* — a record of an architectural decision (context, options, consequences). |
 
 ---
 
-## Mẹo nhớ — 1 spine + 5 entry
+## Memory aid — 1 spine + 5 entries
 
-Ba luồng phát triển (B1/B2/B5) **đi chung một "xương sống" (spine)** ở cuối — chỉ khác nhau ở *cửa vào*:
+The three development flows (B1/B2/B5) **share a common "spine"** at the end — they differ only in the *entry point*:
 
 ```
 /build → /test → /review → /verify → /deploy
 ```
 
-→ Nhớ spine một lần, rồi chỉ cần nhớ **cửa vào** của từng luồng.
+→ Memorize the spine once, then you only need to remember the **entry point** of each flow.
 
 ---
 
-## Cây quyết định
+## Decision Tree
 
-| Tình huống | Luồng |
+| Situation | Flow |
 |-----------|-------|
-| Nhận repo legacy lần đầu | **Phase A** |
-| Thêm tính năng MỚI | **B1** |
-| Sửa tính năng ĐÃ CÓ | **B2** |
-| Bug phát hiện lúc dev (chưa release) | **B3** |
-| Lỗi trên production đang LIVE | **B4** |
-| Đổi / nâng cấp kiến trúc / công nghệ | **B5** |
-| Nâng cấp dependency/runtime (.NET bump, vá CVE) — behavior giữ nguyên | **B5-lite** — ADR nhẹ, không cần strangler-fig; **full regression bắt buộc** (blast radius = cả app) |
-| Trả nợ kỹ thuật / refactor không đổi behavior | **`/simplify`** (kênh riêng — characterization test làm lưới "behavior unchanged") |
-| Gỡ bỏ / deprecate tính năng | **B2 + ADR** (breaking by design — deprecation window + migration path, per backward-compat rule) |
+| Receiving a legacy repo for the first time | **Phase A** |
+| Adding a NEW feature | **B1** |
+| Modifying an EXISTING feature | **B2** |
+| Bug found during dev (not yet released) | **B3** |
+| Error on LIVE production | **B4** |
+| Changing / upgrading architecture / technology | **B5** |
+| Upgrading a dependency/runtime (.NET bump, CVE patch) — behavior unchanged | **B5-lite** — lightweight ADR, no strangler-fig needed; **full regression mandatory** (blast radius = the whole app) |
+| Paying down technical debt / refactoring without changing behavior | **`/simplify`** (separate channel — characterization test as the "behavior unchanged" net) |
+| Removing / deprecating a feature | **B2 + ADR** (breaking by design — deprecation window + migration path, per backward-compat rule) |
 
 ---
 
-## Phase A — Discovery (MỘT lần khi nhận repo, READ-ONLY với source)
+## Phase A — Discovery (ONCE when receiving the repo, READ-ONLY on source)
 
-> **Mục đích:** onboard một repo lạ — khảo sát stack/cấu trúc, xác nhận build/chạy được, và dựng tài liệu nền (spec + kiến trúc + infra) khớp với code thực tế. Làm **một lần**, **không sửa code business**.
+> **Purpose:** onboard an unfamiliar repo — survey the stack/structure, confirm it builds/runs, and build the baseline documentation (spec + architecture + infra) that matches the actual code. Done **once**, **without modifying business code**.
 
 ```
 /discover  →  /spec (reverse)  →  /arch (reverse)  →  /infra (reverse-bootstrap)
-              [/scan khuyến nghị, độc lập — trước lần deploy đầu]
+              [/scan recommended, independent — before the first deploy]
 ```
 
 **Output:**
-- `Project Profile` (mode + DB + observability + structure) trong [`CLAUDE.md`](../CLAUDE.md)
-- `docs/CODEBASE_MAP.md` (endpoint inventory + red-flag list) — `/spec` reverse và `/arch` reverse **tiêu thụ làm mục lục**, không quét lại cây
+- `Project Profile` (mode + DB + observability + structure) in [`.claude/PROJECT_PROFILE.md`](../PROJECT_PROFILE.md)
+- `docs/CODEBASE_MAP.md` (endpoint inventory + red-flag list) — `/spec` reverse and `/arch` reverse **consume it as a table of contents**, without re-scanning the tree
 - `specs/SPEC.md` baseline (as-is user stories)
-- `architecture/` baseline (kiến trúc thật + ADR inferred)
-- `docker/Dockerfile` + `docker-compose.yml` + `.dockerignore` + `.env.example` (infra khớp code thực tế, chạy được local)
+- `architecture/` baseline (real architecture + inferred ADRs)
+- `docker/Dockerfile` + `docker-compose.yml` + `.dockerignore` + `.env.example` (infra matching the actual code, runnable locally)
 
-**Boundary:** read-only với `src/`/`web/` source code. Phase A có thể tạo file mới trong `docker/`, `specs/`, `architecture/`, `docs/` (artifact documentation/setup, không phải code business logic). Mọi thay đổi **code business** thuộc Phase B.
+**Boundary:** read-only on `src/`/`web/` source code. Phase A may create new files in `docker/`, `specs/`, `architecture/`, `docs/` (documentation/setup artifacts, not business logic code). Any change to **business code** belongs to Phase B.
 
-**Tại sao `/verify` và `/deploy` KHÔNG thuộc Phase A:**
-- `/verify` và `/deploy` là **execution command** — touch runtime state (test artifact thật, promote ra production), không sinh baseline documentation.
-- Brownfield project theo định nghĩa **đã có production hiện hành** — không cần "first deploy" như greenfield. Production deploy mới = touch production state → thuộc Phase B per-change.
-- `/infra` REVERSE-BOOTSTRAP **đã đủ** để spin up local dev environment (`docker compose up -d`); không cần `/deploy` để "thấy app chạy".
+**Why `/verify` and `/deploy` are NOT part of Phase A:**
+- `/verify` and `/deploy` are **execution commands** — they touch runtime state (test the real artifact, promote to production), they do not produce baseline documentation.
+- A brownfield project by definition **already has a running production** — it does not need a "first deploy" like greenfield. A new production deploy = touching production state → belongs to Phase B per-change.
+- `/infra` REVERSE-BOOTSTRAP is **enough** to spin up a local dev environment (`docker compose up -d`); no `/deploy` is needed to "see the app run".
 
 ---
 
-## Phase B — 5 luồng
+## Phase B — 5 flows
 
-### B1 — Tính năng MỚI trên legacy
+### B1 — NEW feature on legacy
 
 ```
 /spec(delta) → /arch(conformance) → /plan → [/secure] → /build → /test → /review → [/scan] → /verify → /deploy
 ```
 
-**Phải nhớ:**
-- `/spec(delta)`: chỉ đặc tả tính năng mới, reference story cũ — KHÔNG viết lại.
-- `/arch(conformance)`: mặc định **no-op** (không đổi kiến trúc); ADR nhẹ chỉ nếu có quyết định nhỏ mới.
-- `/build`: TDD bình thường (code mới); characterization test **chỉ khi** đụng vùng legacy chưa test.
-- Tính năng mới mở **surface ngoài** (payment, SSO, webhook, URL-fetch) → **nên chạy `/secure`** — surface mới chính là ứng viên "Highest-Risk Active Surface" (Phase 3.5). `/secure` chạy **delta-scoped**: chỉ model surface mới/đổi, cite control baseline đã có, assert không regress posture cũ (xem `commands/secure.md` §Brownfield Mode).
+**Must remember:**
+- `/spec(delta)`: specify only the new feature, reference existing stories — do NOT rewrite.
+- `/arch(conformance)`: by default a **no-op** (no architecture change); a lightweight ADR only if there is a small new decision.
+- `/build`: normal TDD (new code); characterization test **only when** touching untested legacy areas.
+- A new feature that opens an **external surface** (payment, SSO, webhook, URL-fetch) → **should run `/secure`** — the new surface is exactly a candidate for the "Highest-Risk Active Surface" (Phase 3.5). `/secure` runs **delta-scoped**: model only the new/changed surface, cite the existing control baseline, assert it does not regress the prior posture (see `commands/secure.md` §Brownfield Mode).
 
-### B2 — Sửa tính năng ĐÃ CÓ
+### B2 — Modify an EXISTING feature
 
 ```
-[characterization test TRƯỚC]  →  /spec(delta) → /arch(conformance) → /plan → /build → /test(backward-compat) → /review → /verify → /deploy
+[characterization test FIRST]  →  /spec(delta) → /arch(conformance) → /plan → /build → /test(backward-compat) → /review → /verify → /deploy
 ```
 
-**Phải nhớ (khác B1):**
-- **Bắt buộc**: trước khi đụng code, viết **characterization test** chụp behavior hiện tại của vùng sắp sửa, cho chạy **PASS** — đây là lưới để phân biệt thay đổi cố ý vs regression vô tình. (Bước này nằm *trong* `/build`, do agent tự làm — không phải lệnh riêng bạn gõ.)
-- `/test`: thêm test backward-compat — contract / data / API cũ không đổi.
+**Must remember (different from B1):**
+- **Mandatory**: before touching the code, write a **characterization test** capturing the current behavior of the area about to be modified, and make it **PASS** — this is the net that distinguishes intentional changes from unintentional regressions. (This step lives *inside* `/build`, done by the agent — it is not a separate command you type.)
+- `/test`: add backward-compat tests — the existing contract / data / API do not change.
 
-### B3 — Fix bug (dev-time, chưa release)
+### B3 — Fix bug (dev-time, not yet released)
 
 ```
 /fix-issue → /test → /review → /verify → /deploy
 ```
 
-**Phải nhớ:**
-- Bỏ qua `/spec`/`/arch`/`/plan` — không có yêu cầu nghiệp vụ mới.
-- `/fix-issue`: reproduce → regression test (fail trước fix) → root cause → fix.
+**Must remember:**
+- Skip `/spec`/`/arch`/`/plan` — there is no new business requirement.
+- `/fix-issue`: reproduce → regression test (fails before the fix) → root cause → fix.
 
-### B4 — Hotfix (production đang LIVE)
+### B4 — Hotfix (LIVE production)
 
 ```
 /hotfix  →  [Triage: rollback?]
          →  /fix-issue (root cause + regression test + fix)
          →  patch version + CHANGELOG + RELEASE_NOTES
-         →  /verify (digest mới — chứng minh bản vá trên artifact thật)
+         →  /verify (new digest — proves the patch on the real artifact)
          →  /deploy (rollback-ready)
-         →  post-incident (runbook + test phòng ngừa vĩnh viễn)
+         →  post-incident (runbook + permanent prevention test)
 ```
 
-**Phải nhớ:**
-- `/hotfix` là **thin orchestrator** — câu hỏi đầu: rollback hay fix-forward.
-- Bản vá phải có version riêng + audit trail; re-verify trên digest mới trước redeploy.
+**Must remember:**
+- `/hotfix` is a **thin orchestrator** — first question: rollback or fix-forward.
+- The patch must have its own version + audit trail; re-verify on the new digest before redeploy.
 
-### B5 — Nâng cấp kiến trúc / công nghệ
+### B5 — Architecture / technology upgrade
 
 ```
 /arch(REDESIGN: proposal + ADR + migration + v2-trigger)
@@ -136,48 +136,48 @@ Ba luồng phát triển (B1/B2/B5) **đi chung một "xương sống" (spine)**
    → /test → /review → /scan → /verify → /deploy
 ```
 
-**Phải nhớ:**
-- **Lần duy nhất `/arch` được chủ động đổi kiến trúc** — bắt buộc ADR (supersede ADR cũ nếu cần) + migration plan.
-- Strangler-fig: không big-bang rewrite — dựng song song sau abstraction, feature-flag, mở rộng dần.
-- Backward-compat suốt quá trình migration.
-- Ví dụ: thêm Redis cache, migrate Oracle→PostgreSQL, đổi Serilog-file → ELK (cập nhật Project Profile + active override).
+**Must remember:**
+- **The only time `/arch` may proactively change the architecture** — an ADR is mandatory (supersede the old ADR if needed) + a migration plan.
+- Strangler-fig: no big-bang rewrite — stand up in parallel behind an abstraction, feature-flag, expand gradually.
+- Backward-compat throughout the migration.
+- Examples: adding a Redis cache, migrating Oracle→PostgreSQL, switching Serilog-file → ELK (update the Project Profile + active override).
 
 ---
 
-## Vai trò `/arch` theo luồng — bảng tra nhanh
+## `/arch` role by flow — quick lookup
 
-| Luồng | Mode | Mặc định |
+| Flow | Mode | Default |
 |-------|------|----------|
-| Phase A | **reverse** | mô tả as-is + ADR inferred |
-| B1 (mới), B2 (sửa) | **conformance-gate** | giữ nguyên kiến trúc; ADR chỉ khi có quyết định mới nhỏ |
-| B5 (nâng cấp) | **redesign** | đổi kiểm soát + ADR (supersede) + migration |
+| Phase A | **reverse** | describe as-is + inferred ADRs |
+| B1 (new), B2 (modify) | **conformance-gate** | keep the architecture unchanged; ADR only when there is a small new decision |
+| B5 (upgrade) | **redesign** | controlled change + ADR (supersede) + migration |
 
 ---
 
-## 2 kỷ luật brownfield xuyên MỌI luồng B
+## 2 brownfield disciplines across ALL B flows
 
-1. **Characterization test trước khi sửa** code legacy chưa có test (đặc biệt B2) — chụp behavior hiện tại làm lưới chống regression.
-2. **Backward-compat mặc định** — không phá API/contract/data/schema đang chạy (phá vỡ → bắt buộc ADR + migration).
+1. **Characterization test before modifying** untested legacy code (especially B2) — capture the current behavior as a regression net.
+2. **Backward-compat by default** — do not break the running API/contract/data/schema (breaking it → an ADR + migration is mandatory).
 
 ---
 
-## Scope per-change — VIẾT theo delta, CHẠY toàn bộ
+## Scope per-change — WRITE per delta, RUN everything
 
-> **Trả lời câu:** *"`/test`, `/review`, `/verify` chạy trên toàn bộ source hay chỉ phần thay đổi?"* — Phân biệt then chốt: **VIẾT mới (tốn công) thì chỉ làm cho phần thay đổi; còn CHẠY (rẻ) thì chạy toàn bộ** để chứng minh phần không đổi vẫn nguyên vẹn. Nguyên tắc gốc: [`../rules/brownfield.md`](../rules/brownfield.md) §Upfront-vs-Per-change.
+> **Answers the question:** *"Do `/test`, `/review`, `/verify` run on the whole source or only the changed part?"* — The key distinction: **WRITING new (expensive) is done only for the changed part; while RUNNING (cheap) runs everything** to prove the unchanged part remains intact. Underlying principle: [`../rules/brownfield.md`](../rules/brownfield.md) §Upfront-vs-Per-change.
 
-| Lệnh | VIẾT mới — CHỈ phần thay đổi | CHẠY — TOÀN BỘ những gì đã automated |
+| Command | WRITE new — ONLY the changed part | RUN — ALL of what is already automated |
 |------|------------------------------|----------------------------------------|
-| `/test` | Test cho delta + characterization vùng đụng + backward-compat test cho contract kề cận | **Toàn bộ suite hiện có** — suite cũ xanh mới chứng minh "phần không đổi không bị ảnh hưởng" |
-| `/review` | — | **Chỉ diff/slice của thay đổi** (Five-Axis trên phần sửa; trục Architecture đối chiếu conformance với baseline — KHÔNG re-review toàn repo) |
-| `/verify` | Verify test cho scenario thay đổi/thêm (cập nhật VERIFY_MATRIX phần delta) | **Toàn bộ verify suite** (gồm zero-seed golden journey — lưới hệ thống rẻ nhất). Ngoại lệ duy nhất: **B4 hotfix** = scoped minimum (liveness + contract vùng bug + scenarios của story liên quan + test tái hiện incident) |
+| `/test` | Tests for the delta + characterization of the touched area + backward-compat tests for the adjacent contract | **The entire existing suite** — the existing suite staying green is what proves "the unchanged part is unaffected" |
+| `/review` | — | **Only the diff/slice of the change** (Five-Axis on the modified part; the Architecture axis checks conformance against the baseline — do NOT re-review the whole repo) |
+| `/verify` | Verify tests for the changed/added scenarios (update the delta part of VERIFY_MATRIX) | **The entire verify suite** (including the zero-seed golden journey — the cheapest system-level net). The only exception: **B4 hotfix** = scoped minimum (liveness + contract of the bug area + scenarios of the related story + a test reproducing the incident) |
 
-> Lưới lớn dần theo từng vòng B: vòng đầu sau Phase A build suite (ưu tiên golden journey + vùng sắp đụng), các vòng sau chỉ thêm delta. KHÔNG retrofit test toàn bộ upfront.
+> The net grows with each B iteration: the first iteration after Phase A builds the suite (prioritizing the golden journey + the areas about to be touched), later iterations only add the delta. Do NOT retrofit all tests upfront.
 
 ---
 
-## Mapping lệnh → file lệnh
+## Command → command-file mapping
 
-| Lệnh | File |
+| Command | File |
 |------|------|
 | `/discover` | [`../commands/discover.md`](../commands/discover.md) |
 | `/spec` (reverse + delta) | [`../commands/spec.md`](../commands/spec.md) §Brownfield Mode |
@@ -187,4 +187,4 @@ Ba luồng phát triển (B1/B2/B5) **đi chung một "xương sống" (spine)**
 | `/fix-issue` | [`../commands/fix-issue.md`](../commands/fix-issue.md) |
 | `/hotfix` | [`../commands/hotfix.md`](../commands/hotfix.md) |
 | `/verify` | [`../commands/verify.md`](../commands/verify.md) — Gate 11 **step optional · BLOCKING if run** (REQUIRED inside `/hotfix`) |
-| Spine: `/build`, `/test`, `/review`, `/scan`, `/deploy` | dùng chung greenfield + brownfield |
+| Spine: `/build`, `/test`, `/review`, `/scan`, `/deploy` | shared across greenfield + brownfield |

@@ -13,31 +13,34 @@ Create a comprehensive specification document **before** writing any code — de
 
 ## Usage
 
-| Cách gọi | Kết quả |
+| How to invoke | Result |
 |----------|---------|
-| `/spec <requirements>` | Sinh `SPEC.md` + (nếu sản phẩm có UI) **ASCII wireframes**. **Đây là mặc định** — KHÔNG sinh prototype HTML. |
-| `/spec <requirements> --prototype` | Như trên, **kèm** clickable HTML prototype. Cũng kích hoạt được bằng ngôn ngữ thường: thêm *"kèm prototype" / "có prototype"* vào yêu cầu. |
-| `/spec` (không tham số) | Xem **Phase 0**: repo đã có code → brownfield (cần `/discover` trước); chưa có gì → hỏi user cấp requirements. |
+| `/spec <requirements>` | Generate `SPEC.md` + (if the product has a UI) **ASCII wireframes**. **This is the default** — does NOT generate an HTML prototype. |
+| `/spec <requirements> --prototype` | As above, **plus** a clickable HTML prototype. Can also be triggered in plain language: add *"with prototype" / "include prototype"* to the request. |
+| `/spec` (no arguments) | See **Phase 0**: repo already has code → brownfield (needs `/discover` first); nothing there → ask the user to provide requirements. |
 
-> **Vì sao prototype mặc định OFF:** nó là artifact nặng nhất của `/spec`. ASCII wireframes (luôn sinh) đã đủ làm source of truth + đa số trường hợp đủ để sign-off. Prototype được sinh khi user yêu cầu, **hoặc** khi stakeholder/PO cần click-through mới yên tâm duyệt ở Gate 1. Chi tiết: Phase 2.5.
+> **Why the prototype is OFF by default:** it is the heaviest artifact of `/spec`. ASCII wireframes (always generated) are already enough as a source of truth + in most cases enough for sign-off. The prototype is generated when the user requests it, **or** when the stakeholder/PO needs a click-through to feel confident approving at Gate 1. Details: Phase 2.5.
 
-## Phase 0 — Mode Auto-Detection (chạy TRƯỚC Phase 1)
+## Phase 0 — Mode Auto-Detection (run BEFORE Phase 1)
 
-`/spec` tự resolve mode tại runtime thay vì tin tuyệt đối vào `Project Profile → Mode` (có thể stale). Hai tín hiệu:
+`/spec` resolves the mode itself at runtime instead of trusting `Project Profile → Mode` absolutely (it can be stale). Three signals:
 
-- **ARGS** — `/spec` có kèm requirements đầu vào không? (`/spec <requirements>` vs bare `/spec`)
-- **CODE** — repo có source code không? Probe: tồn tại bất kỳ `src/**/*.csproj`, `web/package.json`, hoặc build manifest khác ngoài `.claude/` (cùng cách `/discover` kiểm tra).
+- **ARGS** — does `/spec` come with input requirements? (`/spec <requirements>` vs bare `/spec`)
+- **CODE** — does the repo have source code? Probe: the existence of any `src/**/*.csproj`, `web/package.json`, or another build manifest outside `.claude/` (the same way `/discover` checks).
+- **DISCOVERY** — has it been onboarded via `/discover`? Probe: `docs/CODEBASE_MAP.md` exists (a mandatory deliverable of `/discover` — having it = having a navigation index for REVERSE/DELTA). *The STOP signal is "missing discovery", NOT "missing SPEC" — because REVERSE is itself the step that creates `SPEC.md` from nothing.*
 
-| ARGS | CODE | Resolved mode | Hành động |
-|:----:|:----:|---------------|-----------|
-| ✅ | ❌ | **greenfield** | Viết forward spec từ args (đi tiếp Phase 1). Nếu Profile ghi `brownfield` → coi là stale, surface + đề xuất sửa. |
-| ❌ | ✅ | **brownfield** | Cần baseline. Chưa có `specs/SPEC.md` → **STOP**, yêu cầu chạy `/discover` rồi `/spec` lại. Có rồi → xuống §Brownfield Mode (REVERSE/DELTA). |
-| ✅ | ✅ | **brownfield (DELTA)** | Args mô tả feature mới/đổi trên code có sẵn. Bắt buộc baseline `/discover` (`specs/SPEC.md`) trước; rồi chỉ spec phần delta. |
-| ❌ | ❌ | **undecidable** | **STOP** — không có gì để spec. Hỏi user: cấp requirements (→ greenfield) hay đưa code vào (→ brownfield). |
+| ARGS | CODE | DISCOVERY | Resolved mode | Action |
+|:----:|:----:|:---------:|---------------|-----------|
+| ✅ | ❌ | — | **greenfield** | Write a forward spec from args (continue to Phase 1). If the Profile says `brownfield` → treat it as stale, surface + propose a fix. |
+| ❌ | ✅ | ❌ | **brownfield (not yet discovered)** | **STOP** — run `/discover` first (REVERSE needs `docs/CODEBASE_MAP.md` as an index), then `/spec` again. |
+| ❌ | ✅ | ✅ | **brownfield** | Has `specs/SPEC.md` → **DELTA** · does not → **REVERSE** (establish a baseline) — go down to §Brownfield Mode. |
+| ✅ | ✅ | ❌ | **brownfield (not yet discovered)** | **STOP** — `/discover` first; then if there is no baseline SPEC → bare `/spec` (REVERSE) before `/spec <args>` (DELTA). |
+| ✅ | ✅ | ✅ | **brownfield (DELTA)** | If there is no `specs/SPEC.md` → do REVERSE first (establish a baseline) then spec the delta; if there is → spec only the delta. Do not rewrite existing stories. |
+| ❌ | ❌ | — | **undecidable** | **STOP** — nothing to spec. Ask the user: provide requirements (→ greenfield) or bring in code (→ brownfield). |
 
-**Reconcile:** sau khi resolve, so với `Project Profile → Mode`. Khớp → tiếp tục. Lệch → surface, đề xuất đổi `Mode:` về giá trị resolved (greenfield thì xoá kèm các Notes "current codebase" stale). KHÔNG tự đi tiếp khi đang lệch.
+**Reconcile:** after resolving, compare against `Project Profile → Mode`. Match → continue. Mismatch → surface it, propose changing `Mode:` to the resolved value (for greenfield, also delete the stale "current codebase" Notes). Do NOT continue while there is a mismatch.
 
-**Persist:** khi resolved mode khác Profile, offer cập nhật `Project Profile → Mode` để `/arch`, `/plan`, và việc kích hoạt `rules/brownfield.md` đồng bộ ở downstream.
+**Persist:** when the resolved mode differs from the Profile, offer to update `Project Profile → Mode` so that `/arch`, `/plan`, and the activation of `rules/brownfield.md` stay in sync downstream.
 
 ## Workflow
 
@@ -102,15 +105,16 @@ After discovery, produce `SPEC.md` using the **authoritative structure** defined
 > Skip for headless / API-only products (the API contract is the interface). For **any** product with a UI — UI-light or UI-heavy — the **UI/UX Designer** produces the wireframes; the HTML prototype is an **opt-in** add-on:
 
 1. **ASCII / Mermaid wireframes** (`specs/wireframes/`) — **ALWAYS produced.** The versioned, diff-able **source of truth**: one file per screen with layout + states (empty / loading / error / no-result) + a11y notes + a **control → `@US-[ID]-Snn` mapping table**, plus a Mermaid sitemap and key user flows. This is what `/arch`, `/build`, and `/verify` cite for traceability.
-   > **Chỉ page-level state** (default / empty / loading / error / no-result) cho mỗi screen. Ma trận state per-component (hover / focus / active / disabled…) là design-system territory của `/arch` — **KHÔNG** sinh ở `/spec` (fidelity = intent-level).
-2. **A clickable HTML prototype** (`specs/wireframes/prototype/index.html`) — **OPT-IN, default OFF** (it is the heaviest artifact of `/spec`). Generate it **only when the user requests it** (e.g. `/spec … --prototype`, or "kèm prototype" in the request) **or when the stakeholder/PO cannot confidently sign off from the ASCII wireframes alone** and needs to click through the flow. It is a self-contained, **intent-level** sign-off aid (no real backend): disposable after approval (or snapshot per release); NOT pixel-perfect and NOT the design system (tokens / component contracts belong to `/arch`).
+   > **Page-level state only** (default / empty / loading / error / no-result) for each screen. The per-component state matrix (hover / focus / active / disabled…) is the design-system territory of `/arch` — do **NOT** generate it in `/spec` (fidelity = intent-level).
+2. **A clickable HTML prototype** (`specs/wireframes/prototype/index.html`) — **OPT-IN, default OFF** (it is the heaviest artifact of `/spec`). Generate it **only when the user requests it** (e.g. `/spec … --prototype`, or "with prototype" in the request) **or when the stakeholder/PO cannot confidently sign off from the ASCII wireframes alone** and needs to click through the flow. It is a self-contained, **intent-level** sign-off aid (no real backend): disposable after approval (or snapshot per release); NOT pixel-perfect and NOT the design system (tokens / component contracts belong to `/arch`).
 
 **Fidelity stays intent-level** — this phase validates *what the user sees and how the flow works*, not pixels/tokens. **The Gate 1 quality bar is: ASCII wireframes + stakeholder/PO visual sign-off** (both mandatory); the HTML prototype is an optional aid to reaching that sign-off, not a gate item in itself. **Fill-only boilerplate:** copy [`.claude/templates/wireframes/`](../templates/wireframes/) into `specs/wireframes/`. Convention: [`.claude/agents/ui-ux-designer.md`](../agents/ui-ux-designer.md); ASCII rules: [`.claude/references/ascii-diagram-guide.md`](../references/ascii-diagram-guide.md).
 
 ### Phase 3: Review & Confirm
 
 - Present the spec to the user (Product Owner / Stakeholder)
-- **(UI products) Tell the user the HTML prototype was not generated (opt-in, default OFF) and how to get it** — e.g. *"Đã có ASCII wireframes. Prototype HTML không sinh mặc định; nếu bạn/stakeholder muốn click-through để duyệt, nói 'tạo prototype' (hoặc chạy `/spec … --prototype`)."* This is how the user discovers the option at point-of-use.
+- Record the change-set in **Revision History**: the first approved spec = the `v1.0 | Baseline` row; every later spec change (greenfield included — new stories, AC amendments) appends a new row. Semantics: BA agent §Revision History semantics.
+- **(UI products) Tell the user the HTML prototype was not generated (opt-in, default OFF) and how to get it** — e.g. *"The ASCII wireframes are ready. The HTML prototype is not generated by default; if you/the stakeholder want a click-through to review, say 'create prototype' (or run `/spec … --prototype`)."* This is how the user discovers the option at point-of-use.
 - Confirm before proceeding to `/arch`
 
 ## Output
@@ -147,12 +151,13 @@ The **blocking essentials** (the gate fails without these):
 - [ ] **Every scenario has a stable ID (`@US-XXX-Snn`) + a concrete, assertable observable outcome (*Then*)**, and **every user-facing action has a user-perspective scenario** — not only an API-transport one
 - [ ] **No unconfirmed assumptions / open questions** — each is `Resolved (date)` or `Open (owner / next command)`
 - [ ] **(UI products) Wireframes + states in `specs/wireframes/` (mapped to `@US-XXX-Snn`), and visual UI signed off by stakeholder + PO** (date + name) — blocking before `/arch`
+- [ ] **Revision History has an append-only row for this change-set** — Type + version bump per the BA agent §Revision History semantics; `Breaking` → ADR cited; extended/superseded stories carry their marker line
 
 > All other DoR items (story format, personas, priority, NFRs, Out-of-Scope, Glossary) → the authoritative checklist in the BA agent.
 
-## Brownfield Mode (khi Phase 0 resolve = brownfield)
+## Brownfield Mode (when Phase 0 resolves = brownfield)
 
-Chỉ vào mục này khi **Phase 0** đã resolve = brownfield **và** `specs/SPEC.md` tồn tại (nếu chưa có → Phase 0 đã STOP và yêu cầu `/discover`). Khi đó `/spec` chọn REVERSE vs DELTA theo sự hiện diện của `specs/SPEC.md`:
+Only enter this section when **Phase 0** has resolved = brownfield **and** `docs/CODEBASE_MAP.md` exists (if missing → Phase 0 has already STOPped and required `/discover`). At that point `/spec` chooses REVERSE vs DELTA based on the presence of `specs/SPEC.md` — not present → REVERSE (establish a baseline); present → DELTA:
 
 | Situation | Mode | Behavior |
 |-----------|------|----------|
@@ -166,8 +171,10 @@ Chỉ vào mục này khi **Phase 0** đã resolve = brownfield **và** `specs/S
 - Describe **actual** behavior (even if it looks wrong/incomplete) — flag with `⚠️ suspicious behavior` instead of correcting it in the spec.
 - Discovery `/spec` only **measures** (describes), does NOT verify against acceptance criteria (there are none yet) — per `rules/brownfield.md` §Measure-vs-Verify.
 - Acceptance criteria are written based on observed behavior; used as a baseline for per-change characterization tests later.
+- **DB-resident logic is a behavior source, same rank as a Service:** when the trace reaches `EXEC <proc>` / raw SQL touching a DB object, read the object's body from the defining file listed in the CODEBASE_MAP **DB-object inventory** (paths vary per repo — the inventory holds the actual locations) and extract its behavior into the story like any service code. Defining DDL not in the repo → tag the story `⚠️ DB-resident logic not in repo` and describe only the observable call surface (inputs / outputs / side effects seen from code) — do NOT guess the object's internals.
+- The approved baseline is recorded as the `v1.0 | Baseline` row of **Revision History** (semantics: BA agent §Revision History semantics).
 
-**DELTA — notes:** do not break existing stories; if changes affect backward compatibility → state it clearly in the new story + flag for `/arch` conformance-gate.
+**DELTA — notes:** do not break existing stories; if changes affect backward compatibility → state it clearly in the new story + flag for `/arch` conformance-gate. Each DELTA run appends exactly **one Revision History row** (`Added` / `Changed` / `Deprecated` / `Breaking`, version bump per BA agent §Revision History semantics) and puts the one-line marker (`> Extended by US-0xx (vX.Y)` / `> Superseded by US-0xx (vX.Y) — deprecated`) on every story it extends or supersedes — the old story body is never rewritten.
 
 ## Agent
 

@@ -1,18 +1,18 @@
 # STRIDE Template — Threat Modeling Boilerplate
 
-> **Mục đích:** Cung cấp khung cố định cho threat modeling theo STRIDE. Agent `/secure` dùng template này thay vì re-author từ đầu mỗi lần — chỉ **fill data feature-specific** vào các block đã định sẵn.
+> **Purpose:** Provide a fixed framework for threat modeling using STRIDE. The `/secure` agent uses this template instead of re-authoring from scratch each time — it only **fills feature-specific data** into the predefined blocks.
 >
-> **Khi nào dùng:** `/secure` Phase 1 (Asset), Phase 2 (STRIDE), Phase 3 (Threat block), Phase 3.5 (Highest-Risk Surface).
+> **When to use:** `/secure` Phase 1 (Asset), Phase 2 (STRIDE), Phase 3 (Threat block), Phase 3.5 (Highest-Risk Surface).
 >
-> **Cách dùng:** Copy section cần thiết vào `security/THREAT_MODEL.md` rồi điền vào các ô `[…]` và bảng. **KHÔNG re-write** structure của template.
+> **How to use:** Copy the needed section into `security/THREAT_MODEL.md`, then fill in the `[…]` fields and tables. Do **NOT re-write** the template structure.
 
 ---
 
 ## §A. Asset Inventory (Phase 1)
 
-### A.1 — Default asset categories (reference, không bắt buộc copy)
+### A.1 — Default asset categories (reference, not mandatory to copy)
 
-Các loại asset thường gặp — agent chọn loại có trong feature, **bổ sung asset feature-specific** nếu có:
+Common asset types — the agent picks the ones present in the feature and **adds feature-specific assets** if any:
 
 | Asset | Sensitivity | Impact if Compromised |
 |-------|-------------|----------------------|
@@ -30,19 +30,19 @@ Các loại asset thường gặp — agent chọn loại có trong feature, **b
 ### A.2 — Asset table to fill in `THREAT_MODEL.md`
 
 ```markdown
-## Assets (feature: [TÊN FEATURE])
+## Assets (feature: [FEATURE NAME])
 
 | Asset | Classification | Owner | Notes |
 |-------|---------------|-------|-------|
-| [Tên asset 1 — vd: Uploaded document URL] | [Critical/High/Medium/Low] | [Team/Module] | [Lý do classification — vd: chứa private URL người dùng] |
-| [Tên asset 2] | ... | ... | ... |
+| [Asset name 1 — e.g.: Uploaded document URL] | [Critical/High/Medium/Low] | [Team/Module] | [Classification reason — e.g.: contains user's private URL] |
+| [Asset name 2] | ... | ... | ... |
 ```
 
 ---
 
 ## §B. STRIDE Reference Table (Phase 2)
 
-> **Đây là reference cố định — copy nguyên xi nếu cần, không sửa.** Agent chỉ dùng để gợi nhớ khi phân tích từng component.
+> **This is a fixed reference — copy verbatim if needed, do not modify.** The agent uses it only as a reminder when analyzing each component.
 
 | Threat | Description | Questions to Ask | Typical Mitigations |
 |--------|-------------|------------------|---------------------|
@@ -57,7 +57,7 @@ Các loại asset thường gặp — agent chọn loại có trong feature, **b
 
 ## §C. Risk Matrix (Phase 3)
 
-> **Bảng cố định — copy nguyên xi vào `THREAT_MODEL.md`, không tự design lại.**
+> **Fixed table — copy verbatim into `THREAT_MODEL.md`, do not redesign.**
 
 | L \ I    | Low | Medium | High | Critical |
 |----------|-----|--------|------|----------|
@@ -65,57 +65,57 @@ Các loại asset thường gặp — agent chọn loại có trong feature, **b
 | Medium   | L   | M      | H    | H        |
 | Low      | L   | L      | M    | H        |
 
-**Rules áp dụng đồng nhất cho mọi threat:**
-- **Critical / High** risk → **MUST** có `[Required for v1]` mitigation
-- **Medium** → `[Required for v1]` HOẶC `[Deferred to v2 with trigger]`
-- **Low** → `[Accepted]` được phép (kèm lý do)
+**Rules applied uniformly to every threat:**
+- **Critical / High** risk → **MUST** have a `[Required for v1]` mitigation
+- **Medium** → `[Required for v1]` OR `[Deferred to v2 with trigger]`
+- **Low** → `[Accepted]` is allowed (with reason)
 
 ---
 
 ## §D. Threat Block Template (Phase 3 — 1 block / threat)
 
-> Copy block dưới cho mỗi threat phát hiện. **Cấu trúc cố định, chỉ điền `[…]`.**
+> Copy the block below for each threat found. **Fixed structure, only fill the `[…]`.**
 
 ```markdown
-## Threat: [Tên ngắn gọn] — [ID: S1 / T1 / R1 / I1 / D1 / E1]
+## Threat: [Short name] — [ID: S1 / T1 / R1 / I1 / D1 / E1]
 
 **Category**: [S / T / R / I / D / E]
-**Component**: [Component bị ảnh hưởng — vd: `OrderController.Create`]
-**Description**: [Mô tả cách tấn công — 1–3 câu]
+**Component**: [Affected component — e.g.: `OrderController.Create`]
+**Description**: [Describe the attack — 1–3 sentences]
 **Likelihood**: [High / Medium / Low]
 **Impact**: [Critical / High / Medium / Low]
-**Risk**: [Critical / High / Medium / Low — tra từ §C]
+**Risk**: [Critical / High / Medium / Low — look up in §C]
 
 ### Attack Scenario
-1. [Attacker làm X]
-2. [System phản ứng Y]
-3. [Attacker đạt Z]
+1. [Attacker does X]
+2. [System reacts Y]
+3. [Attacker achieves Z]
 
 ### Mitigations
-- [ ] [Mitigation 1 — mechanically implementable: file/attribute/header/flag cụ thể]
+- [ ] [Mitigation 1 — mechanically implementable: specific file/attribute/header/flag]
 - [ ] [Mitigation 2 — ...]
 
 ### Acceptance Criteria
-- [ ] [Tên security test cụ thể + plan task ID — vd: `OrderTests.RejectsForeignUserId` / Task 3.4]
+- [ ] [Specific security test name + plan task ID — e.g.: `OrderTests.RejectsForeignUserId` / Task 3.4]
 
 **Required for v1?**: [Yes / Deferred to v2 with trigger: <observable condition> / Accepted: <reason>]
-**Owner task(s)**: plan Task X.X, X.Y  ← MỌI mitigation phải map tới task ID có sẵn trong `plans/plan.md`
-**Slot into existing task?**: [Yes — không tạo task mới / No — escalate PM, cần plan change]
+**Owner task(s)**: plan Task X.X, X.Y  ← EVERY mitigation must map to a task ID that already exists in `plans/plan.md`
+**Slot into existing task?**: [Yes — no new task / No — escalate PM, plan change needed]
 ```
 
-**Discipline:** Ưu tiên slot mitigation vào task có sẵn trong `plans/plan.md`. Nếu không fit, escalate PM trước khi expand scope — KHÔNG silently add task.
+**Discipline:** Prefer slotting a mitigation into an existing task in `plans/plan.md`. If it doesn't fit, escalate to PM before expanding scope — do NOT silently add a task.
 
 ---
 
 ## §E. Highest-Risk Active Surface — Deep Dive (Phase 3.5)
 
-> **Mỗi `/secure` BẮT BUỘC** identify **1 active surface** rủi ro cao nhất và làm deep dive. Một deep table hơn 15 paragraph shallow.
+> **Every `/secure` MUST** identify **1 active surface** with the highest risk and do a deep dive. One deep table beats 15 shallow paragraphs.
 
-### E.1 — Active surface candidate list (reference, chọn 1)
+### E.1 — Active surface candidate list (reference, pick 1)
 
-Các loại surface thường có rủi ro cao:
+Surface types that commonly carry high risk:
 
-| Surface type | Threat sub-vectors điển hình |
+| Surface type | Typical threat sub-vectors |
 |--------------|------------------------------|
 | URL-fetching / SSRF | `file://`, `gopher://`, DNS rebinding, cloud metadata IP (169.254.169.254), redirect chain |
 | File upload | Path traversal, MIME spoofing, ZIP bomb, polyglot file, executable masquerading |
@@ -129,54 +129,54 @@ Các loại surface thường có rủi ro cao:
 | Email/SMS dispatch | Header injection, phishing relay, rate-limit bypass |
 | HTTP response surface (headers/CORS) | Missing HSTS/CSP/X-Frame-Options/X-Content-Type-Options, `AllowAnyOrigin` + credentials, Server header leak |
 
-### E.2 — Control-to-Test Mapping Table (BẮT BUỘC điền)
+### E.2 — Control-to-Test Mapping Table (MUST fill)
 
 ```markdown
 ## Phase 3.5: Highest-Risk Active Surface — Deep Dive
 
-**Surface chọn:** [Tên surface — vd: URL-fetching for link/document title preview]
-**Lý do chọn:** [Vì sao đây là surface rủi ro cao nhất trong feature này]
+**Surface chosen:** [Surface name — e.g.: URL-fetching for link/document title preview]
+**Reason for choosing:** [Why this is the highest-risk surface in this feature]
 
 | RC id | Control | Threat sub-vector closed | Test in plan task | Source |
 |-------|---------|--------------------------|-------------------|--------|
-| RC-1 | [Control 1 — vd: URL scheme allowlist] | [Blocks `file://`, `gopher://`] | [Task X.Y / `TitleFetcherTests.RejectsNonHttpScheme`] | [ADR-NNN] |
-| RC-2 | [Control 2 — vd: DNS rebinding mitigation] | [Connect to resolved IP, not hostname] | [Task X.Y / test name] | [ADR-NNN] |
-| RC-3 | [Control 3 — vd: Block cloud metadata IPs] | [Blocks 169.254.169.254, 100.100.100.200] | [Task X.Y / test name] | **[NEW]** |
-| RC-… | ... | ... | ... | [ADR-NNN hoặc **[NEW]**] |
+| RC-1 | [Control 1 — e.g.: URL scheme allowlist] | [Blocks `file://`, `gopher://`] | [Task X.Y / `TitleFetcherTests.RejectsNonHttpScheme`] | [ADR-NNN] |
+| RC-2 | [Control 2 — e.g.: DNS rebinding mitigation] | [Connect to resolved IP, not hostname] | [Task X.Y / test name] | [ADR-NNN] |
+| RC-3 | [Control 3 — e.g.: Block cloud metadata IPs] | [Blocks 169.254.169.254, 100.100.100.200] | [Task X.Y / test name] | **[NEW]** |
+| RC-… | ... | ... | ... | [ADR-NNN or **[NEW]**] |
 
 > **`RC-N` = stable Required Control id** (sequential within `PRE_DEV_REVIEW.md`). Downstream cites it: `/review` → `Relates-to: RC-N`; `/build` implements per RC-N. A control derived from an existing ADR may cite the ADR id instead; every `[NEW]` control MUST carry an `RC-N`.
 ```
 
-> Mọi control đánh dấu `[NEW]` (bổ sung thêm ngoài ADR có sẵn) **PHẢI** xuất hiện lại trong `PRE_DEV_REVIEW.md §"Controls added beyond ADRs"` với cùng số thứ tự.
+> Every control marked `[NEW]` (added beyond an existing ADR) **MUST** reappear in `PRE_DEV_REVIEW.md §"Controls added beyond ADRs"` with the same sequence number.
 
 ---
 
 ## §F. Threat Model Document Skeleton
 
-> File `security/THREAT_MODEL.md` dùng skeleton này — agent fill `[…]`, không sửa structure.
+> The file `security/THREAT_MODEL.md` uses this skeleton — the agent fills `[…]`, does not modify the structure.
 
 ```markdown
-# Threat Model: [Tên Feature]
+# Threat Model: [Feature Name]
 
 ## Document Info
-- **Author**: [Tên]
+- **Author**: [Name]
 - **Date**: [YYYY-MM-DD]
 - **Status**: [Draft / In Review / Approved]
-- **Reviewers**: [Tên]
+- **Reviewers**: [Name]
 
 ## System Overview
-[Mô tả ngắn + link tới `architecture/ARCHITECTURE.md`]
+[Short description + link to `architecture/ARCHITECTURE.md`]
 
 ## Assets
-[Copy §A.2 — điền bảng]
+[Copy §A.2 — fill the table]
 
 ## Trust Boundaries
-[Diagram (ASCII hoặc link tới `architecture/diagrams/`) — chỉ ra ranh giới giữa zone untrusted ↔ trusted]
+[Diagram (ASCII or link to `architecture/diagrams/`) — show the boundary between untrusted ↔ trusted zones]
 
 ## Threats (STRIDE)
 
 ### Spoofing (S)
-[Một hoặc nhiều threat block §D — category = S]
+[One or more threat blocks §D — category = S]
 
 ### Tampering (T)
 [Threat block §D — category = T]
@@ -194,10 +194,10 @@ Các loại surface thường có rủi ro cao:
 [Threat block §D — category = E]
 
 ## Highest-Risk Active Surface
-[Copy §E.2 — điền bảng]
+[Copy §E.2 — fill the table]
 
 ## Security Requirements
-[Link tới `security/SECURITY_REQUIREMENTS.md` — sinh từ `OWASP_TEMPLATE.md §B`]
+[Link to `security/SECURITY_REQUIREMENTS.md` — generated from `OWASP_TEMPLATE.md §B`]
 
 ## Approval
 
@@ -207,17 +207,17 @@ Các loại surface thường có rủi ro cao:
 | Tech Lead | | | Pending |
 
 ## Open Issues
-- [ ] [Vấn đề cần resolve trước khi approve]
+- [ ] [Issue to resolve before approval]
 ```
 
 ---
 
-## Checklist tự kiểm (agent dùng trước khi submit)
+## Self-check checklist (agent uses before submitting)
 
-- [ ] Mọi threat có ID duy nhất (S1, T1, …) — không trùng
-- [ ] Mọi threat có Risk rating tra từ §C (không tự đặt)
-- [ ] Mọi Critical/High threat có ít nhất 1 mitigation `[Required for v1]`
-- [ ] Mọi mitigation map tới `plans/plan.md` task ID có sẵn
-- [ ] Phase 3.5 deep-dive table có ≥3 control (nếu <3, surface chưa đủ rủi ro để gọi là "highest")
-- [ ] Mọi control `[NEW]` được liệt kê lại trong `PRE_DEV_REVIEW.md`
-- [ ] STRIDE reference (§B) và Risk matrix (§C) **không bị sửa** so với template
+- [ ] Every threat has a unique ID (S1, T1, …) — no duplicates
+- [ ] Every threat has a Risk rating looked up from §C (not self-assigned)
+- [ ] Every Critical/High threat has at least 1 `[Required for v1]` mitigation
+- [ ] Every mitigation maps to an existing `plans/plan.md` task ID
+- [ ] The Phase 3.5 deep-dive table has ≥3 controls (if <3, the surface is not risky enough to be called the "highest")
+- [ ] Every `[NEW]` control is re-listed in `PRE_DEV_REVIEW.md`
+- [ ] STRIDE reference (§B) and Risk matrix (§C) are **not modified** from the template

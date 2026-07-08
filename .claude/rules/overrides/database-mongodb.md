@@ -1,32 +1,32 @@
 # Override: Database — MongoDB
 
-> **Active when** `Project Profile → Database: MongoDB`. Read alongside `rules/database.md` (base — SQL Server / relational). **Cảnh báo quan trọng:** MongoDB là **NoSQL document store** — KHÔNG phải dialect SQL như Oracle/MySQL/PostgreSQL. Nhiều thứ trong base `database.md` (EF Core LINQ, Dapper raw SQL, `AsNoTracking`, parametrized `@`-syntax) **KHÔNG áp dụng**. Đọc kỹ §A "Paradigm differences" trước khi áp dụng pattern nào.
+> **Active when** `Project Profile → Database: MongoDB`. Read alongside `rules/database.md` (base — SQL Server / relational). **Important warning:** MongoDB is a **NoSQL document store** — NOT a SQL dialect like Oracle/MySQL/PostgreSQL. Many things in base `database.md` (EF Core LINQ, Dapper raw SQL, `AsNoTracking`, parametrized `@`-syntax) **do NOT apply**. Read §A "Paradigm differences" carefully before applying any pattern.
 >
-> File này hỗ trợ cả 2 nhánh stack: **ASP.NET Core** (`MongoDB.Driver`) và **Node.js** (`mongodb` driver / `mongoose` ODM).
+> This file supports both stack branches: **ASP.NET Core** (`MongoDB.Driver`) and **Node.js** (`mongodb` driver / `mongoose` ODM).
 
 ---
 
-## §A. Paradigm differences vs SQL (quan trọng — đọc trước)
+## §A. Paradigm differences vs SQL (important — read first)
 
-| Khái niệm | SQL (base) | MongoDB |
+| Concept | SQL (base) | MongoDB |
 |----------|-----------|---------|
 | Storage unit | Row | **Document** (BSON — Binary JSON) |
 | Group | Table | **Collection** |
-| Schema | Strict (DDL) | **Flexible** — document trong cùng collection có thể khác shape (nhưng nên enforce qua validator) |
-| Relationship | Foreign key + JOIN | **Embed** (denormalize) HOẶC **Reference** (`$lookup` aggregation) — chọn theo access pattern |
-| Primary key | `Id UUID` / `IDENTITY` | `_id` (ObjectId 12-byte mặc định, hoặc tự assign UUID/string) |
-| Query | SQL | **Query language MongoDB** (JSON-style) + **Aggregation Pipeline** |
-| Transaction | Default ACID per statement | **Single-document atomic** by default; **multi-document transaction** chỉ trong replica set / sharded cluster (4.0+), tốn perf — tránh nếu có thể |
-| Constraints | FK, CHECK, UNIQUE | Chỉ có **unique index**; KHÔNG có FK constraint, KHÔNG có cascade delete |
-| Index | Per column | **Per field hoặc compound** — order quan trọng (ESR rule: Equality → Sort → Range) |
-| Migration | DDL statement (ALTER TABLE) | **Không cần migration cho schema**; chỉ cần migration khi đổi shape data (data-migration script) hoặc đổi index |
-| Pagination | `OFFSET / LIMIT` | `skip()` + `limit()` (chậm với large offset) HOẶC **cursor-based** (recommend) |
-| Connection model | Pool per process | `MongoClient` là pool — **chỉ tạo 1 instance / app**, reuse |
+| Schema | Strict (DDL) | **Flexible** — documents in the same collection can have different shapes (but you should enforce via a validator) |
+| Relationship | Foreign key + JOIN | **Embed** (denormalize) OR **Reference** (`$lookup` aggregation) — choose per access pattern |
+| Primary key | `Id UUID` / `IDENTITY` | `_id` (ObjectId 12-byte by default, or assign your own UUID/string) |
+| Query | SQL | **MongoDB query language** (JSON-style) + **Aggregation Pipeline** |
+| Transaction | Default ACID per statement | **Single-document atomic** by default; **multi-document transaction** only in a replica set / sharded cluster (4.0+), costs perf — avoid if possible |
+| Constraints | FK, CHECK, UNIQUE | Only a **unique index**; NO FK constraint, NO cascade delete |
+| Index | Per column | **Per field or compound** — order matters (ESR rule: Equality → Sort → Range) |
+| Migration | DDL statement (ALTER TABLE) | **No migration needed for schema**; migration is only needed when changing the data shape (data-migration script) or changing an index |
+| Pagination | `OFFSET / LIMIT` | `skip()` + `limit()` (slow with a large offset) OR **cursor-based** (recommended) |
+| Connection model | Pool per process | `MongoClient` is a pool — **create only 1 instance / app**, reuse it |
 
-**Hệ quả thực tế:**
-- KHÔNG có "JOIN N+1 prevention" theo nghĩa SQL — vấn đề chuyển thành "embed-vs-reference decision"
-- KHÔNG có "parametrized SQL string concat" risk — query là JSON object, driver tự escape
-- VÀ ngược lại: rủi ro mới = **NoSQL injection** khi pass user input thẳng vào query operator (`$gt`, `$ne`, `$where`) — xem §H
+**Practical consequences:**
+- There is NO "JOIN N+1 prevention" in the SQL sense — the problem becomes the "embed-vs-reference decision"
+- There is NO "parametrized SQL string concat" risk — a query is a JSON object, the driver escapes it automatically
+- And conversely: a new risk = **NoSQL injection** when passing user input straight into a query operator (`$gt`, `$ne`, `$where`) — see §H
 
 ---
 
@@ -35,19 +35,19 @@
 ### B.1 — ASP.NET Core (MongoDB.Driver)
 
 ```xml
-<!-- KHÔNG dùng EF Core với MongoDB (EF Core Mongo provider unofficial, ít maintain) -->
+<!-- Do NOT use EF Core with MongoDB (the EF Core Mongo provider is unofficial, poorly maintained) -->
 <PackageReference Include="MongoDB.Driver" Version="3.*" />
 ```
 
 ```csharp
-// Singleton — MongoClient tự pool connection
+// Singleton — MongoClient pools connections automatically
 services.AddSingleton<IMongoClient>(_ =>
     new MongoClient(configuration.GetConnectionString("MongoDb")));
 
 services.AddSingleton(sp =>
     sp.GetRequiredService<IMongoClient>().GetDatabase(configuration["MongoDb:DatabaseName"]));
 
-// Repository nhận IMongoDatabase, lấy collection trong constructor
+// Repository receives IMongoDatabase, gets the collection in the constructor
 public class UserRepository
 {
     private readonly IMongoCollection<User> _users;
@@ -59,19 +59,19 @@ Connection string: `mongodb://app:password@db1:27017,db2:27017,db3:27017/myapp?r
 
 ### B.2 — Node.js
 
-| Library | Khi dùng | Setup |
+| Library | When to use | Setup |
 |---------|---------|-------|
-| **`mongodb` (official driver)** | Cần control low-level, performance critical, không muốn ODM overhead | `npm install mongodb` |
-| **Mongoose** | Greenfield cần schema enforcement + middleware + populate (default cho Express/NestJS) | `npm install mongoose` |
-| **Prisma** (MongoDB connector, beta) | Đã dùng Prisma cho relational + muốn unified API | `npm install prisma @prisma/client` |
+| **`mongodb` (official driver)** | Need low-level control, performance critical, do not want ODM overhead | `npm install mongodb` |
+| **Mongoose** | Greenfield needing schema enforcement + middleware + populate (default for Express/NestJS) | `npm install mongoose` |
+| **Prisma** (MongoDB connector, beta) | Already using Prisma for relational + want a unified API | `npm install prisma @prisma/client` |
 
 **`mongodb` driver example:**
 ```typescript
 import { MongoClient } from "mongodb";
 
-// Singleton — KHÔNG tạo nhiều MongoClient
+// Singleton — do NOT create multiple MongoClients
 const client = new MongoClient(process.env.MONGO_URL!, {
-  maxPoolSize: 100,        // default 100 — tune theo load
+  maxPoolSize: 100,        // default 100 — tune per load
   minPoolSize: 5,
   serverSelectionTimeoutMS: 5000,
 });
@@ -94,19 +94,19 @@ export const User = model("User", UserSchema);
 await mongoose.connect(process.env.MONGO_URL!);
 ```
 
-**Connection pool:** `MongoClient` đã tự pool. KHÔNG tạo nhiều instance per request — anti-pattern phổ biến.
+**Connection pool:** `MongoClient` already pools automatically. Do NOT create multiple instances per request — a common anti-pattern.
 
 ---
 
 ## §C. Schema design — Embed vs Reference
 
-Đây là **quyết định kiến trúc quan trọng nhất** trong MongoDB. Sai → query chậm hoặc data inconsistency.
+This is the **most important architectural decision** in MongoDB. Get it wrong → slow queries or data inconsistency.
 
-### Embed (nhúng) — chọn khi:
-- Quan hệ 1-1 hoặc 1-few (vd: User → Address)
-- Data cùng access pattern (luôn query cùng lúc)
-- Child KHÔNG độc lập (không tồn tại nếu thiếu parent)
-- Tổng size document < 16MB (giới hạn cứng MongoDB)
+### Embed — choose when:
+- 1-1 or 1-few relationship (e.g. User → Address)
+- Data with the same access pattern (always queried together)
+- The child is NOT independent (does not exist without the parent)
+- Total document size < 16MB (MongoDB's hard limit)
 
 ```json
 {
@@ -119,35 +119,35 @@ await mongoose.connect(process.env.MONGO_URL!);
 }
 ```
 
-→ Lấy user kèm addresses = 1 read, không cần JOIN.
+→ Getting a user with its addresses = 1 read, no JOIN needed.
 
-### Reference (tham chiếu) — chọn khi:
-- Quan hệ 1-many với "many" lớn / unbounded (vd: User → Orders — có thể hàng nghìn)
-- Child entity độc lập, có lifecycle riêng (Order vẫn tồn tại sau khi User xoá account)
-- Child được query/update độc lập với parent
-- Cần share child giữa nhiều parent (Many-to-many)
+### Reference — choose when:
+- 1-many relationship with a large / unbounded "many" (e.g. User → Orders — could be thousands)
+- The child entity is independent, with its own lifecycle (an Order still exists after the User deletes the account)
+- The child is queried/updated independently of the parent
+- You need to share the child across multiple parents (Many-to-many)
 
 ```json
 // users collection
 { "_id": "u-001", "email": "...", "name": "..." }
 
-// orders collection — reference user qua user_id
+// orders collection — reference the user via user_id
 { "_id": "o-1001", "user_id": "u-001", "total": 99.99, "status": "completed" }
 ```
 
-→ Query order của user: `orders.find({ user_id: "u-001" })` + index trên `user_id`.
+→ Query a user's orders: `orders.find({ user_id: "u-001" })` + an index on `user_id`.
 
 ### Anti-pattern: "Unbounded array embedded"
 
 ```json
-// ❌ BAD — orders growth → document size bùng nổ → resize cost cao + cap 16MB
+// ❌ BAD — orders growth → document size explodes → high resize cost + 16MB cap
 { "_id": "u-001", "orders": [ ...10000 items... ] }
 
-// ✅ GOOD — tách orders collection, reference user_id
-{ "_id": "u-001", "orderCount": 10000 }  // cache count nếu cần
+// ✅ GOOD — split into an orders collection, reference user_id
+{ "_id": "u-001", "orderCount": 10000 }  // cache the count if needed
 ```
 
-> Rule of thumb: nếu array có thể grow > 100 items → tách collection riêng.
+> Rule of thumb: if an array can grow > 100 items → split into its own collection.
 
 ---
 
@@ -159,38 +159,38 @@ await mongoose.connect(process.env.MONGO_URL!);
 // Query: find active users in city, sort by createdAt
 db.users.find({ status: "active", city: "HCM" }).sort({ createdAt: -1 })
 
-// Compound index theo ESR:
+// Compound index per ESR:
 db.users.createIndex({ status: 1, city: 1, createdAt: -1 })
 //                     [Equality]  [Equality]  [Sort]
 ```
 
-### Index types đáng dùng
+### Index types worth using
 
-| Loại | Khi dùng |
+| Type | When to use |
 |------|---------|
-| **Single field** | Query trên 1 field |
-| **Compound** | Query trên nhiều field — theo ESR rule |
-| **Multikey** | Field là array — index từng element |
-| **Text** | Full-text search (đơn giản, không bằng Elasticsearch) |
+| **Single field** | Query on 1 field |
+| **Compound** | Query on multiple fields — per the ESR rule |
+| **Multikey** | Field is an array — indexes each element |
+| **Text** | Full-text search (simple, not as good as Elasticsearch) |
 | **Geospatial** (`2dsphere`) | Location query |
-| **TTL** | Auto-delete document sau N giây (vd: session, log retention) |
-| **Partial** | Index chỉ subset (vd: `WHERE deleted_at IS NULL` equivalent) |
-| **Unique** | Constraint duy nhất (vd: email) |
+| **TTL** | Auto-delete a document after N seconds (e.g. session, log retention) |
+| **Partial** | Index only a subset (e.g. `WHERE deleted_at IS NULL` equivalent) |
+| **Unique** | Uniqueness constraint (e.g. email) |
 
 ### Anti-pattern: missing index
 
-`db.collection.find(...).explain("executionStats")` → check `executionStages.stage`. Nếu thấy `COLLSCAN` (full collection scan) → cần index.
+`db.collection.find(...).explain("executionStats")` → check `executionStages.stage`. If you see `COLLSCAN` (full collection scan) → you need an index.
 
 ```bash
-# Trong mongosh
+# In mongosh
 db.users.find({ email: "x@y.com" }).explain("executionStats")
-# winningPlan.stage: "COLLSCAN" → BAD, cần createIndex
+# winningPlan.stage: "COLLSCAN" → BAD, need createIndex
 # winningPlan.stage: "IXSCAN"   → GOOD
 ```
 
 ---
 
-## §E. Aggregation Pipeline (thay cho JOIN/GROUP BY)
+## §E. Aggregation Pipeline (in place of JOIN/GROUP BY)
 
 ```javascript
 // "Top 10 users by total order amount, status=completed"
@@ -201,27 +201,27 @@ db.users.aggregate([
       localField: "_id",
       foreignField: "user_id",
       as: "orders",
-      pipeline: [{ $match: { status: "completed" } }]           // filter trong $lookup
+      pipeline: [{ $match: { status: "completed" } }]           // filter inside $lookup
   }},
   { $addFields: { totalSpent: { $sum: "$orders.total" } } },    // computed field
   { $sort: { totalSpent: -1 } },                                // ORDER BY
   { $limit: 10 },                                               // LIMIT
-  { $project: { email: 1, name: 1, totalSpent: 1, _id: 0 } }    // SELECT cột
+  { $project: { email: 1, name: 1, totalSpent: 1, _id: 0 } }    // SELECT columns
 ]);
 ```
 
-**Cảnh báo:** `$lookup` cross-collection **chậm** với data lớn — đó là lý do nên embed nếu access pattern cho phép. Dùng `$lookup` khi:
-- Báo cáo, dashboard (chạy ít)
-- Data set sau `$match` đã nhỏ
-- Index đầy đủ trên `foreignField`
+**Warning:** cross-collection `$lookup` is **slow** with large data — that is why you should embed if the access pattern allows. Use `$lookup` when:
+- Reports, dashboards (run infrequently)
+- The data set after `$match` is already small
+- There is a full index on `foreignField`
 
 ---
 
 ## §F. Transactions
 
-**Mặc định:** single-document write là atomic. Đủ cho 90% case nếu schema design đúng (embed thay vì 2 documents).
+**Default:** a single-document write is atomic. Enough for 90% of cases if the schema design is right (embed instead of 2 documents).
 
-**Multi-document transaction** (chỉ replica set / sharded cluster, 4.0+):
+**Multi-document transaction** (replica set / sharded cluster only, 4.0+):
 
 ```csharp
 // .NET
@@ -250,10 +250,10 @@ try {
 }
 ```
 
-**Quy tắc:**
-- Transaction time **≤ 60 giây** (default `transactionLifetimeLimitSeconds`)
-- KHÔNG dùng transaction cho long-running operation
-- Standalone MongoDB (không replica set) → **KHÔNG hỗ trợ transaction** → dev local cần init replica set 1-node hoặc dùng MongoDB Atlas
+**Rules:**
+- Transaction time **≤ 60 seconds** (default `transactionLifetimeLimitSeconds`)
+- Do NOT use a transaction for a long-running operation
+- Standalone MongoDB (no replica set) → **does NOT support transactions** → local dev needs to init a 1-node replica set or use MongoDB Atlas
 
 ---
 
@@ -261,17 +261,17 @@ try {
 
 ### Migration
 
-MongoDB không có DDL → "migration" thực tế là:
-1. **Index creation/drop** — script chạy 1 lần khi deploy
-2. **Data shape change** — script transform document trong collection (vd: split `name` → `firstName` + `lastName`)
+MongoDB has no DDL → a "migration" in practice is:
+1. **Index creation/drop** — a script run once at deploy
+2. **Data shape change** — a script that transforms documents in a collection (e.g. split `name` → `firstName` + `lastName`)
 3. **Validator change** — `db.runCommand({ collMod: ..., validator: {...} })`
 
-Tool đề xuất:
-- **`migrate-mongo`** (Node.js) — migration framework giống Knex/Flyway nhưng cho Mongo
-- **`Mongo.Migration`** (.NET) — migration cho MongoDB.Driver
-- **`MongoFramework.Migrations`** — alternative .NET
+Suggested tools:
+- **`migrate-mongo`** (Node.js) — a migration framework like Knex/Flyway but for Mongo
+- **`Mongo.Migration`** (.NET) — migration for MongoDB.Driver
+- **`MongoFramework.Migrations`** — .NET alternative
 
-Pattern: mỗi migration là 1 file với `up()` + `down()`, commit vào git, idempotent.
+Pattern: each migration is 1 file with `up()` + `down()`, committed into git, idempotent.
 
 ```javascript
 // migrations/20260601-add-index-email.js
@@ -292,12 +292,12 @@ private readonly MongoDbContainer _mongo = new MongoDbBuilder()
 // In ConfigureWebHost: services.AddSingleton<IMongoClient>(new MongoClient(_mongo.GetConnectionString()));
 ```
 
-**Node.js — 2 lựa chọn:**
+**Node.js — 2 options:**
 
-| Tool | Khi dùng |
+| Tool | When to use |
 |------|---------|
-| **`@testcontainers/mongodb`** | Cần fidelity 100% với prod (replica set, transactions) |
-| **`mongodb-memory-server`** | Test nhanh, không cần Docker, chạy in-memory MongoDB binary |
+| **`@testcontainers/mongodb`** | Need 100% fidelity with prod (replica set, transactions) |
+| **`mongodb-memory-server`** | Fast test, no Docker needed, runs an in-memory MongoDB binary |
 
 ```typescript
 // Option A: TestContainers (replica set support)
@@ -310,50 +310,50 @@ const mongod = await MongoMemoryServer.create();
 process.env.MONGO_URL = mongod.getUri();
 ```
 
-**Image recommend:** `mongo:7.0` (LTS) trên arm64 macOS ✓.
+**Image recommend:** `mongo:7.0` (LTS) on arm64 macOS ✓.
 
 ---
 
-## §H. Common pitfalls — đọc kỹ
+## §H. Common pitfalls — read carefully
 
-1. **NoSQL injection** — pass user input thẳng vào query operator:
+1. **NoSQL injection** — passing user input straight into a query operator:
    ```typescript
-   // ❌ BAD — user gửi { email: { "$ne": null } } → trả về MỌI user
+   // ❌ BAD — user sends { email: { "$ne": null } } → returns EVERY user
    await users.findOne({ email: req.body.email });
    
-   // ✅ GOOD — coerce sang string trước
+   // ✅ GOOD — coerce to string first
    await users.findOne({ email: String(req.body.email) });
-   // Hoặc dùng Zod/class-validator validate type
+   // Or use Zod/class-validator to validate the type
    ```
-   Mongoose có `sanitizeFilter: true` option. Driver thuần — tự sanitize.
+   Mongoose has a `sanitizeFilter: true` option. Plain driver — sanitize it yourself.
 
-2. **`$where` với JavaScript expression** — KHÔNG dùng (server-side eval, RCE risk). Dùng aggregation `$expr` thay thế.
+2. **`$where` with a JavaScript expression** — do NOT use (server-side eval, RCE risk). Use the aggregation `$expr` instead.
 
-3. **Unbounded array growth** — document max 16MB. Embed array sẽ break khi growth. Tách collection.
+3. **Unbounded array growth** — a document is max 16MB. An embedded array will break as it grows. Split into a collection.
 
-4. **`skip()` + `limit()` cho large offset** — chậm tuyến tính. Dùng cursor pagination với `_id` hoặc indexed field:
+4. **`skip()` + `limit()` for a large offset** — linearly slow. Use cursor pagination with `_id` or an indexed field:
    ```typescript
-   // ❌ skip(10000) — phải đọc 10000 doc bỏ
+   // ❌ skip(10000) — must read 10000 docs and discard them
    await users.find({}).skip(10000).limit(20);
    
    // ✅ Cursor-based
    await users.find({ _id: { $gt: lastId } }).limit(20).sort({ _id: 1 });
    ```
 
-5. **Multiple `MongoClient` instances** — anti-pattern. Mỗi instance pool riêng → connection bùng nổ. Tạo singleton 1 lần.
+5. **Multiple `MongoClient` instances** — an anti-pattern. Each instance has its own pool → connections explode. Create the singleton once.
 
-6. **`findAndModify` thiếu `returnDocument`** — .NET driver mặc định return document **TRƯỚC** update. Nếu cần after-version: `ReturnDocument.After`.
+6. **`findAndModify` missing `returnDocument`** — the .NET driver by default returns the document **BEFORE** the update. If you need the after-version: `ReturnDocument.After`.
 
-7. **Index không cover query → `IXSCAN` + `FETCH`** — query trả về field không trong index → cần FETCH document. Add field vào index để có **covered query**.
+7. **Index does not cover the query → `IXSCAN` + `FETCH`** — a query returning a field not in the index → needs to FETCH the document. Add the field into the index to get a **covered query**.
 
-8. **Default Read/Write Concern không strict** — production nên set `writeConcern: { w: "majority", j: true }` để đảm bảo durability trên replica set.
+8. **Default Read/Write Concern is not strict** — production should set `writeConcern: { w: "majority", j: true }` to ensure durability on a replica set.
 
-9. **Schema drift** — flexible schema có thể tạo document inconsistent. Enforce qua:
+9. **Schema drift** — a flexible schema can create inconsistent documents. Enforce via:
    - Mongoose Schema validation
    - MongoDB native `$jsonSchema` validator: `db.runCommand({ collMod: "users", validator: { $jsonSchema: {...} } })`
-   - Zod parse trước khi insert/update (Node.js)
+   - Zod parse before insert/update (Node.js)
 
-10. **Timestamp** — MongoDB dùng `Date` (BSON Date = milliseconds from epoch UTC). KHÔNG có timezone metadata. Store UTC, convert client-side.
+10. **Timestamp** — MongoDB uses `Date` (BSON Date = milliseconds from epoch UTC). It has NO timezone metadata. Store UTC, convert client-side.
 
 ---
 
@@ -361,41 +361,41 @@ process.env.MONGO_URL = mongod.getUri();
 
 | Element | Convention |
 |---------|------------|
-| Collection name | snake_case, plural — `users`, `order_items` (giống SQL convention sau khi sang Node) |
-| Field name | camelCase — `userId`, `createdAt` (JS-native, ánh xạ thẳng sang JSON) |
-| `_id` | Mặc định `ObjectId`. Nếu cần readable (vd: user-facing): UUID v7 (time-ordered) hoặc nanoid |
-| Index name | Auto-generated `field_1`, `field_-1` HOẶC tự đặt qua option `name` để dễ track |
+| Collection name | snake_case, plural — `users`, `order_items` (same as the SQL convention once moving to Node) |
+| Field name | camelCase — `userId`, `createdAt` (JS-native, maps straight to JSON) |
+| `_id` | Default `ObjectId`. If you need it readable (e.g. user-facing): UUID v7 (time-ordered) or nanoid |
+| Index name | Auto-generated `field_1`, `field_-1` OR set your own via the `name` option to track it easily |
 
 ---
 
-## §J. What stays unchanged (vẫn theo base `database.md`)
+## §J. What stays unchanged (still follows base `database.md`)
 
-Phần lớn base SQL-specific KHÔNG áp dụng. Phần CÒN áp dụng:
+Most of the SQL-specific base does NOT apply. The parts that STILL apply:
 
-- **Validate / sanitize user input tại boundary** (Zod / FluentValidation / class-validator) — vẫn bắt buộc
-- **KHÔNG log sensitive data** (password hash, token) — vẫn bắt buộc
-- **Async/await mọi I/O** — vẫn bắt buộc
-- **Transaction cho multi-step write** (với caveat §F về replica set requirement)
-- **Eager load related data cẩn thận** — với MongoDB là embed-vs-reference decision (§C)
-- **Connection pool tune theo load test** — vẫn bắt buộc, chỉ khác cách config
-- **Naming convention** snake_case cho collection (giống PostgreSQL convention)
+- **Validate / sanitize user input at the boundary** (Zod / FluentValidation / class-validator) — still mandatory
+- **Do NOT log sensitive data** (password hash, token) — still mandatory
+- **Async/await for all I/O** — still mandatory
+- **Transaction for multi-step write** (with the §F caveat about the replica set requirement)
+- **Eager load related data carefully** — with MongoDB this is the embed-vs-reference decision (§C)
+- **Connection pool tuned per load test** — still mandatory, only the config differs
+- **Naming convention** snake_case for collections (same as the PostgreSQL convention)
 
-Phần **KHÔNG** áp dụng:
-- ❌ Parametrized SQL với `@param` / `$1` — MongoDB query là JSON object
-- ❌ `AsNoTracking()` EF Core — MongoDB driver không track
+The parts that do **NOT** apply:
+- ❌ Parametrized SQL with `@param` / `$1` — a MongoDB query is a JSON object
+- ❌ `AsNoTracking()` EF Core — the MongoDB driver does not track
 - ❌ Compiled query EF Core
-- ❌ `INSERT ... ON CONFLICT` upsert syntax — Mongo dùng `updateOne({}, {}, { upsert: true })`
-- ❌ FK constraint, cascade delete — Mongo không có
-- ❌ `LIKE 'prefix%'` index pattern — Mongo dùng regex `^prefix` với `caseSensitive: false`
+- ❌ `INSERT ... ON CONFLICT` upsert syntax — Mongo uses `updateOne({}, {}, { upsert: true })`
+- ❌ FK constraint, cascade delete — Mongo does not have them
+- ❌ `LIKE 'prefix%'` index pattern — Mongo uses the regex `^prefix` with `caseSensitive: false`
 
 ---
 
 ## See also
 
-- Base database rule → [`../database.md`](../database.md) (xem kỹ phần nào còn áp dụng)
-- Stack overrides (nếu đang dùng Node.js):
+- Base database rule → [`../database.md`](../database.md) (review carefully which parts still apply)
+- Stack overrides (if using Node.js):
   - Language → [`lang-nodejs.md`](lang-nodejs.md)
   - Web framework → [`framework-nodejs-web.md`](framework-nodejs-web.md)
   - Testing → [`test-nodejs.md`](test-nodejs.md)
-- System design / scaling → [`../system-design.md`](../system-design.md) (sharding section áp dụng cho MongoDB sharded cluster)
+- System design / scaling → [`../system-design.md`](../system-design.md) (the sharding section applies to a MongoDB sharded cluster)
 - Master principles → [`../principles-and-practices.md`](../principles-and-practices.md)

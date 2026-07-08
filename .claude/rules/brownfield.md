@@ -1,139 +1,142 @@
-# Brownfield Rules — Làm việc trên Legacy Code
+# Brownfield Rules — Working on Legacy Code
 
-> **Tóm tắt:** Bộ kỷ luật **bắt buộc khi sửa code đang chạy / đã release** (`Project Profile → Mode: brownfield`). Ràng buộc số một đổi từ *"tôi xây gì"* (greenfield) sang **"tôi phải KHÔNG phá gì"** — nên mọi nguyên tắc dưới đây xoay quanh việc **dựng lưới an toàn trước khi đụng code**. **Greenfield bỏ qua toàn bộ file này.**
+> **Summary:** A discipline set that is **mandatory when modifying code that is running / already released** (`Project Profile → Mode: brownfield`). The number-one constraint shifts from *"what am I building"* (greenfield) to **"I must NOT break anything"** — so every principle below revolves around **building a safety net before touching the code**. **Greenfield skips this entire file.**
 >
-> Nguồn nguyên lý: Michael Feathers — *Working Effectively with Legacy Code* (characterization test, seams) + strangler-fig pattern.
+> Principle source: Michael Feathers — *Working Effectively with Legacy Code* (characterization test, seams) + strangler-fig pattern.
 
 ---
 
-## Định nghĩa
+## Definition
 
-**Legacy code** = code đang chạy / đã release nhưng **thiếu test, spec, hoặc tài liệu** mô tả ý định. Vấn đề cốt lõi không phải "code cũ" mà là **thiếu lưới an toàn để thay đổi tự tin**.
+**Legacy code** = code that is running / already released but **lacking tests, spec, or documentation** describing intent. The core problem is not "old code" but **the lack of a safety net to change with confidence**.
 
 ---
 
-## 4 nguyên tắc cốt lõi
+## 4 core principles
 
-### 1. Measure vs Verify — phân biệt rõ
+### 1. Measure vs Verify — draw the distinction
 
-**Nghĩa là:** cùng một lệnh có thể đang *đo hiện trạng* (measure) hoặc *kiểm đúng yêu cầu* (verify) — chỉ "verify" mới cần spec. Phân biệt để không đi kiểm "đúng/sai" khi còn chưa có spec định nghĩa "đúng" là gì.
+**Meaning:** the same command may be *measuring the current state* (measure) or *verifying against requirements* (verify) — only "verify" needs a spec. Draw the distinction so you don't go checking "right/wrong" when there is not yet a spec defining what "right" is.
 
-| Hoạt động | Cần spec? | Thuộc giai đoạn |
+| Activity | Needs spec? | Belongs to phase |
 |-----------|:---------:|-----------------|
-| **Measure** — đo hiện trạng (coverage hiện có, suite pass?, complexity, vuln) | ❌ Không | Discovery (read-only) |
-| **Verify** — kiểm behavior khớp acceptance criteria | ✅ Có | Per-change (sau khi có spec) |
+| **Measure** — measure the current state (existing coverage, does the suite pass?, complexity, vuln) | ❌ No | Discovery (read-only) |
+| **Verify** — check behavior matches acceptance criteria | ✅ Yes | Per-change (after there is a spec) |
 
-> **Hệ quả:** bước nào dính acceptance criteria (`/test` verify, `/review` trục Correctness) **không thể đứng trước reverse-`/spec`** — chưa có spec thì chưa có "đúng" để kiểm. Discovery chỉ *measure*; *verify* để per-change.
+> **Consequence:** any step that involves acceptance criteria (`/test` verify, `/review` Correctness axis) **cannot come before reverse-`/spec`** — with no spec there is no "right" to check against. Discovery only *measures*; *verify* is for per-change.
 
-### 2. Upfront vs Per-change — không làm hàng loạt trước
+### 2. Upfront vs Per-change — don't do it in bulk upfront
 
-**Nghĩa là:** việc *một lần* (bản đồ code, baseline) làm ở Discovery; việc *theo từng thay đổi* chỉ làm cho **đúng vùng đang đụng** — không retrofit cả repo.
+**Meaning:** *one-time* work (code map, baseline) is done at Discovery; *per-change* work is done only for **exactly the area being touched** — do not retrofit the whole repo.
 
-| Làm 1 lần upfront (Discovery) | Làm per-change (luồng B) |
+| Done once upfront (Discovery) | Done per-change (flow B) |
 |-------------------------------|--------------------------|
-| Bản đồ codebase (`/discover`) | Characterization test cho **đúng vùng sắp đụng** |
-| Baseline spec/arch (reverse) | Full `/review` Five-Axis cho **slice mình sửa** |
-| Health snapshot nhẹ + red-flag | `/test` verify cho thay đổi cụ thể |
+| Codebase map (`/discover`) | Characterization test for **exactly the area about to be touched** |
+| Baseline spec/arch (reverse) | Full `/review` Five-Axis for **the slice I'm modifying** |
+| Light health snapshot + red-flag | `/test` verify for the specific change |
 
-> Đừng viết characterization test cho cả codebase, đừng review toàn repo — chỉ cho vùng thay đổi chạm tới.
+> Don't write characterization tests for the whole codebase, don't review the whole repo — only for the area the change touches.
 >
-> **VIẾT theo delta — CHẠY toàn bộ:** quy tắc trên chỉ giới hạn phần *viết mới* (test, characterization, review effort); còn suite/verify-suite **đã automated** thì CHẠY full mỗi vòng — regression net xanh mới chứng minh phần không đổi không bị ảnh hưởng. Bảng tra `/test` · `/review` · `/verify` + cây quyết định 9 tình huống: [`../references/brownfield-pipeline.md`](../references/brownfield-pipeline.md) §Scope per-change.
+> **WRITE per delta — RUN everything:** the rule above only limits the *newly written* part (test, characterization, review effort); the suite/verify-suite that is **already automated** is RUN in full every round — only a green regression net proves the unchanged part is not affected. Lookup table for `/test` · `/review` · `/verify` + decision tree for 9 situations: [`../references/brownfield-pipeline.md`](../references/brownfield-pipeline.md) §Scope per-change.
 
-### 3. Backward compatibility mặc định
+### 3. Backward compatibility by default
 
-**Nghĩa là:** mặc định **không phá** thứ mà client / dữ liệu / hệ thống tích hợp đang dựa vào.
+**Meaning:** by default **do not break** what clients / data / integrated systems rely on.
 
-- API contract, response shape, DB schema, event/message format, public behavior **không được phá** trừ khi có ADR + migration plan.
-- Thay đổi phá vỡ (breaking change) → bump major version + deprecation window + migration path.
-- Mọi PR brownfield phải trả lời được: *"thay đổi này có phá client/data/integration đang chạy không?"*
+- API contract, response shape, DB schema, event/message format, public behavior **must not be broken** unless there is an ADR + migration plan.
+- Breaking changes → bump major version + deprecation window + migration path.
+- Every brownfield PR must be able to answer: *"does this change break a running client/data/integration?"*
 
-### 4. ADR mới mới được đổi kiến trúc
+### 4. Only an ADR authorizes changing the architecture
 
-**Nghĩa là:** chỉ đổi kiến trúc khi có **ADR** (Architecture Decision Record — bản ghi quyết định kiến trúc) — không "tiện tay" đổi khi đang làm việc khác.
+**Meaning:** only change the architecture when there is an **ADR** (Architecture Decision Record) — don't change it "on a whim" while doing other work.
 
-- Luồng phát triển / sửa tính năng (B1, B2): **giữ nguyên kiến trúc** — `/arch` ở chế độ conformance-gate.
-- Chỉ luồng nâng cấp (B5) được đổi kiến trúc, **bắt buộc ADR** (kèm v2-trigger) + migration plan.
-- Không "tiện tay" đổi pattern/structure khi đang làm việc khác.
+- Development / feature-modification flows (B1, B2): **keep the architecture unchanged** — `/arch` in conformance-gate mode.
+- Only the upgrade flow (B5) may change the architecture, **requiring an ADR** (with a v2-trigger) + migration plan.
+- Don't change patterns/structure "on a whim" while doing other work.
 
 ---
 
-## Characterization Test — kỹ thuật trung tâm
+## Characterization Test — the central technique
 
-> **Định nghĩa:** test chụp lại **behavior hiện tại của code** (không phải behavior *đúng* theo spec), làm lưới an toàn trước khi sửa. Cần vì legacy thường thiếu cả test lẫn spec — phải biết "code *đang* làm gì" mới phân biệt được thay đổi cố ý vs regression vô tình.
+> **Definition:** a test that captures the **current behavior of the code** (not the behavior that is *correct* per spec), serving as a safety net before modifying. It's needed because legacy usually lacks both tests and spec — you must know "what the code *is* doing" to be able to distinguish an intentional change vs an accidental regression.
 
-Khác với TDD greenfield:
+Different from greenfield TDD:
 
-| | TDD greenfield | Characterization (brownfield) |
+| | Greenfield TDD | Characterization (brownfield) |
 |---|----------------|-------------------------------|
-| Test viết để | mô tả behavior **mong muốn** | chụp behavior **đang có** (kể cả khi sai) |
-| Trạng thái đầu | RED (fail, chưa có code) | GREEN (pass, code đã chạy) |
-| Mục đích | dẫn dắt implement | phát hiện regression khi sửa |
+| Test written to | describe the **desired** behavior | capture the **existing** behavior (even when wrong) |
+| Initial state | RED (fail, no code yet) | GREEN (pass, code already running) |
+| Purpose | drive implementation | detect regression when modifying |
 
-### Quy trình khi sửa code legacy chưa có test
+### Procedure when modifying legacy code without tests
 
 ```
-1. Viết characterization test chụp behavior HIỆN TẠI của vùng sắp sửa → chạy PASS (xác nhận lưới đúng)
-2. Thực hiện thay đổi
-3. Characterization test FAIL ở đúng chỗ behavior đổi → review: đổi này CÓ CHỦ ĐÍCH không?
-   - Có chủ đích → cập nhật test theo behavior mới (đây là phần được phép đổi)
-   - Ngoài ý muốn → đã bắt được regression, sửa lại
-4. Behavior không định đổi → test vẫn PASS (lưới giữ nguyên)
+1. Write a characterization test capturing the CURRENT behavior of the area about to be modified → run PASS (confirm the net is correct)
+2. Make the change
+3. The characterization test FAILs exactly where behavior changed → review: is this change INTENTIONAL?
+   - Intentional → update the test to the new behavior (this is the part allowed to change)
+   - Unintended → a regression has been caught, fix it back
+4. Behavior not meant to change → the test still PASSes (the net stays intact)
 ```
 
-### Seams (điểm cắt để test code khó test)
+### Seams (cut points to test hard-to-test code)
 
-**Seam** = chỗ có thể thay đổi behavior mà **không sửa code tại đó**. Legacy thường có dependency cứng (new trực tiếp, static call, no DI) → cần seam để test được mà **không đổi behavior**:
+**Seam** = a place where you can change behavior **without modifying the code at that spot**. Legacy usually has hard dependencies (direct `new`, static call, no DI) → you need a seam to make it testable **without changing behavior**:
 
-- Tạo seam bằng: extract interface, virtual method, parameterize constructor.
-- Ưu tiên seam ít rủi ro nhất; ghi lại nếu phải refactor để tạo seam — đây là **ngoại lệ duy nhất** của "no gratuitous refactor", và **phải có characterization test bao quanh trước**.
+- Create a seam by: extract interface, virtual method, parameterize constructor.
+- Prefer the lowest-risk seam; record it if you must refactor to create a seam — this is the **only exception** to "no gratuitous refactor", and it **must be surrounded by a characterization test first**.
 
 ---
 
-## Strangler-Fig — thay thế dần (cho B5)
+## Strangler-Fig — replace gradually (for B5)
 
-**Strangler-fig** = thay thế **dần dần**, không viết lại một phát (big-bang):
+**Strangler-fig** = replace **gradually**, not a one-shot rewrite (big-bang):
 
-1. Dựng implementation mới **song song** sau abstraction/interface.
-2. Định tuyến một phần traffic/call qua bản mới (feature-flag).
-3. Đo, mở rộng dần; bản cũ co lại tới khi bỏ được.
-4. Backward-compat suốt quá trình — cache miss / path mới lỗi → fallthrough bản cũ.
+1. Stand up the new implementation **in parallel** behind an abstraction/interface.
+2. Route a portion of traffic/calls through the new version (feature-flag).
+3. Measure, expand gradually; the old version shrinks until it can be removed.
+4. Backward-compat throughout — cache miss / new path errors → fallthrough to the old version.
 
-> Ví dụ: `ICacheService` được thiết kế sẵn từ ngày đầu (ghi nhận bằng ADR khi chạy `/arch`) để sau này cắm Redis vào mà không đụng caller — đó là seam cho strangler-fig.
+> Example: `ICacheService` is designed from day one (recorded via an ADR when running `/arch`) so that Redis can later be plugged in without touching callers — that is a seam for strangler-fig.
 
 ---
 
 ## No Gratuitous Refactor
 
-Chỉ refactor **trong phạm vi đang đụng tới**, phục vụ thay đổi hiện tại:
+Only refactor **within the scope being touched**, serving the current change:
 
-- Không "dọn dẹp" code không liên quan trong cùng PR (làm vỡ review + tăng rủi ro regression).
-- Tech debt phát hiện → ghi vào backlog (`/simplify` riêng), không gộp vào feature/fix.
-- Ngoại lệ: refactor tạo-seam tối thiểu để test được code sắp sửa — phải có characterization test trước.
+- Do not "clean up" unrelated code in the same PR (it breaks review + increases regression risk).
+- Tech debt discovered → record it in the backlog (a separate `/simplify`), don't fold it into the feature/fix.
+- Exception: minimal seam-creating refactor to make the code about to be modified testable — must have a characterization test first.
 
 ---
 
-## Liên kết với Project Profile & commands
+## Links with Project Profile & commands
 
-- **Project Profile** (trong `CLAUDE.md`) khai báo `Mode`, `Database`, `Observability`, `Structure`. Rule này chỉ active khi `Mode: brownfield`.
-- Công nghệ ngoại vi khác mặc định (Oracle/MySQL/ELK…) → theo `rules/overrides/*` mà Profile khai báo.
-- `/spec`, `/arch`, `/plan` đọc Mode để chuyển hành vi (xem §Brownfield Mode trong từng command).
+- **Project Profile** (file `.claude/PROJECT_PROFILE.md` — resolution rule: `CLAUDE.md` §Project Mode & Profile) declares `Mode`, `Database`, `Observability`, `Structure`. This rule is only active when `Mode: brownfield`.
+- Peripheral technologies differing from the default (Oracle/MySQL/ELK…) → follow `rules/overrides/*` that the Profile declares.
+- `/spec`, `/arch`, `/plan` read the Mode to switch behavior (see §Brownfield Mode in each command).
 
-### Vai trò `/arch` theo luồng (tóm tắt)
+### `/arch` role by flow (summary)
 
-| Luồng | `/arch` mode | Mặc định |
+| Flow | `/arch` mode | Default |
 |-------|-------------|----------|
-| Discovery (Phase A) | **reverse** | mô tả as-is + ADR inferred |
-| B1 feature mới / B2 sửa tính năng | **conformance-gate** | giữ nguyên kiến trúc |
-| B5 nâng cấp | **redesign** | đổi có ADR + migration |
+| Discovery (Phase A) | **reverse** | describe as-is + ADR inferred |
+| B1 new feature / B2 modify feature | **conformance-gate** | keep the architecture unchanged |
+| B5 upgrade | **redesign** | change with ADR + migration |
 
 ---
 
-## Checklist brownfield (mọi luồng B)
+## Brownfield checklist (every flow B)
 
-- [ ] Đã có baseline `specs/` + `architecture/` (từ Discovery) để tham chiếu
-- [ ] Vùng sắp sửa: nếu chưa có test → **viết characterization test trước** (chụp behavior hiện tại, PASS)
-- [ ] Thay đổi **không phá** API/contract/schema/behavior đang chạy (hoặc có ADR + migration)
-- [ ] `/arch` conformance-gate xác nhận **không cần đổi kiến trúc** (B1/B2), hoặc có ADR (B5)
-- [ ] Không refactor code ngoài phạm vi đang đụng
-- [ ] Test cũ vẫn PASS (regression net giữ nguyên) + test mới cho thay đổi
-- [ ] `/verify` chứng minh trên artifact thật trước promote (Gate 11)
+- [ ] There is already a baseline `specs/` + `architecture/` (from Discovery) to reference
+- [ ] The area about to be modified: if it has no tests → **write a characterization test first** (capture current behavior, PASS)
+- [ ] The area being modified calls DB-resident logic (stored procedure / trigger / DB function) → its defining DDL exists in the repo (snapshot committed — any path, indexed by `CODEBASE_MAP.md` §DB-object inventory) **BEFORE** modifying, and the characterization test covers that object's behavior (fixture applies the repo DDL into the TestContainer — `testing.md` §Template B)
+- [ ] Before `/test`: every external registration in the legacy composition root (`Program.cs` DI, `IHostedService` consumers, auto-migrate at startup) is replaced/disabled **inside the test fixture, runtime-only** — real connection strings appear in NO test execution path, and no production config file is edited to make tests pass (`git status` after the suite: `appsettings*.json` / `Program.cs` / `docker-compose*.yml` unchanged → the artifact ships with its original connections)
+- [ ] The change **does not break** a running API/contract/schema/behavior (or has an ADR + migration)
+- [ ] `/arch` conformance-gate confirms **no architecture change is needed** (B1/B2), or there is an ADR (B5)
+- [ ] No refactoring of code outside the scope being touched
+- [ ] Migration with **backfill/computed logic** → follow `testing.md §Dual-Implementation Parity`: prefer backfill that **calls the app code itself**; if reimplementing in SQL → **differential test** enumerating enough input classes (a per-side test where both sides are green is NOT enough — drift still slips through)
+- [ ] Old tests still PASS (regression net kept intact) + new tests for the change
+- [ ] `/verify` proves it on the real artifact before promote (Gate 11)

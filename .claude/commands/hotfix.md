@@ -97,11 +97,12 @@ The patch must have its own **identity** for audit & rollback:
 - Mandatory addition: a verify test that **reproduces the exact incident scenario** (e.g., for a CORS bug: cross-origin preflight from the actual origin) — to prove the production symptom is gone.
 - Gate 11 must PASS on the new digest before proceeding to Step 5.
 
-### Step 5 — Redeploy rollback-ready (REUSES `/deploy`)
+### Step 5 — Redeploy rollback-ready (REUSES `/deploy` — to STAGING)
 
-- Promote the verified digest via `/deploy` with env **`HOTFIX_MODE=1`** — `/deploy` will enforce that VERIFY_REPORT.md exists (Gate 11 promoted from optional → REQUIRED).
-- Keep the old digest ready to revert in < 1 minute (per `/deploy` §Rollback).
-- Run post-deploy smoke (including the incident scenario) to confirm on the live environment.
+- Stage the verified digest via `/deploy` with env **`HOTFIX_MODE=1`** — `/deploy` will enforce that VERIFY_REPORT.md exists (Gate 11 promoted from optional → REQUIRED). `/deploy` stops at Status **`STAGED`** (the kit's boundary).
+- **Restoring production = a MANUAL operation** per `DEPLOY_RUNBOOK §8` (keep exactly the verified digest, do NOT rebuild). Since this is an incident: you may **trim the human test round on staging** down to the minimum = re-run exactly the **incident-reproduction scenario** + smoke pack — but whoever promotes MUST record the level of trimming in the incident note (audit).
+- Keep the old digest ready to revert in < 1 minute (per `/deploy` §Rollback — applies to both staging and production).
+- Run post-deploy smoke (including the incident scenario) on staging FIRST, then repeat on production AFTER the manual promote — confirm the symptom is gone in the real live environment.
 
 ### Step 6 — Post-incident (UNIQUE)
 

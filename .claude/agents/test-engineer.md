@@ -271,7 +271,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 }
 ```
 
-> **One container per suite (tối ưu thời gian):** register the factory via `ICollectionFixture` (`[CollectionDefinition]` + `[Collection("Integration")]` on every test class) — NOT per-class `IClassFixture` (N classes × ~30–60s SQL Server startup wasted). Reset state between tests (Respawn / transaction rollback / unique keys).
+> **One container per suite (time optimization):** register the factory via `ICollectionFixture` (`[CollectionDefinition]` + `[Collection("Integration")]` on every test class) — NOT per-class `IClassFixture` (N classes × ~30–60s SQL Server startup wasted). Reset state between tests (Respawn / transaction rollback / unique keys).
 >
 > Detailed integration test patterns: [`.claude/rules/testing.md`](../rules/testing.md).
 

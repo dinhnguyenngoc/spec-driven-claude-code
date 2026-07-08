@@ -1,8 +1,8 @@
 # Database Rules — SQL Server + Entity Framework Core + Dapper
 
 > **Default engine = SQL Server.** If `Project Profile → Database` declares otherwise:
-> - **Relational** (Oracle, MySQL, PostgreSQL) → read alongside `rules/overrides/database-oracle.md`, `database-mysql.md`, hoặc `database-postgres.md`. Override chỉ thay **dialect-specific** parts (PK gen, time function, paging, provider); agnostic principles dưới (parametrized query, `AsNoTracking`, projection, transaction, N+1 prevention) **vẫn áp dụng**.
-> - **NoSQL document** (MongoDB) → đọc `rules/overrides/database-mongodb.md`. **Paradigm khác hẳn** — nhiều phần SQL-specific dưới đây KHÔNG áp dụng (xem §J của override để biết phần nào còn áp dụng).
+> - **Relational** (Oracle, MySQL, PostgreSQL) → read alongside `rules/overrides/database-oracle.md`, `database-mysql.md`, or `database-postgres.md`. The override only replaces the **dialect-specific** parts (PK gen, time function, paging, provider); the agnostic principles below (parametrized query, `AsNoTracking`, projection, transaction, N+1 prevention) **still apply**.
+> - **NoSQL document** (MongoDB) → read `rules/overrides/database-mongodb.md`. **A completely different paradigm** — many SQL-specific parts below DO NOT apply (see §J of the override for which parts still apply).
 
 ## General Rules
 

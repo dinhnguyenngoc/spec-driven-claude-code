@@ -8,38 +8,38 @@
 
 | Aspect | Default choice | Notes |
 |--------|---------------|-------|
-| Language | **TypeScript 5.x** (strict) | JavaScript chỉ chấp nhận cho legacy chưa migrate. Mọi code mới = TS. |
-| Runtime | Node.js **20 LTS** (hoặc 22 LTS) | Track LTS, không dùng odd-version. |
-| Package manager | npm (default) / pnpm / yarn berry — chọn 1, KHÔNG mix | Lock file PHẢI commit. |
-| Module system | ESM (`"type": "module"` trong `package.json`) | CommonJS chỉ cho legacy. |
-| TypeScript config | `strict: true`, `noUncheckedIndexedAccess: true`, `noImplicitOverride: true`, `exactOptionalPropertyTypes: true` | Tham khảo `rules/frontend.md` §TypeScript — áp dụng tương tự cho backend. |
+| Language | **TypeScript 5.x** (strict) | JavaScript is only accepted for legacy not yet migrated. All new code = TS. |
+| Runtime | Node.js **20 LTS** (or 22 LTS) | Track LTS, do not use odd-version. |
+| Package manager | npm (default) / pnpm / yarn berry — pick 1, do NOT mix | Lock file MUST be committed. |
+| Module system | ESM (`"type": "module"` in `package.json`) | CommonJS only for legacy. |
+| TypeScript config | `strict: true`, `noUncheckedIndexedAccess: true`, `noImplicitOverride: true`, `exactOptionalPropertyTypes: true` | See `rules/frontend.md` §TypeScript — apply the same way for backend. |
 
 ---
 
 ## Naming conventions
 
-Khác với C# (PascalCase cho method/property), Node.js dùng camelCase cho mọi runtime identifier:
+Unlike C# (PascalCase for method/property), Node.js uses camelCase for every runtime identifier:
 
 | Element | Convention | Example |
 |---------|------------|---------|
 | Variable, function, method | camelCase | `getUserById`, `orderTotal` |
 | Class, interface, type, enum | PascalCase | `UserService`, `OrderStatus` |
 | Constant (module-level immutable) | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT`, `DEFAULT_TIMEOUT_MS` |
-| Private field (class) | `#privateField` (modern) hoặc `_privateField` (TS) | `#repository`, `_logger` |
+| Private field (class) | `#privateField` (modern) or `_privateField` (TS) | `#repository`, `_logger` |
 | Type parameter (generic) | TPascalCase | `TEntity`, `TKey` |
 | File name | kebab-case | `user.service.ts`, `order-repository.ts` |
 | Folder | kebab-case | `user-management/`, `order-items/` |
-| Test file | `<source>.test.ts` hoặc `<source>.spec.ts` | `user.service.test.ts` |
-| Async function | KHÔNG cần `Async` suffix (khác C#) — `async` keyword đủ rõ | `getUser()` thay vì `getUserAsync()` |
+| Test file | `<source>.test.ts` or `<source>.spec.ts` | `user.service.test.ts` |
+| Async function | NO `Async` suffix needed (unlike C#) — the `async` keyword is clear enough | `getUser()` instead of `getUserAsync()` |
 | Boolean | `is/has/can` prefix | `isActive`, `hasPermission` |
 
-**Lý do KHÔNG suffix `Async`:** trong JS/TS, `async` keyword + return type `Promise<T>` đã đủ rõ. Suffix `Async` (theo C# convention) bị xem là noise. Áp dụng riêng quy ước này cho Node.js stack.
+**Why NO `Async` suffix:** in JS/TS, the `async` keyword + return type `Promise<T>` is already clear enough. The `Async` suffix (following the C# convention) is considered noise. Apply this convention specifically for the Node.js stack.
 
 ---
 
 ## Type safety (TypeScript strict)
 
-### KHÔNG dùng `any` — luôn `unknown` + narrow
+### Do NOT use `any` — always `unknown` + narrow
 
 ```typescript
 // ❌ Bad
@@ -54,13 +54,13 @@ function parse(input: unknown): User {
 
 ### Type vs Interface
 
-- `type` cho union/intersection/mapped types: `type UserRole = "user" | "admin"`
-- `interface` cho object shape có thể extend: `interface UserProps { ... }`
+- `type` for union/intersection/mapped types: `type UserRole = "user" | "admin"`
+- `interface` for object shapes that can be extended: `interface UserProps { ... }`
 
-### Schema validation tại boundary
+### Schema validation at the boundary
 
-- Default library: **Zod** (BE + FE, schema reusable)
-- Mọi input đến từ ngoài (HTTP body, query, env var, message queue payload) PHẢI parse qua schema trước khi đi sâu vào logic.
+- Default library: **Zod** (BE + FE, reusable schema)
+- Every input coming from outside (HTTP body, query, env var, message queue payload) MUST be parsed through a schema before going deeper into the logic.
 
 ```typescript
 import { z } from "zod";
@@ -71,38 +71,38 @@ const CreateUserSchema = z.object({
 });
 type CreateUserInput = z.infer<typeof CreateUserSchema>;
 
-// Tại boundary (controller / route handler)
-const input = CreateUserSchema.parse(req.body); // throws ZodError nếu invalid
+// At the boundary (controller / route handler)
+const input = CreateUserSchema.parse(req.body); // throws ZodError if invalid
 ```
 
 ---
 
 ## Async/await — discipline
 
-- **Mọi I/O dùng async/await**, không Promise `.then()` chains (trừ pipeline đơn giản).
-- **KHÔNG block event loop** — `fs.readFileSync`, `JSON.parse` trên payload lớn, `bcrypt.hashSync` đều block. Dùng async variant.
-- **KHÔNG `forEach` với async** — `Array.prototype.forEach` không await callback. Dùng `for ... of` hoặc `Promise.all(map(...))`.
+- **Use async/await for all I/O**, not Promise `.then()` chains (except simple pipelines).
+- **Do NOT block the event loop** — `fs.readFileSync`, `JSON.parse` on a large payload, and `bcrypt.hashSync` all block. Use the async variant.
+- **Do NOT use `forEach` with async** — `Array.prototype.forEach` does not await the callback. Use `for ... of` or `Promise.all(map(...))`.
 
 ```typescript
-// ❌ Bad — forEach không await
+// ❌ Bad — forEach does not await
 users.forEach(async (u) => await sendEmail(u));
 
 // ✅ Good — concurrent
 await Promise.all(users.map((u) => sendEmail(u)));
 
-// ✅ Good — serial (khi cần thứ tự)
+// ✅ Good — serial (when order matters)
 for (const u of users) {
   await sendEmail(u);
 }
 ```
 
-- **Unhandled rejection**: bật `process.on("unhandledRejection", handler)` ở entry point để log + alert.
+- **Unhandled rejection**: enable `process.on("unhandledRejection", handler)` at the entry point to log + alert.
 
 ---
 
 ## Linting & formatting
 
-| Tool | Mục đích | Config file |
+| Tool | Purpose | Config file |
 |------|----------|-------------|
 | **ESLint** | Lint rules + security | `eslint.config.js` (flat config, ESLint 9+) |
 | **Prettier** | Formatting | `.prettierrc` |
@@ -110,7 +110,7 @@ for (const u of users) {
 | **eslint-plugin-security** | OWASP security rules (node) | Plugin `security` |
 | **eslint-plugin-n** | Node.js best practices | Plugin `n` |
 
-ESLint config tối thiểu (security-focused):
+Minimal ESLint config (security-focused):
 
 ```javascript
 // eslint.config.js
@@ -127,7 +127,7 @@ export default tseslint.config(
       "no-new-func": "error",
       "no-script-url": "error",
       "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-floating-promises": "error", // bắt buộc await
+      "@typescript-eslint/no-floating-promises": "error", // await is mandatory
       "@typescript-eslint/no-misused-promises": "error",
       "security/detect-object-injection": "warn",
       "security/detect-non-literal-fs-filename": "warn",
@@ -137,13 +137,13 @@ export default tseslint.config(
 );
 ```
 
-**Pre-commit hook** (Husky + lint-staged): chạy `eslint --max-warnings=0` + `prettier --check` + `tsc --noEmit` trước mỗi commit.
+**Pre-commit hook** (Husky + lint-staged): run `eslint --max-warnings=0` + `prettier --check` + `tsc --noEmit` before every commit.
 
 ---
 
 ## Error handling primitives
 
-Khác với C# (`AppException` extends `Exception`), trong TS dùng class `Error` base:
+Unlike C# (`AppException` extends `Exception`), in TS use the `Error` base class:
 
 ```typescript
 // shared/errors.ts
@@ -178,17 +178,17 @@ export class ValidationError extends AppError {
 }
 ```
 
-**Quy tắc:**
-- KHÔNG throw `string` hoặc plain object — luôn throw subclass của `Error` (để có stack trace).
-- KHÔNG `catch (e)` swallow silent — log hoặc rethrow.
-- Global error handler tại boundary (Express middleware / NestJS exception filter / Fastify error handler) → map `AppError` → HTTP response theo RFC 7807.
+**Rules:**
+- Do NOT throw a `string` or plain object — always throw a subclass of `Error` (so you get a stack trace).
+- Do NOT silently swallow with `catch (e)` — log or rethrow.
+- Global error handler at the boundary (Express middleware / NestJS exception filter / Fastify error handler) → map `AppError` → HTTP response per RFC 7807.
 
 ---
 
 ## Imports & module organization
 
 ```typescript
-// Thứ tự import (top → bottom)
+// Import order (top → bottom)
 // 1. Node built-in
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -197,7 +197,7 @@ import path from "node:path";
 import express from "express";
 import { z } from "zod";
 
-// 3. Internal alias (vd: @/lib, @/services)
+// 3. Internal alias (e.g. @/lib, @/services)
 import { db } from "@/db";
 import { UserService } from "@/services/user.service";
 
@@ -205,9 +205,9 @@ import { UserService } from "@/services/user.service";
 import { mapper } from "./mapper";
 ```
 
-Bật `eslint-plugin-import` + rule `import/order` để enforce.
+Enable `eslint-plugin-import` + rule `import/order` to enforce.
 
-**Path alias** trong `tsconfig.json`:
+**Path alias** in `tsconfig.json`:
 ```json
 {
   "compilerOptions": {
@@ -223,21 +223,21 @@ Bật `eslint-plugin-import` + rule `import/order` để enforce.
 
 ## Dependency security baseline
 
-| Check | Tool | Tần suất |
+| Check | Tool | Frequency |
 |-------|------|---------|
-| Production CVE | `npm audit --omit=dev` | Mỗi commit (pre-push) + CI |
+| Production CVE | `npm audit --omit=dev` | Every commit (pre-push) + CI |
 | Full audit (incl. dev) | `npm audit` | Weekly (informational) |
 | Outdated packages | `npm outdated` | Weekly |
 | License check | `license-checker` | Pre-release |
-| Static security rules | `eslint-plugin-security` | Mỗi build |
-| Secrets in code | `gitleaks` / regex grep | Mỗi commit |
-| Retired/vulnerable JS libs | `retire.js` | Mỗi build |
+| Static security rules | `eslint-plugin-security` | Every build |
+| Secrets in code | `gitleaks` / regex grep | Every commit |
+| Retired/vulnerable JS libs | `retire.js` | Every build |
 
-**Rule:** Dev-tool advisories (vite, jest, eslint plugins) **không block** Gate 8 — chúng không ship to users. Production-runtime findings (express, react, axios, zod, ...) **block**.
+**Rule:** Dev-tool advisories (vite, jest, eslint plugins) **do not block** Gate 8 — they do not ship to users. Production-runtime findings (express, react, axios, zod, ...) **block**.
 
 ---
 
-## What stays unchanged (vẫn theo base rules)
+## What stays unchanged (still follows base rules)
 
 - SOLID, YAGNI, KISS, DRY (with discipline) — `principles-and-practices.md`
 - Composition > Inheritance, Tell-Don't-Ask, Law of Demeter — `clean-code.md`
@@ -253,4 +253,4 @@ Bật `eslint-plugin-import` + rule `import/order` để enforce.
 
 - Framework patterns (Express / NestJS / Fastify) → [`framework-nodejs-web.md`](framework-nodejs-web.md)
 - Test framework (Jest / Vitest) → [`test-nodejs.md`](test-nodejs.md)
-- Frontend (Next.js/Vue/Angular) → base `rules/frontend.md` (đã cover Next.js); override khác frontend → `frontend-<framework>.md`
+- Frontend (Next.js/Vue/Angular) → base `rules/frontend.md` (already covers Next.js); other frontend overrides → `frontend-<framework>.md`

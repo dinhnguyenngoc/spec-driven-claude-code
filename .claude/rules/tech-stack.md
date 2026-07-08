@@ -6,7 +6,7 @@
 
 ## Core vs Peripheral (read `Project Profile` first)
 
-The stack is divided into 2 groups. **Core is fixed** for every project using this kit; **Peripheral is declared per-project** in `## Project Profile` (CLAUDE.md) and may be overridden.
+The stack is divided into 2 groups. **Core is fixed** for every project using this kit; **Peripheral is declared per-project** in the `Project Profile` (`.claude/PROJECT_PROFILE.md` — schema: `CLAUDE.md` §Project Mode & Profile) and may be overridden.
 
 | Group | Components | Rule |
 |-------|-----------|------|

@@ -2,7 +2,7 @@
 
 > **Active when** `Project Profile → Database: PostgreSQL`. Read alongside `rules/database.md` (base — SQL Server). This file **only records the differences**; agnostic principles (parametrized query, projection, transaction, N+1 prevention, async, no logging of sensitive data) **remain unchanged**.
 >
-> File này hỗ trợ cả 2 nhánh stack: **ASP.NET Core** (EF Core + Npgsql / Dapper) và **Node.js** (pg / Prisma / TypeORM / Kysely). Chọn section phù hợp với Project Profile.
+> This file supports both stack branches: **ASP.NET Core** (EF Core + Npgsql / Dapper) and **Node.js** (pg / Prisma / TypeORM / Kysely). Pick the section that matches the Project Profile.
 
 ---
 
@@ -24,20 +24,20 @@ services.AddDbContext<AppDbContext>(options =>
 
 Connection string: `Host=db.example.com;Port=5432;Database=app;Username=app;Password=...;Pooling=true;Maximum Pool Size=100`
 
-**Dapper:** dùng `Npgsql` (`NpgsqlConnection`) — pattern y hệt base, chỉ khác param prefix (vẫn `@param` — Npgsql normalize).
+**Dapper:** use `Npgsql` (`NpgsqlConnection`) — the same pattern as base, only the param prefix differs (still `@param` — Npgsql normalizes it).
 
 ### A.2 — Node.js
 
-Tuỳ ORM/driver chọn theo Project Profile:
+Choose the ORM/driver according to the Project Profile:
 
-| Library | Khi dùng | Setup |
+| Library | When to use | Setup |
 |---------|---------|-------|
-| **Prisma** | Greenfield + cần type-safe + migration tự động (recommend) | `npm install prisma @prisma/client` + `prisma init` |
+| **Prisma** | Greenfield + needs type-safe + automatic migration (recommended) | `npm install prisma @prisma/client` + `prisma init` |
 | **TypeORM** | NestJS familiar, decorator-based entity | `npm install typeorm pg reflect-metadata` |
-| **Kysely** | Type-safe query builder, gần SQL hơn | `npm install kysely pg` |
-| **pg (raw)** | Performance critical, đã có schema | `npm install pg` |
+| **Kysely** | Type-safe query builder, closer to SQL | `npm install kysely pg` |
+| **pg (raw)** | Performance critical, schema already exists | `npm install pg` |
 
-**Connection string (mọi library):** `postgresql://app:password@db.example.com:5432/app?sslmode=require`
+**Connection string (every library):** `postgresql://app:password@db.example.com:5432/app?sslmode=require`
 
 **Prisma example:**
 ```typescript
@@ -61,12 +61,12 @@ TypeOrmModule.forRoot({
   type: "postgres",
   url: process.env.DATABASE_URL,
   entities: [User, Order],
-  synchronize: false, // KHÔNG bao giờ true trong prod — dùng migration
+  synchronize: false, // NEVER true in prod — use migration
   extra: { max: 100 },
 });
 ```
 
-**Connection pool:** Default thường thấp (10). Tune theo load test — `max` ~ (CPU * 2) + spindle count, hoặc `pgbouncer` nếu cần share giữa nhiều service.
+**Connection pool:** The default is usually low (10). Tune it per load test — `max` ~ (CPU * 2) + spindle count, or `pgbouncer` if you need to share across multiple services.
 
 ---
 
@@ -74,29 +74,29 @@ TypeOrmModule.forRoot({
 
 | Aspect | SQL Server (base) | PostgreSQL (override) |
 |--------|-------------------|-----------------------|
-| PK gen — UUID | `uniqueidentifier DEFAULT NEWID()` | `uuid DEFAULT gen_random_uuid()` (cần extension `pgcrypto`) HOẶC app-side (`uuidv7` recommend cho time-ordered) |
-| PK gen — int | `IDENTITY(1,1)` | `GENERATED ALWAYS AS IDENTITY` (chuẩn SQL) HOẶC legacy `SERIAL` / `BIGSERIAL` |
-| Default timestamp | `GETUTCDATE()` | `now() AT TIME ZONE 'UTC'` HOẶC store `TIMESTAMPTZ` trực tiếp (recommend) |
+| PK gen — UUID | `uniqueidentifier DEFAULT NEWID()` | `uuid DEFAULT gen_random_uuid()` (needs extension `pgcrypto`) OR app-side (`uuidv7` recommended for time-ordered) |
+| PK gen — int | `IDENTITY(1,1)` | `GENERATED ALWAYS AS IDENTITY` (SQL standard) OR legacy `SERIAL` / `BIGSERIAL` |
+| Default timestamp | `GETUTCDATE()` | `now() AT TIME ZONE 'UTC'` OR store `TIMESTAMPTZ` directly (recommended) |
 | Auto-increment | `IDENTITY` | `IDENTITY` (PG 10+) / `SERIAL` (legacy) |
 | Paging | `OFFSET @s ROWS FETCH NEXT @n ROWS ONLY` | `LIMIT :n OFFSET :s` — EF Core / Prisma / TypeORM auto-translate |
-| Boolean | `bit` (0/1) | `BOOLEAN` (`true`/`false`) — kiểu chuẩn |
-| String type | `nvarchar(n)` | `VARCHAR(n)` HOẶC `TEXT` (không có hard limit; PG store cùng cách) |
+| Boolean | `bit` (0/1) | `BOOLEAN` (`true`/`false`) — standard type |
+| String type | `nvarchar(n)` | `VARCHAR(n)` OR `TEXT` (no hard limit; PG stores them the same way) |
 | Identifier quote | `[name]` | `"name"` (double quote) — quoted = case-sensitive |
-| Case-sensitivity | tables case-insensitive | **Tables/columns case-sensitive nếu quoted**; unquoted auto-lowercase. Convention: dùng `snake_case` thay vì `PascalCase` để tránh quoted |
-| Schema | `dbo` (mặc định) | `public` (mặc định) — có thể tạo nhiều schema per module |
+| Case-sensitivity | tables case-insensitive | **Tables/columns case-sensitive if quoted**; unquoted auto-lowercase. Convention: use `snake_case` instead of `PascalCase` to avoid quoting |
+| Schema | `dbo` (default) | `public` (default) — you can create multiple schemas per module |
 | Param prefix | `@param` | `$1, $2` (raw `pg`) / `:param` (TypeORM) / `@param` (Npgsql normalize) |
-| JSON | `nvarchar(max)` + manual parse | **`JSONB`** (binary JSON, indexable, query-able) — feature mạnh của PG |
-| Array type | KHÔNG hỗ trợ native | `INTEGER[]`, `TEXT[]` — native array type |
-| Full-text search | SQL Server FTS | `tsvector` + `tsquery` + GIN index — tốt cho most use case |
+| JSON | `nvarchar(max)` + manual parse | **`JSONB`** (binary JSON, indexable, query-able) — a strong feature of PG |
+| Array type | NOT supported natively | `INTEGER[]`, `TEXT[]` — native array type |
+| Full-text search | SQL Server FTS | `tsvector` + `tsquery` + GIN index — good for most use cases |
 | Upsert | `MERGE` (SQL Server 2008+) | `INSERT ... ON CONFLICT (col) DO UPDATE SET ...` (clean syntax) |
 
 ---
 
-## §C. PostgreSQL-specific features đáng dùng
+## §C. PostgreSQL-specific features worth using
 
-### C.1 — `JSONB` cho dữ liệu semi-structured
+### C.1 — `JSONB` for semi-structured data
 
-Khi schema có field cấu trúc đa dạng (vd: user preferences, metadata) — dùng `JSONB` thay vì serialize sang `TEXT`:
+When a schema has fields of varied structure (e.g. user preferences, metadata) — use `JSONB` instead of serializing to `TEXT`:
 
 ```sql
 CREATE TABLE users (
@@ -106,7 +106,7 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Index trên field cụ thể trong JSONB
+-- Index on a specific field inside JSONB
 CREATE INDEX idx_users_pref_theme ON users ((preferences->>'theme'));
 
 -- Query
@@ -114,40 +114,40 @@ SELECT * FROM users WHERE preferences->>'theme' = 'dark';
 SELECT * FROM users WHERE preferences @> '{"notifications": {"email": true}}';
 ```
 
-**Cảnh báo:** KHÔNG abuse JSONB cho mọi thứ — column có schema cố định vẫn nên dùng column thường (query nhanh hơn, type-safe).
+**Warning:** Do NOT abuse JSONB for everything — a column with a fixed schema should still use a regular column (faster query, type-safe).
 
-### C.2 — `TIMESTAMPTZ` thay vì `TIMESTAMP`
+### C.2 — `TIMESTAMPTZ` instead of `TIMESTAMP`
 
-- `TIMESTAMP` — không có timezone, dễ bug khi server đổi timezone
-- `TIMESTAMPTZ` — lưu UTC internal, return theo session timezone — **luôn dùng cái này** cho mọi cột thời gian
+- `TIMESTAMP` — has no timezone, easily buggy when the server changes timezone
+- `TIMESTAMPTZ` — stores UTC internally, returns per the session timezone — **always use this** for every time column
 
-### C.3 — `citext` cho case-insensitive (vd: email)
+### C.3 — `citext` for case-insensitive (e.g. email)
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS citext;
 CREATE TABLE users (
-    email CITEXT NOT NULL UNIQUE  -- "User@Example.com" = "user@example.com" tự động
+    email CITEXT NOT NULL UNIQUE  -- "User@Example.com" = "user@example.com" automatically
 );
 ```
 
-→ Loại bỏ nhu cầu `LOWER(email) = LOWER(@input)` ở query layer.
+→ Removes the need for `LOWER(email) = LOWER(@input)` at the query layer.
 
-### C.4 — `unaccent` cho diacritic-insensitive search (tiếng Việt)
+### C.4 — `unaccent` for diacritic-insensitive search (Vietnamese)
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE INDEX idx_products_name_unaccent ON products (unaccent(lower(name)));
 
--- Query: "Tiếng Việt" tìm thấy "tieng viet" và ngược lại
+-- Query: "Tiếng Việt" finds "tieng viet" and vice versa
 SELECT * FROM products WHERE unaccent(lower(name)) LIKE unaccent(lower(:query)) || '%';
 ```
 
-> Đây là alternative cho `*Normalized` column pattern trong base `database.md`. Cả 2 đều OK; `unaccent` ưu điểm: không cần app-side normalize, schema đơn giản hơn. Nhược: tốn CPU per query (giảm nếu có index expression như trên).
+> This is an alternative to the `*Normalized` column pattern in base `database.md`. Both are OK; `unaccent`'s advantage: no app-side normalize needed, simpler schema. Downside: costs CPU per query (reduced if there is an index expression as above).
 
 ### C.5 — Partial index
 
 ```sql
--- Chỉ index hàng chưa xoá → nhỏ hơn, nhanh hơn
+-- Index only non-deleted rows → smaller, faster
 CREATE INDEX idx_users_active_email ON users(email) WHERE deleted_at IS NULL;
 ```
 
@@ -159,11 +159,11 @@ ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, updated_at = now()
 RETURNING id;
 ```
 
-→ Pattern phổ biến cho idempotent endpoint. Clean hơn `MERGE` của SQL Server.
+→ A common pattern for an idempotent endpoint. Cleaner than SQL Server's `MERGE`.
 
 ### C.7 — `LISTEN`/`NOTIFY` (lightweight pub/sub)
 
-Nếu cần notification giữa process **trong cùng DB**, không muốn đưa Kafka/Redis ngay:
+If you need notification between processes **within the same DB** and do not want to bring in Kafka/Redis yet:
 
 ```sql
 -- Publisher
@@ -174,15 +174,15 @@ client.query("LISTEN user_updated");
 client.on("notification", (msg) => { ... });
 ```
 
-**Cảnh báo:** chỉ dùng cho dev / small scale. Production scale → Kafka / Redis Pub/Sub (theo `principles-and-practices.md §5`).
+**Warning:** use only for dev / small scale. Production scale → Kafka / Redis Pub/Sub (per `principles-and-practices.md §5`).
 
 ---
 
 ## §D. Naming convention — PostgreSQL idiom
 
-Khác base SQL Server (PascalCase) — PostgreSQL community convention:
+Unlike base SQL Server (PascalCase) — PostgreSQL community convention:
 
-| Element | SQL Server (base) | PostgreSQL (recommend) |
+| Element | SQL Server (base) | PostgreSQL (recommended) |
 |---------|-------------------|------------------------|
 | Table | `Users`, `OrderItems` | `users`, `order_items` (snake_case, plural) |
 | Column | `Id`, `UserId`, `CreatedAt` | `id`, `user_id`, `created_at` |
@@ -190,12 +190,12 @@ Khác base SQL Server (PascalCase) — PostgreSQL community convention:
 | FK | `FK_Orders_Users_UserId` | `fk_orders_users_user_id` |
 | Unique constraint | `UQ_Users_Email` | `uq_users_email` |
 
-**Lý do:** Unquoted identifier trong PG tự lowercase → dùng `Users` rồi quote sẽ tạo bug khi mix raw SQL với migration. Snake_case + unquoted = consistent + zero confusion.
+**Why:** An unquoted identifier in PG is auto-lowercased → using `Users` and then quoting it creates a bug when mixing raw SQL with migrations. Snake_case + unquoted = consistent + zero confusion.
 
 **ORM mapping:**
-- EF Core: `[Table("users")]` + `[Column("user_id")]` HOẶC dùng `UseSnakeCaseNamingConvention()` extension
-- Prisma: `@@map("users")` + `@map("user_id")` trên field
-- TypeORM: `@Entity("users")` + `@Column({ name: "user_id" })` HOẶC `namingStrategy: new SnakeNamingStrategy()`
+- EF Core: `[Table("users")]` + `[Column("user_id")]` OR use the `UseSnakeCaseNamingConvention()` extension
+- Prisma: `@@map("users")` + `@map("user_id")` on the field
+- TypeORM: `@Entity("users")` + `@Column({ name: "user_id" })` OR `namingStrategy: new SnakeNamingStrategy()`
 
 ---
 
@@ -203,17 +203,17 @@ Khác base SQL Server (PascalCase) — PostgreSQL community convention:
 
 ### Migration
 
-- **EF Core:** `dotnet ef migrations add ...` với Npgsql provider — script generated tự convert sang PG dialect (review để check `SERIAL` vs `IDENTITY`, snake_case, extension `pgcrypto` được tạo trong migration đầu)
+- **EF Core:** `dotnet ef migrations add ...` with the Npgsql provider — the generated script is auto-converted to the PG dialect (review it to check `SERIAL` vs `IDENTITY`, snake_case, extension `pgcrypto` created in the first migration)
 - **Prisma:** `npx prisma migrate dev --name <desc>` — auto-generate SQL diff, idempotent
 - **TypeORM:** `npm run typeorm migration:generate` — diff entity vs DB
-- **Flyway / Sqitch / Liquibase:** SQL-first migration tool — dùng nếu team không tin auto-generated migration
+- **Flyway / Sqitch / Liquibase:** SQL-first migration tool — use if the team does not trust auto-generated migrations
 
-**Quy tắc chung:**
-- Migration commit vào git, KHÔNG sửa migration đã release
-- Mọi migration phải reversible (có rollback path)
-- Extension (`pgcrypto`, `citext`, `unaccent`) tạo trong migration đầu tiên với `CREATE EXTENSION IF NOT EXISTS`
+**General rules:**
+- Commit migrations into git, do NOT edit a migration that has already been released
+- Every migration must be reversible (has a rollback path)
+- Extensions (`pgcrypto`, `citext`, `unaccent`) are created in the first migration with `CREATE EXTENSION IF NOT EXISTS`
 
-### TestContainers cho `/test`
+### TestContainers for `/test`
 
 **ASP.NET (.NET):**
 ```csharp
@@ -230,58 +230,58 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql";
 
 const container = await new PostgreSqlContainer("postgres:16-alpine").start();
 process.env.DATABASE_URL = container.getConnectionUri();
-execSync("npx prisma migrate deploy"); // hoặc TypeORM / Flyway
+execSync("npx prisma migrate deploy"); // or TypeORM / Flyway
 ```
 
-**Image recommend:** `postgres:16-alpine` (arm64 ✓ trên macOS M1/M2/M3) hoặc `postgres:17-alpine` (latest).
+**Image recommend:** `postgres:16-alpine` (arm64 ✓ on macOS M1/M2/M3) or `postgres:17-alpine` (latest).
 
 ---
 
 ## §F. Pgbouncer / connection pooling
 
-Khi backend Node.js có nhiều instance (vd: K8s replica) → mỗi instance giữ pool của riêng nó → DB connection bùng nổ. Giải pháp: **pgbouncer** ở giữa:
+When the Node.js backend has multiple instances (e.g. K8s replicas) → each instance keeps its own pool → DB connections explode. Solution: **pgbouncer** in the middle:
 
 ```
 [app instances × N] → [pgbouncer pool] → [postgres]
                        (transaction mode)
 ```
 
-- **transaction pooling mode** (default): connection trả về pool sau mỗi transaction → high concurrency, low DB connection count
-- Hạn chế: KHÔNG dùng được session-state feature (prepared statement, `SET LOCAL`, advisory lock cross-tx). Prisma / TypeORM cần config riêng.
+- **transaction pooling mode** (default): the connection returns to the pool after each transaction → high concurrency, low DB connection count
+- Limitation: you CANNOT use session-state features (prepared statement, `SET LOCAL`, cross-tx advisory lock). Prisma / TypeORM need their own config.
 
-**Khi nào bắt đầu cần pgbouncer?** Khi `pg_stat_activity` cho thấy connection count > 50% `max_connections` config.
+**When do you start needing pgbouncer?** When `pg_stat_activity` shows connection count > 50% of the `max_connections` config.
 
 ---
 
 ## §G. Important notes / gotchas
 
-1. **Timezone** — luôn `TIMESTAMPTZ`, store UTC, client convert. Server timezone (`SET TIME ZONE`) chỉ ảnh hưởng display.
-2. **`SERIAL` deprecated cho greenfield** — dùng `GENERATED ALWAYS AS IDENTITY` (SQL standard). `SERIAL` legacy có sequence-ownership bug khó debug.
-3. **Long-running transaction = bloat** — VACUUM không thể clean dead tuple bị transaction old chặn. Giới hạn TX time qua `idle_in_transaction_session_timeout`.
-4. **`SELECT *` + JSON serialize** — PG có nhiều type không serialize default (vd: `bytea`, `numeric` precision). Test sớm.
-5. **`LIKE` không dùng index theo default trên ICU collation** — cần text_pattern_ops opclass: `CREATE INDEX ON t(col text_pattern_ops);` để `LIKE 'prefix%'` dùng được index.
-6. **PostgreSQL không có `READ UNCOMMITTED`** — request `READ UNCOMMITTED` silently auto-promoted lên `READ COMMITTED`. Code đừng phụ thuộc dirty read.
-7. **`max_connections` thấp default (100)** — production cần tune lên + pgbouncer. Quá nhiều connection → mỗi cái tốn ~10MB RAM.
+1. **Timezone** — always `TIMESTAMPTZ`, store UTC, client converts. Server timezone (`SET TIME ZONE`) only affects display.
+2. **`SERIAL` deprecated for greenfield** — use `GENERATED ALWAYS AS IDENTITY` (SQL standard). Legacy `SERIAL` has a sequence-ownership bug that is hard to debug.
+3. **Long-running transaction = bloat** — VACUUM cannot clean a dead tuple blocked by an old transaction. Limit TX time via `idle_in_transaction_session_timeout`.
+4. **`SELECT *` + JSON serialize** — PG has many types that do not serialize by default (e.g. `bytea`, `numeric` precision). Test early.
+5. **`LIKE` does not use an index by default on ICU collation** — needs the text_pattern_ops opclass: `CREATE INDEX ON t(col text_pattern_ops);` so `LIKE 'prefix%'` can use the index.
+6. **PostgreSQL has no `READ UNCOMMITTED`** — a request for `READ UNCOMMITTED` is silently auto-promoted to `READ COMMITTED`. Code should not depend on dirty reads.
+7. **`max_connections` low default (100)** — production needs to tune it up + pgbouncer. Too many connections → each one costs ~10MB RAM.
 
 ---
 
-## §H. Unchanged (vẫn theo base `database.md`)
+## §H. Unchanged (still follows base `database.md`)
 
-- Parametrized query (Npgsql / pg / Prisma / TypeORM tất cả auto)
-- `AsNoTracking()` (EF Core) / `select` projection (Prisma) cho read-only
-- Eager loading: `Include` (EF Core) / `include` (Prisma) / `relations` (TypeORM) — chống N+1
-- Transaction cho multi-step write — `BeginTransactionAsync` (.NET) / `prisma.$transaction()` / `queryRunner.startTransaction()` (TypeORM)
+- Parametrized query (Npgsql / pg / Prisma / TypeORM all automatic)
+- `AsNoTracking()` (EF Core) / `select` projection (Prisma) for read-only
+- Eager loading: `Include` (EF Core) / `include` (Prisma) / `relations` (TypeORM) — prevents N+1
+- Transaction for multi-step write — `BeginTransactionAsync` (.NET) / `prisma.$transaction()` / `queryRunner.startTransaction()` (TypeORM)
 - Batch operations
-- Compiled query (nếu hot path)
-- **KHÔNG string-concat SQL** với user input — luôn parametrize
-- **KHÔNG log sensitive data** (password hash, token) — Prisma có `omit`, EF Core dùng `Destructure.ByTransforming`
+- Compiled query (if hot path)
+- **Do NOT string-concat SQL** with user input — always parametrize
+- **Do NOT log sensitive data** (password hash, token) — Prisma has `omit`, EF Core uses `Destructure.ByTransforming`
 
 ---
 
 ## See also
 
 - Base database rule → [`../database.md`](../database.md)
-- Stack-specific overrides (nếu đang dùng Node.js):
+- Stack-specific overrides (if using Node.js):
   - Language → [`lang-nodejs.md`](lang-nodejs.md)
   - Web framework → [`framework-nodejs-web.md`](framework-nodejs-web.md)
   - Testing → [`test-nodejs.md`](test-nodejs.md)

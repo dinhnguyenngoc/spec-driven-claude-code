@@ -81,35 +81,35 @@ Mọi artifact SDLC (`specs/`, `architecture/`, `plans/`, `security/`, `reports/
 
 ## Progress Visibility (MANDATORY)
 
-> **Áp dụng cho mọi lệnh SDLC nhiều bước / có spawn sub-agent** (`/spec`, `/arch`, `/plan`, `/build`, `/test`, `/review`, `/scan`, `/infra`, `/docs`, `/verify`, `/deploy`, `/discover`, `/fix-issue`, `/hotfix`…). Bổ trợ §Output Language + §Output Clarity (quy định *nội dung*); mục này quy định *khả năng theo dõi tiến trình trên chat*.
+> **Applies to every multi-step SDLC command / command that spawns sub-agents** (`/spec`, `/arch`, `/plan`, `/build`, `/test`, `/review`, `/scan`, `/infra`, `/docs`, `/verify`, `/deploy`, `/discover`, `/fix-issue`, `/hotfix`…). Complements §Output Language + §Output Clarity (which govern *content*); this section governs *progress visibility in the chat*.
 
-Output nội bộ của sub-agent (tool `Agent`) **KHÔNG stream về chat của user** — chỉ trả về cho orchestrator. Nếu orchestrator im lặng, user không biết gì đang diễn ra trong suốt thời gian sub-agent chạy (thường vài phút) → trải nghiệm "hộp đen". Vì vậy orchestrator **PHẢI**:
+A sub-agent's internal output (the `Agent` tool) **does NOT stream to the user's chat** — it only returns to the orchestrator. If the orchestrator stays silent, the user has no idea what is happening for the whole time a sub-agent runs (often several minutes) → a "black box" experience. Therefore the orchestrator **MUST**:
 
-1. **TodoWrite checklist sống** — đầu mỗi lệnh dài, tạo todo list theo các phase của lệnh; cập nhật `in_progress` / `completed` qua từng bước để user nhìn thấy tiến độ.
-2. **Narrate từng bước** — một dòng *trước* mỗi sub-agent/bước nặng ("đang giao BA viết SPEC…") và một dòng *sau* khi nhận kết quả ("xong → 9 stories, 38 scenarios").
-3. **Giữ sub-agent chuyên trách** — KHÔNG chuyển sang chạy inline chỉ để "cho dễ thấy"; thiết kế agent-per-command vẫn đúng (context sạch), chỉ cần **bọc bằng todo + narrate**. Khoảng im lặng được phép tồn tại **chỉ trong lúc một sub-agent đang chạy**, khi user đã biết nó đang làm gì.
+1. **A live TodoWrite checklist** — at the start of every long command, create a todo list following the command's phases; update `in_progress` / `completed` at each step so the user can see progress.
+2. **Narrate each step** — one line *before* each sub-agent/heavy step ("assigning the BA to write the SPEC…") and one line *after* receiving the result ("done → 9 stories, 38 scenarios").
+3. **Keep sub-agents dedicated** — do NOT switch to running inline just to "make it visible"; the agent-per-command design is still correct (clean context), it just needs to be **wrapped in todos + narration**. A silent gap is allowed **only while a sub-agent is running**, once the user already knows what it is doing.
 
-> Vẫn giữ kỷ luật verify trên đĩa sau khi sub-agent báo xong → xem §Verification After Delegation ngay dưới.
+> Still keep the discipline of verifying on disk after a sub-agent reports done → see §Verification After Delegation just below.
 
 ---
 
 ## Verification After Delegation (MANDATORY)
 
-> **Áp dụng cho mọi lệnh có spawn sub-agent làm thay đổi/kiểm chứng** (`/build`, `/test`, `/infra`, `/verify`, `/deploy`, `/fix-issue`, `/hotfix`…).
+> **Applies to every command that spawns sub-agents which make changes / perform verification** (`/build`, `/test`, `/infra`, `/verify`, `/deploy`, `/fix-issue`, `/hotfix`…).
 
-**Báo cáo "xanh" của sub-agent KHÔNG phải ground truth.** Trước khi tuyên bố một gate/step PASS, orchestrator **PHẢI tự chạy lại các check *quyết-định-gate* trên đĩa** và đọc kết quả thật — không tin mù summary của sub-agent:
+**A sub-agent's "green" report is NOT ground truth.** Before declaring a gate/step PASS, the orchestrator **MUST re-run the *gate-deciding* checks on disk itself** and read the real result — do not blindly trust the sub-agent's summary:
 
-1. **Re-run lệnh canonical quyết định gate** (chỉ những lệnh quyết định pass, không phải mọi thứ): `dotnet build -c Release` + `dotnet test` · `npm run typecheck && npm test && npm run build` · `docker compose up` + healthcheck + smoke. Đọc **exit code / số test / health thật**.
-2. **Đối chiếu invariant then chốt trên đĩa**: file artifact tồn tại đúng chỗ, digest khớp lock, không có file production bị sửa ngoài phạm vi, scenario coverage khớp số.
-3. **Khi lệch** giữa báo cáo và đĩa → tin đĩa, surface ngay, sửa trước khi đi tiếp.
+1. **Re-run the canonical gate-deciding command** (only the commands that decide pass, not everything): `dotnet build -c Release` + `dotnet test` · `npm run typecheck && npm test && npm run build` · `docker compose up` + healthcheck + smoke. Read the **real exit code / test count / health**.
+2. **Cross-check the key invariants on disk**: the artifact file exists in the right place, the digest matches the lock, no production file was modified out of scope, scenario coverage matches the numbers.
+3. **On any mismatch** between the report and disk → trust the disk, surface it immediately, and fix it before moving on.
 
-> **Vì sao bắt buộc:** trong pipeline thực tế, kỷ luật này đã bắt được những lỗi *report-nói-xanh-nhưng-đĩa-đỏ* mà không gate nào khác bắt — vd `npm test` chuyển RED sau khi thêm Playwright (sub-agent vẫn báo PASS), và container API crash khi khởi động lại (deploy báo SUCCEEDED). Đây là đánh đổi có chủ đích: tốn thêm thời gian re-run, đổi lấy việc chặn **false-green**. Chỉ re-run check *quyết định gate*, không lạm dụng chạy lại toàn bộ.
+> **Why this is mandatory:** in a real pipeline, this discipline has caught *report-says-green-but-disk-is-red* bugs that no other gate caught — e.g. `npm test` went RED after adding Playwright (the sub-agent still reported PASS), and the API container crashed on restart (deploy reported SUCCEEDED). This is a deliberate trade-off: spend extra time re-running, in exchange for blocking **false-green**. Only re-run the *gate-deciding* checks; do not overuse full re-runs.
 
 ---
 
 ## Project Mode & Profile
 
-This kit supports **two modes**. The mode + peripheral technologies are declared in the `## Project Profile` section (placed directly below in each repo). If **no** Project Profile is present → defaults to **greenfield** + the default stack (`rules/tech-stack.md`).
+This kit supports **two modes**. The mode + peripheral technologies are declared in the `## Project Profile` section (placed directly below in each repo). If **no** Project Profile is present → defaults to **greenfield** + the default stack (`rules/tech-stack.md`). (The kit ships `.claude/PROJECT_PROFILE.md` pre-declaring `Mode: brownfield` — the common case when adopting the kit into an existing repo; switch it to `greenfield` for from-scratch builds, or delete the file to fall back to greenfield defaults.)
 
 | Mode | When | Pipeline |
 |------|------|----------|
@@ -121,7 +121,9 @@ This kit supports **two modes**. The mode + peripheral technologies are declared
 - `/spec`, `/arch`, `/plan` read the Mode to change behavior (see §Brownfield Mode in each command).
 - Peripheral technologies that differ from the default → `rules/overrides/*` per the Profile declaration.
 
-**Project Profile template** (each repo fills this in; `/discover` generates it automatically for brownfield):
+> **Profile location (resolution rule — applies to EVERY command/rule that mentions "Project Profile"):** "Project Profile" = the file **`.claude/PROJECT_PROFILE.md`** (CONFIG layer, user-owned — kit upgrades never touch it). **Backward-compatible fallback:** a repo not yet migrated → read the `## Project Profile` block in `CLAUDE.md` as before. `/discover` generates/updates this file.
+
+**Project Profile template** (each repo fills in `.claude/PROJECT_PROFILE.md`; `/discover` generates it automatically for brownfield):
 
 ```markdown
 ## Project Profile
@@ -136,36 +138,50 @@ This kit supports **two modes**. The mode + peripheral technologies are declared
 > **Brownfield pipeline summary:**
 > - **Phase A (one-time):** `/discover` → `/spec` (reverse) → `/arch` (reverse) → `/infra` (reverse-bootstrap). `/scan` is recommended, independent. `/verify` and `/deploy` are **not part of Phase A** — they are execution commands for per-change work in Phase B (production deploy = touches production state, not baseline documentation).
 > - **Phase B (iterative):** B1 new feature · B2 modify feature (characterization test first) · B3 `/fix-issue` · B4 `/hotfix` · B5 architecture upgrade (`/arch` redesign + ADR).
-> - **Scope per-change:** `/test`/`/verify` **VIẾT theo delta, CHẠY toàn bộ** suite đã automated (regression net); `/review` chỉ review diff/slice của thay đổi. Bảng chi tiết + cây quyết định 9 tình huống: [`references/brownfield-pipeline.md`](references/brownfield-pipeline.md) §Scope per-change.
+> - **Scope per-change:** `/test`/`/verify` **WRITE per delta, RUN the whole** automated suite (regression net); `/review` reviews only the diff/slice of the change. Detailed table + a 9-situation decision tree: [`references/brownfield-pipeline.md`](references/brownfield-pipeline.md) §Scope per-change.
 > - **Quick lookup of command order per flow:** [`references/brownfield-pipeline.md`](references/brownfield-pipeline.md). Detailed discipline: [`rules/brownfield.md`](rules/brownfield.md).
 
 ---
 
 ## Natural-Language Task Routing (entry point)
 
-Khi user mô tả một việc bằng **ngôn ngữ thường** ("thêm tính năng X", "sửa tính năng Y", "fix bug Z", "có sự cố trên production", "nâng cấp <dependency/kiến trúc>", "dọn nợ kỹ thuật chỗ W"…), **TRƯỚC KHI làm bất kỳ việc gì khác**, trả lời theo format 3 phần:
+When the user describes a task in **plain language** ("add feature X", "modify feature Y", "fix bug Z", "there's a production incident", "upgrade <dependency/architecture>", "clean up the tech debt in area W"…), **BEFORE doing anything else**, respond in a 3-part format:
 
-1. **Mode** — greenfield hay brownfield: xác định từ `Project Profile → Mode` + tín hiệu thực tế của repo (đã có source code business chưa), **nêu rõ căn cứ**. Profile lệch hiện trạng → cảnh báo và dừng, không tự đi tiếp.
-2. **Luồng** — gọi tên: greenfield 12 bước, hoặc B1 / B2 / B3 / B4 / B5 / B5-lite / `/simplify` (cây quyết định: [`references/brownfield-pipeline.md`](references/brownfield-pipeline.md)).
-3. **Checklist lệnh theo thứ tự** + kỷ luật then chốt của luồng (vd: B2 → characterization test TRƯỚC khi sửa · B1 mở surface ngoài → nên chạy `/secure` · B5 → ADR + strangler-fig · scope: VIẾT theo delta, CHẠY toàn bộ suite).
+1. **Mode** — greenfield or brownfield: determine from `Project Profile → Mode` + the repo's actual signals (does business source code already exist), **stating the basis explicitly**. If the Profile contradicts the actual state → warn and stop; do not proceed on your own.
+2. **Flow** — name it: greenfield 12-step, or B1 / B2 / B3 / B4 / B5 / B5-lite / `/simplify` (decision tree: [`references/brownfield-pipeline.md`](references/brownfield-pipeline.md)).
+3. **Command checklist in order** + the flow's key discipline (e.g. B2 → characterization test BEFORE changing · B1 exposing an external surface → should run `/secure` · B5 → ADR + strangler-fig · scope: WRITE per delta, RUN the whole suite).
 
-Sau đó **hỏi user chọn chế độ thực thi** (mặc định KHÔNG tự chạy khi chưa hỏi):
-- **User-driven** — user tự chạy từng lệnh, tự duyệt từng gate.
-- **Claude-driven** — Claude chạy tuần tự các lệnh nhưng **dừng ở mỗi Quality Gate** chờ duyệt; các điểm cần sign-off của con người (Gate 1 stakeholder approval, review verdict, promote production) **luôn** chờ — bất kể chế độ nào.
+Then **ask the user to choose an execution mode** (by default, do NOT run anything before asking):
+- **User-driven** — the user runs each command and approves each gate themselves.
+- **Claude-driven** — Claude runs the commands sequentially but **stops at every Quality Gate** for approval; the points that require human sign-off (Gate 1 stakeholder approval, review verdict, promote production) **always** wait — regardless of mode.
+
+> **Exception — current-state questions (not change requests):** when the user *asks* about existing state/features (e.g. *"is a newly added bookmark checked for duplicates?"*, *"how is X configured?"*) → **do NOT route into a B-flow / do not ask for an execution mode**. Answer read-only per the **output contract of [`/inspect`](commands/inspect.md)**: a 3-tier evidence table (records → code → live) + PROVEN/DESCRIBED rank + mismatch flags + citations of `@US-ID`/`file:line`/digest. The live tier is OFF by default (only probe when the user explicitly asks). If the question turns into a change/add request → return to the 3-part routing above.
 
 ---
 
 ## Project Profile
 
-> **Điền block này cho project của bạn.** Nó cấu hình mode + peripheral stack cho cả pipeline. Giá trị dưới đây là **mặc định mẫu** (greenfield trên base stack) — thay bằng lựa chọn thật của project. Nếu onboard codebase legacy → chạy `/discover` để kit tự sinh lại block này (đặt `Mode: brownfield`). Nếu xây từ đầu → giữ `Mode: greenfield` và khai báo stack mục tiêu.
+@.claude/PROJECT_PROFILE.md
 
-- **Mode:** greenfield  *(greenfield = xây từ đầu; brownfield = đã có code legacy → chạy `/discover` trước)*
-- **Core:** C# 12 + ASP.NET Core 8 (`net8.0`) + EF Core 8 (base) | Node.js → `rules/overrides/lang-nodejs.md` + `framework-nodejs-web.md` + `test-nodejs.md`
-- **Database:** SQL Server 2022 → base `rules/database.md` (no override). InMemory provider cho test/design-time. | Oracle / MySQL / PostgreSQL / MongoDB → `rules/overrides/database-*.md`
-- **Observability:** Serilog (structured JSON: Console + rolling File) → base `rules/monitoring.md`. | ELK → `rules/overrides/monitoring-elk.md`
-- **Structure:** Clean Architecture 3-layer (`MyApp.Api` → `MyApp.Core` ← `MyApp.Infrastructure`) | N-tier | monolith
-- **Frontend:** <nếu có — vd: Next.js + React + TypeScript + Zustand + TanStack Query + React Hook Form + Zod + Tailwind + shadcn/ui; test Vitest + Testing Library; hoặc "none / API-only">
-- **Service id:** <chỉ multi-repo — id chuẩn của service NÀY cho system catalog của `/discover-system`; bỏ trống nếu single-repo>
+> The project's Profile lives in **`.claude/PROJECT_PROFILE.md`** (imported on the line above — its content is loaded into context each session). If the import is unavailable, **read that file at the start of the session**. Schema/template: §Project Mode & Profile. The file belongs to the user — kit upgrades never touch it.
+
+---
+
+## Kit Layering & Local Overrides
+
+The kit layers its content by **owner** so that upgrading the version does not break the repo's customizations:
+
+| Layer | Owner | Content | On kit upgrade |
+|------|-----------|----------|-----------------|
+| **CORE** | Kit | `commands/`, `agents/`, `rules/` (base + `overrides/` library), `references/`, `templates/`, `skills/`, `scripts/`, `hooks/`, `settings.json`, this `CLAUDE.md` | Replaced per release |
+| **CONFIG** | Repo/user | `PROJECT_PROFILE.md`, `settings.local.json` | Never touched |
+| **EXTENSION** | Repo/user | `local/` — team/company-specific rules, see [`local/README.md`](local/README.md) | Never touched |
+
+**Precedence on conflict: `local/` > `PROJECT_PROFILE.md` > kit base** — same semantics as `rules/overrides/` (an override records only the differing parts; the base's agnostic principles still apply). At the start of a session, after loading this CLAUDE.md: read `local/CLAUDE.local.md` if it exists — its rules **win** when they collide with the kit base.
+
+- **Repo-specific commands:** place them under `.claude/commands/` with a **dedicated prefix** (e.g. `my-*.md`, `<team>-*.md`) — the kit guarantees it will not ship a command with a colliding prefix; files outside the kit manifest (Phase 2) = user-owned, skipped on upgrade.
+- **Must you modify a CORE file?** Three tiers: (1) try an override via `local/` first; (2) if it benefits everyone → send it upstream (a PR to the kit repo); (3) a deliberate fork → **record one line in [`local/KIT_DEVIATIONS.md`](local/KIT_DEVIATIONS.md)** (file · change · reason) so the next upgrade can re-apply it instead of losing it.
+- Current kit version: the [`KIT_VERSION`](KIT_VERSION) file.
 
 ---
 
@@ -209,9 +225,13 @@ Follow this **12-step workflow** (3 phases) for all feature development (greenfi
 │  │     │          │          │          │           │                          │  │
 │  │  SecScan    Backend    Writer       QA        Release                       │  │
 │  │     │          │          │          │           │                          │  │
-│  │  security/  docker/     docs/     reports/    DEPLOYED                       │  │
+│  │  security/  docker/     docs/     reports/    STAGED                        │  │
 │  │  SCAN_REPORT                      VERIFY_REPORT                              │  │
 │  └─────────────────────────────────────────────────────────────────────────────┘  │
+│                                         │                                         │
+│                                         ▼                                         │
+│              [MANUAL — outside kit] human test team on staging                    │
+│              → go/no-go → promote production (RUNBOOK §8)                         │
 │                                                                                   │
 └───────────────────────────────────────────────────────────────────────────────────┘
 
@@ -244,8 +264,8 @@ Legend: * = Optional (other commands are required)
 | 8 | `/scan` | Security Auditor | Post-development security scanning and vulnerability assessment | `security/SCAN_REPORT` |
 | 9 | `/infra` | Backend Developer | Setup Docker infrastructure for local development | `docker/` |
 | 10 | `/docs` | Technical Writer | Generate comprehensive project documentation | `docs/` |
-| 11 | `/verify`\* | Test Engineer | Post-deploy verification — exercise every feature (acceptance criteria) against the real deployed artifact. **Step optional · BLOCKING if run.** Strongly recommended before production promote; required inside `/hotfix` orchestrator | `reports/VERIFY_REPORT` |
-| 12 | `/deploy` | Release Manager | Promote the verified artifact with staged rollout | Production |
+| 11 | `/verify`\* | Test Engineer | Post-deploy verification — exercise every feature (acceptance criteria) against the real deployed artifact. **Step optional · BLOCKING if run.** Strongly recommended before `/deploy` stages; required inside `/hotfix` orchestrator | `reports/VERIFY_REPORT` |
+| 12 | `/deploy` | Release Manager | Deploy the verified artifact to **STAGING** (Status: `STAGED`) — the kit's last automated step. **Promoting to production = MANUAL**: the human test team checks on staging (script = `VERIFY_MATRIX`) → go/no-go → promote per `DEPLOY_RUNBOOK §8` (keep the digest, no rebuild) | Staging (`STAGED`) |
 
 > **Why `/verify` is strongly recommended (but optional) before `/deploy`:** `/test` runs in a test environment over an in-process transport — it cannot exercise the production-config × real-network × real-client intersection where CORS, security headers, env-gating middleware, TLS, and container-networking bugs live. `/verify` runs the acceptance-criteria suite against the **exact artifact that will ship**. Step is **optional** in the standard pipeline, but **BLOCKING if run** — when `/verify` is executed, `/deploy` may only promote a digest with a passing report. `/verify` remains **required** inside the `/hotfix` orchestrator (Step 4 re-verify on patched digest). See [`.claude/commands/verify.md`](commands/verify.md).
 
@@ -255,6 +275,7 @@ Legend: * = Optional (other commands are required)
 |---------|---------|
 | `/discover` | **Brownfield Phase A** — onboard a legacy repo: survey stack/structure, verify build/run, snapshot health, generate the Project Profile (read-only) |
 | `/discover-system` | **Multi-repo** — aggregate per-repo discovery across a workspace into a system-wide map (service catalog, call-graph, cross-service journeys). Read-only, one-way documentation. See [`references/microservices-multirepo.md`](references/microservices-multirepo.md) |
+| `/inspect` | **Query current state** — answer a question about a software feature/state via 3 evidence tiers (records → code → live) + mismatch detection. Read-only, no gate. The live tier (`--live`) and saving a report (`--report`) are both opt-in. Free-text current-state questions are also answered per this command's output contract |
 | `/debug` | Systematic debugging and error recovery — find root cause, not symptoms |
 | `/simplify` | Reduce complexity without changing behavior — code simplification |
 | `/fix-issue` | Analyze and fix a reported bug or issue systematically (dev-time → `/review`; if the bug was found by `/verify`/`/hotfix`, the caller re-verifies the patched digest instead) |
@@ -295,6 +316,7 @@ Each phase transition has mandatory quality gates:
 │  GATE 5: /build → /test                                         │
 │  ✓ All unit tests pass                                         │
 │  ✓ Code compiles without errors                                │
+│  ✓ Assumptions log reviewed & dispositioned (if any)           │
 │                                                                 │
 │  GATE 6: /test → /review                                        │
 │  ✓ Code coverage ≥ 80%                                         │
@@ -323,6 +345,12 @@ Each phase transition has mandatory quality gates:
 │  ✓ NFRs measured against spec thresholds (if /verify run)      │
 │  ✓ 100% AC scenarios have verify test (if /verify run)         │
 │  Note: /verify remains REQUIRED inside /hotfix orchestrator    │
+│                                                                 │
+│  AFTER /deploy (STAGED) — OUTSIDE THE KIT, MANUAL:              │
+│  ✓ Human test team checks on staging (VERIFY_MATRIX = script)   │
+│  ✓ QA/UAT lead signs go/no-go (RELEASE_NOTES §5)                │
+│  ✓ Promote production per RUNBOOK §8 — KEEP DIGEST, don't       │
+│    rebuild; prod smoke; fill in RELEASE_NOTES §6                │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -538,4 +566,5 @@ Quick references in `.claude/references/`:
 9. **Use the right agent** — Invoke specialized agents for their domains
 10. **Document everything** — If it's not documented, it doesn't exist
 11. **Keep `plans/todo.md` truthful** — Tick every completed task (`- [x]`) before reporting done. When work is delegated to sub-agents, the orchestrator owns the tick and applies it after the sub-agent's success report. A task without its tick is not done.
-
+12. **Route ambiguity by type (phase-aware)** — In `/spec`/`/arch`, eliciting and resolving ambiguity IS the job: ask freely, present interpretations. In `/build`/`/fix-issue`: implementation details → decide via rules, never ask; non-blocking behavior gaps → most conservative interpretation + Assumptions log, reviewed as a batch at the gate; blocking behavior gaps → stop and escalate. Approved behavior-changing assumptions flow back into `specs/` (canonical: `rules/principles-and-practices.md` §2.5).
+13. **Surgical changes** — every changed line traces to the current request; don't refactor what isn't broken; orphans your change created → remove, pre-existing dead code → report, don't delete (canonical: §2.5).

@@ -22,7 +22,7 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-> **Score honesty:** mỗi trục 1–5 **neo bằng finding** — còn 🔴 mở ⇒ ≤2; còn 🟡 chưa-đóng (kể cả accept-with-tracking / Action Item mở) ⇒ ≤4; **5 chỉ khi trục đó không còn finding**. Justification phải cite finding/Evidence, không cảm tính. (Canonical: `commands/review.md` §Output File.)
+> **Score honesty:** each axis 1–5 is **anchored by findings** — an open 🔴 ⇒ ≤2; an unclosed 🟡 (including accept-with-tracking / an open Action Item) ⇒ ≤4; **5 only when that axis has no remaining findings**. The justification must cite a finding/Evidence, not be subjective. (Canonical: `commands/review.md` §Output File.)
 
 ---
 
@@ -30,6 +30,7 @@
 
 ### Logic & Behavior
 - [ ] Code does what the spec/ticket requires
+- [ ] New/changed behavior is backed by an AC (`@US-XXX-Snn`) or an **approved** Assumptions-log entry (`A-xx`) — behavior with neither ⇒ 🔴
 - [ ] Edge cases handled (null, empty, boundary values)
 - [ ] Error paths handled appropriately
 - [ ] No off-by-one errors
@@ -103,6 +104,11 @@ var activeUsers = users.Where(u => u.IsActive);
 - [ ] DRY without over-abstraction
 - [ ] No feature creep (only what's needed)
 
+### Scope discipline (surgical changes)
+- [ ] Every changed line traces to the stated request/task — no drive-by "improvements" to adjacent code, comments, or formatting
+- [ ] No refactoring of code that isn't broken outside the task's scope; tech debt found → noted for backlog, not fixed inline
+- [ ] Orphans created by this change (now-unused imports/variables/functions) removed; **pre-existing** dead code reported, not deleted
+
 ### Patterns
 - [ ] Correct use of DI (constructor injection)
 - [ ] Repository pattern for data access
@@ -165,10 +171,10 @@ public async Task<IActionResult> Create(CreateUserRequest request)
 - [ ] HTTPS enforced
 
 ### Cross-cutting controls — wired, not just defined
-> Một control **được định nghĩa nhưng không đăng ký vào pipeline** = vô tác dụng trên artifact thật. Verify **đã wired** (cite `file:line`), không suy diễn từ "có file đó".
+> A control that is **defined but not registered into the pipeline** = ineffective on the real artifact. Verify it is **wired** (cite `file:line`), do not infer from "the file exists".
 - [ ] Security headers middleware **registered** in the request pipeline (cite where) + test assert presence — `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`
-- [ ] CORS / HTTPS-redirect / rate-limiter / auth middleware / global exception handler đều **wired** (cite), không chỉ defined
-- [ ] Mỗi PASS trong Compliance table có `Evidence` (file:line / test) — defined-but-unregistered ⇒ 🔴/🟡, **không** PASS
+- [ ] CORS / HTTPS-redirect / rate-limiter / auth middleware / global exception handler are all **wired** (cite), not just defined
+- [ ] Every PASS in the Compliance table has `Evidence` (file:line / test) — defined-but-unregistered ⇒ 🔴/🟡, **not** PASS
 
 ```csharp
 // ❌ Bad: IDOR vulnerability
@@ -306,8 +312,10 @@ to follow the single responsibility principle"
 |------------|-------|
 | Security vulnerability | 🔴 Critical |
 | Bug / incorrect behavior | 🔴 Critical |
+| Behavior not backed by AC / approved assumption | 🔴 Critical |
 | Missing test coverage | 🟡 Warning |
 | Architecture violation | 🟡 Warning |
+| Out-of-scope refactor / drive-by change | 🟡 Warning |
 | Performance concern (hot path) | 🟡 Warning |
 | Performance concern (cold path) | 🟢 Suggestion |
 | Naming / style issue | 🟢 Suggestion |
