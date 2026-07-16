@@ -12,7 +12,7 @@
 # Verify Report — <product> <candidate-tag>
 
 - **Artifact digest(s)**: <locked from Phase 0 — must match the digest /deploy will promote>
-- **Environment**: production-config, real network
+- **Environment**: staging config (the env `/deploy` stages — per Phase 0), real network
 - **Date**: YYYY-MM-DD
 
 ## 1. Summary
@@ -52,5 +52,5 @@ SUCCEEDED ⟺ Phase 1-5 PASS + 100% coverage. Otherwise, name the blocker + reco
 | US-001-S02 | [edge/failure] | `@US-001-S02` | API | 2 | PASS |
 | … | … | … | … | … | … |
 
-**Coverage**: NN/NN scenarios mapped (100%) — [or list waived scenarios with reason + approver]
+**Coverage**: NN/NN scenarios mapped (100%) — [or list waived scenarios with reason + approver]. [Brownfield per-change: NN/NN of the **change-set's** scenarios = the gate; baseline rows accumulate across releases — list any never-covered baseline scenario as a backlog row, not a waiver.]
 ````

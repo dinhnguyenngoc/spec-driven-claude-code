@@ -11,17 +11,17 @@ description: Implement tasks incrementally using TDD and vertical slices
 
 Implement tasks one at a time using Test-Driven Development. Each increment leaves the system in a working, testable state.
 
-> **Stack Profile note:** examples use the **default profile** (SQL Server). If `Project Profile` (`.claude/PROJECT_PROFILE.md`) declares Oracle/MySQL → follow `rules/overrides/database-*.md` for data access + test setup. Core C#/ASP.NET Core/EF Core does not change. Brownfield: follow `rules/brownfield.md` (characterization test before modifying legacy code that has no tests).
+> **Stack Profile note:** examples + commands below use the **default profile** (C#/.NET + SQL Server). Read `Project Profile` (`.claude/PROJECT_PROFILE.md`) first: **Core = Node.js** → `rules/overrides/lang-nodejs.md` + `framework-nodejs-web.md` + `test-nodejs.md` replace the language/framework/test layers — the `dotnet` commands in this file map to their npm equivalents (`npm test`, `tsc --noEmit`, `npm run build`; in-memory integration template per `test-nodejs.md` §Template A). **Database ≠ SQL Server** → `rules/overrides/database-*.md` (Oracle / MySQL / PostgreSQL / MongoDB) for data access + test setup. Brownfield: follow `rules/brownfield.md` (characterization test before modifying legacy code that has no tests).
 
 ## Prerequisites
 
 **Required:**
 - A plan exists — `plans/plan.md` (task detail: AC, **Scenarios covered**, Files to modify, Tests to add) + `plans/todo.md` (the actionable checklist)
 - Understanding of task acceptance criteria
-- .NET SDK 8.0 installed
+- The declared core's SDK installed — .NET SDK 8.0 (default) | Node.js 20 LTS (when the Profile declares Node core)
 
 **Optional (if available):**
-- Pre-development security review (`security/PRE_DEV_REVIEW.md` from `/secure`)
+- Pre-development security review (`security/PRE_DEV_REVIEW.md` from `/secure`) — **if `/secure` was run, it must be marked APPROVED before building** (Gate 4 is BLOCKING if run)
 - Threat model (`security/THREAT_MODEL.md` from `/secure`)
 
 ## Agent Selection
@@ -115,7 +115,7 @@ If the AC/plan is silent or contradictory on something this task needs, apply th
 For every non-blocking behavior gap, add an entry to the **Assumptions log** (collected in the `/build` completion report; mark the task in `plans/todo.md` with `[A-xx]`):
 
 ```text
-A-01 · Task T-07 (@US-003-S02)
+A-01 · Task 2.3 (@US-003-S02)
   Gap:     SPEC does not define the response when a duplicate email is registered
   Chosen:  409 Conflict with ProblemDetails (reject, don't merge)
   Why:     Most conservative — reversible; silently merging would destroy data if wrong
@@ -180,7 +180,7 @@ git commit -m "feat(tasks): add CreateAsync method to TaskService"
 Tick the task in `plans/todo.md` **before moving to the next task or reporting done.** This is not optional. If a sub-agent did the work, the orchestrator applies the tick after receiving the success report.
 
 ```markdown
-- [x] T-XX: Task description (US-XXX) [S|M|L]
+- [x] Task N.N: Task description (US-XXX) [S|M|L]
 ```
 
 When a phase finishes, run the **Release build** (the per-checkpoint artifact check), then tick its checkpoint line and note the verification in `plan.md` if anything diverged from the plan:
@@ -297,12 +297,15 @@ Stop and reassess if you find yourself:
 
 ## Quality Gate 5 — Exit Criteria
 
+Per `CLAUDE.md` §Verification After Delegation, the **orchestrator re-runs the gate-deciding checks itself** (`dotnet test` · `dotnet build -c Release` · the npm gate when `web/` exists — or their npm equivalents on a Node core) and cross-checks on disk: `plans/todo.md` ticks match the completed tasks, and every claimed `@US-XXX-Snn` has its named test present and passing — the sub-agent's report is not ground truth.
+
 Before proceeding to `/test`:
 
 - [ ] All tasks in `plans/todo.md` marked complete
 - [ ] **Every `@US-XXX-Snn` claimed by the completed tasks is reachable from the app entry (no orphan) and backed by a passing test asserting its observable *Then*** — a scenario whose code exists but is unwired, or has only a presence-level test, is NOT done
 - [ ] All unit tests pass (`dotnet test`)
 - [ ] **Assumptions log dispositioned** — every `A-xx` reviewed by the user: approved → one-line AC amendment appended to the affected story in `specs/` (marked `amended @ Gate 5, A-xx`); rejected → the task returns to rework. No silent assumption survives the gate
+- [ ] **(If `/secure` ran) Security controls implemented** — every applicable `SECURITY_REQUIREMENTS.md` control and `RC-N` Required Control is implemented (dev-agent self-audit per their Build Discipline checklists; `/review` / `/scan` re-audit with file:line evidence when run)
 - [ ] Code compiles without errors in Release (`dotnet build --configuration Release`)
 - [ ] **(If `web/` exists) Frontend gate green** — `npm run typecheck && npm run lint && npm run build && npm run test` all pass, including `tailwindcss/no-custom-classname` (no undefined breakpoint/variant class)
 - [ ] No red flags present (see Red Flags section)

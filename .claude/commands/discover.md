@@ -69,6 +69,7 @@ Generate / update **`.claude/PROJECT_PROFILE.md`** (the CONFIG layer, user-owned
 - Observability: <Serilog/ELK/Grafana…> → <override if needed>
 - Structure: <Clean Architecture | N-tier | monolith | …>
 - Frontend: <if any>
+- Service id: <kebab-case, unique across the workspace — REQUIRED only for multi-repo products (consumed by /discover-system as the canonical key); single-repo → omit>
 - Notes: <red-flags, blockers, risk areas>
 ```
 
@@ -86,6 +87,8 @@ Generate / update **`.claude/PROJECT_PROFILE.md`** (the CONFIG layer, user-owned
 
 ## Quality Gate — Phase A Kickoff
 
+Run the §Orchestrator disk-check (below) first, then review.
+
 - [ ] `Project Profile` fully filled in: Mode, Core, Database, Observability, Structure
 - [ ] `docs/CODEBASE_MAP.md` written, containing the **endpoint inventory** + **red-flag list** (the index `/spec` REVERSE / `/arch` reverse consume)
 - [ ] Build status confirmed (pass / fail + reason)
@@ -94,11 +97,24 @@ Generate / update **`.claude/PROJECT_PROFILE.md`** (the CONFIG layer, user-owned
 - [ ] DDL detected in repo (by file type or content) → **DB-object inventory** present in `CODEBASE_MAP.md`; every code-called DB object missing its defining DDL → listed as `DB-resident logic not in repo` red-flag
 - [ ] No code modifications (read-only guarantee)
 
+### Orchestrator disk-check (run BEFORE presenting the Phase A kickoff)
+
+A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.md` §Verification After Delegation, applied at artifact level:
+
+- [ ] **Read-only guarantee, verified** — `git status`: no tracked file modified; the only additions are `docs/CODEBASE_MAP.md`, `.claude/PROJECT_PROFILE.md`, and the health-snapshot doc (build/test byproducts like `bin/`/`coverage/` are gitignored, not committed). A modified source/config file = the read-only boundary was broken — revert and surface it.
+- [ ] **Profile complete** — every field filled (Mode / Core / Database / Observability / Structure — no `<…>` placeholder left).
+- [ ] **CODEBASE_MAP sections present** — module summary, the endpoint inventory table, the red-flag list (with `file:line`); DB-object inventory present when Phase 1 detected DDL or `EXEC`/raw-SQL calls.
+- [ ] **Build/test status recorded as observed** — the snapshot quotes real command output (exit code, test counts), not a summary adjective.
+
+Any mismatch → fix on disk first.
+
 ---
 
 ## Agent
 
 Invoke: **Systems Architect** (leads the stack & structure survey), preparing to hand off to **Business Analyst** (reverse `/spec`) and back to **Systems Architect** (reverse `/arch`).
+
+**Phase ownership** — the Systems Architect sub-agent cannot converse with the user: when an **existing, user-edited** `PROJECT_PROFILE.md` contradicts what Phase 1 detected (a declared override vs the actual engine, stale Mode, a hand-written Note) → **return early** with the diff instead of overwriting a user-owned CONFIG file (same reconcile discipline as `/spec` Phase 0). The orchestrator confirms with the user, then runs the disk-check and presents the Phase A kickoff in the main loop.
 
 ```text
 "As Systems Architect, run /discover on this legacy repo and produce the Project Profile.

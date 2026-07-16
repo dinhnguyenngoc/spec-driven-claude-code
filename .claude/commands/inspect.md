@@ -36,13 +36,13 @@ Examples: `/inspect does a newly added bookmark get checked for duplicates` · `
 
 ### Phase 0 — Map the question onto traceability
 
-Grep the question's keywords in `specs/SPEC.md` → identify the related `@US-XXX(-Snn)` / NFR / OQ.
+Grep the question's keywords in `specs/` (`SPEC.md` — and `specs/user-stories/*.md` in the split layout) → identify the related `@US-XXX(-Snn)` / NFR / OQ.
 
 - Can't be mapped anywhere → **that is itself part of the answer** ("not in the spec — the feature either doesn't exist yet or isn't documented") + cite the closest item found. DO NOT guess, do not infer from memory.
 
 ### Phase 1 — RECORDS evidence (always runs)
 
-Trace the traceability chain: `specs/SPEC.md` → `architecture/` (related ADR) → `plans/` → `reports/TEST_REPORT.md` → `reports/VERIFY_MATRIX.md` (+ digest in `reports/verify-artifact.lock`) → `reports/RELEASE_NOTES_*`. The spec's **Revision History** table is Tier-1 evidence for *when/why* a behavior changed (version · date · flow · approver) — cite its row when the question is about a change over time.
+Trace the traceability chain: `specs/SPEC.md` (+ `specs/user-stories/*` in the split layout) → `architecture/` (related ADR) → `plans/` → `reports/TEST_REPORT.md` → `reports/VERIFY_MATRIX.md` (+ digest in `reports/verify-artifact.lock`) → `reports/RELEASE_NOTES_*`. The spec's **Revision History** table is Tier-1 evidence for *when/why* a behavior changed (version · date · flow · approver) — cite its row when the question is about a change over time.
 
 **MUST rate the evidence** (especially important for brownfield):
 

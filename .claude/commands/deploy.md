@@ -15,7 +15,7 @@ Execute deployment to the **STAGING** environment (Docker Desktop / staging serv
 
 > **Note**: Dockerfile and docker compose are created in `/infra`. This command **executes** deployment.
 
-> **Stack Profile note:** the `sqlcmd`/DB commands below use the **default profile** (SQL Server). If `Project Profile` declares Oracle/MySQL → swap to the corresponding client (`sqlplus`/`mysql`) per `rules/overrides/database-*.md`.
+> **Stack Profile note:** the `sqlcmd`/DB and `dotnet ef` commands below use the **default profile** (C#/.NET + SQL Server). Read `Project Profile` first: Oracle → `sqlplus` · MySQL → `mysql` · PostgreSQL → `psql` · MongoDB → `mongosh` (per `rules/overrides/database-*.md`); **Core = Node.js** → the migration steps map to the declared tool (`prisma migrate deploy` / `migrate-mongo up`) instead of `dotnet ef`.
 
 > **`/verify` policy:** `/verify` is **step optional · BLOCKING if run** (Gate 11). Strongly recommended before `/deploy` stages the artifact (especially brownfield, or releases with infra/config changes). **Required when `/deploy` is invoked from the `/hotfix` orchestrator** — hotfix Step 4 requires re-verify on the patched digest. If `/verify` runs, `/deploy` may only stage a digest with a VERIFY_REPORT PASS for **that exact digest** (digest match enforced). Run `/verify` with **staging-config** — the same env as `/deploy` ⇒ within the kit's scope the env always matches; differences between staging↔production belong to the manual checklist (RUNBOOK §8).
 
@@ -45,7 +45,7 @@ Execute deployment to the **STAGING** environment (Docker Desktop / staging serv
 - [ ] `docker/Dockerfile` exists
 - [ ] `docker-compose.yml` exists at repo root (build context `.`)
 - [ ] `.env` file configured (copy from `.env.example`)
-- [ ] `reports/CODE_REVIEW.md` marked PASS
+- [ ] `reports/CODE_REVIEW.md` marked PASS *(if `/review` was run — optional gate; skipped → note it in RELEASE_NOTES §2)*
 - [ ] `security/SCAN_REPORT.md` has zero open P0 / Critical items
 - [ ] `docs/deployment.md` exists (runbook to reference)
 - [ ] `CHANGELOG.md` updated with the version being released
@@ -479,6 +479,8 @@ lsof -i :6379
 
 ## Quality Gate — Exit Criteria (before declaring STAGED)
 
+Per `CLAUDE.md` §Verification After Delegation, the **orchestrator re-runs the gate-deciding checks itself**: the Step-4 health loop (`docker compose ps` + `docker inspect` health states), the smoke pack, and the digest comparison against `verify-artifact.lock` — the sub-agent's report is not ground truth.
+
 All boxes must be ticked. A deploy with any box open is **not done** and produces no "STAGED" release notes. (`STAGED` is the highest Status `/deploy` is allowed to declare — "SUCCEEDED (production)" is only filled in MANUALLY after the manual promote + prod smoke, see RUNBOOK §8):
 
 - [ ] Every service in compose is `Up (healthy)` (or `Up` + documented whitelist note)
@@ -517,6 +519,8 @@ All boxes must be ticked. A deploy with any box open is **not done** and produce
 ## Agent
 
 Invoke: **Release Manager**
+
+**Phase ownership** — the Release Manager sub-agent cannot converse with the user: setting `ACK_NO_SCAN=1` (accepting a no-scan deploy is the **user's** risk decision), the RELEASE_NOTES §5 sign-off rows (Tech Lead / Security Auditor / QA-UAT are human signatures — self-filling them is fabricated sign-off), or overriding a Red-Flag block (e.g. Friday-afternoon deploy) → **return early** for the decision instead of deciding alone. The orchestrator obtains the ack/signatures, re-runs the exit-criteria checks, and declares `STAGED` in the main loop.
 
 ```text
 "As Release Manager, build, deploy and verify the application with staged rollout.

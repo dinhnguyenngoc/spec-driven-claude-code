@@ -124,7 +124,7 @@
 - v2 trigger MUST be an **observable condition** — measurable, checkable
 - ❌ Wrong: "when we have time", "in future iterations", "if needed"
 - ✅ Right: "When DAU > 1000", "When there is a customer in the EU (GDPR)", "When the `/export` feature is enabled"
-- Every `[Deferred to v2 with trigger]` or `[Accepted]` mitigation from `STRIDE_TEMPLATE.md §D` **SHOULD** have a corresponding RR-N row
+- Every `[Deferred to v2 with trigger]` or `[Accepted]` mitigation from `STRIDE_TEMPLATE.md §D` **MUST** have a corresponding RR-N row
 
 ---
 

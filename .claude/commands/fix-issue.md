@@ -11,6 +11,8 @@ description: Analyze and fix a reported bug or issue systematically
 
 Analyze and fix a **reported** bug or issue systematically. This command handles issues from external sources (QA, production, users, issue trackers).
 
+> **Stack Profile note:** the `dotnet` commands and C# examples below use the **default profile**. **Core = Node.js** → map to the npm equivalents (`npm test`, `tsc --noEmit`, `npm run build`; debug tooling per the declared stack) — the Common Issue Patterns are default-stack illustration only (`rules/overrides/lang-nodejs.md` idioms apply).
+
 ## When to Use
 
 | Situation | Command |
@@ -150,9 +152,12 @@ git bisect good <last-known-good-commit>
 
 ## Bug Fix Checklist
 
+Per `CLAUDE.md` §Verification After Delegation, the **orchestrator re-runs the gate-deciding checks itself** (`dotnet test` full suite + Release build + `dotnet format --verify-no-changes` — or their npm equivalents) and confirms the regression test exists and passes on disk — the sub-agent's report is not ground truth.
+
 - [ ] Issue reproduced locally
 - [ ] Root cause identified (`file:line`)
-- [ ] Expected behavior sourced from spec/tests/report — any assumption made is recorded (`A-xx`) and surfaced for review
+- [ ] Expected behavior sourced from spec/tests/report — any assumption made is recorded (`A-xx`)
+- [ ] **Every `A-xx` dispositioned by the user before closing** (same mechanism as `/build` Gate 5): approved → one-line AC amendment on the affected story in `specs/` (marked `amended @ fix, A-xx`) + an `Amended` Revision History row (BA agent §semantics); rejected → the fix returns to rework. No behavior decision may live only in the commit body (`principles-and-practices.md` §2.5) — this applies on BOTH exits (dev-time → `/review`, and verify/hotfix → before the re-verify)
 - [ ] Regression test written (fails before fix)
 - [ ] If the bug is a **handoff** (producer→consumer: nav-state key / context / event name / shared prop) → the regression test exercises **both ends together** (`references/scenario-traceability.md` §3) — two sides passing in isolation does not cover the join
 - [ ] Fix implemented

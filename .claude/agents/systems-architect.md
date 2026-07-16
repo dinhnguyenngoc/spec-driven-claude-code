@@ -30,6 +30,8 @@ Resilience:     Polly
 Observability:  Serilog + OpenTelemetry + Grafana
 ```
 
+> Default stack. When the `Project Profile` declares otherwise (Node.js core, Oracle / MySQL / PostgreSQL / MongoDB, ELK…), the matching `rules/overrides/*` replace the affected rows — design the data/monitoring layers against the declared stack, not this table.
+
 ---
 
 ## Workflow Integration

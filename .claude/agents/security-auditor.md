@@ -28,6 +28,8 @@ Scanning:       dotnet list package --vulnerable, Semgrep, gitleaks
 Headers:        NetEscapades.AspNetCore.SecurityHeaders
 ```
 
+> Default stack. When the `Project Profile` declares otherwise (Node.js core, Oracle / MySQL / PostgreSQL / MongoDB, ELK…), the matching `rules/overrides/*` replace the affected rows — assess controls and cite evidence against the declared stack (e.g. `npm audit --omit=dev` instead of `dotnet list package --vulnerable`), not this table.
+
 ---
 
 ## Workflow Integration
@@ -147,6 +149,8 @@ if (resource.OwnerId != currentUserId && !User.IsInRole("Admin"))
 ---
 
 ## Scanning Commands
+
+> For `/scan`, do NOT run these manually — `bash .claude/scripts/scan-all.sh` runs them all (with fallbacks) and aggregates into `SCAN_SUMMARY.json`. The list below is for **ad-hoc audits** (e.g. the `security-review` skill).
 
 ```bash
 # Check vulnerable NuGet packages

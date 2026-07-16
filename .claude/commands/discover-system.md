@@ -46,7 +46,7 @@ Enumerate every service repo in the workspace. For each, read its `Service id`, 
 1. From each service's **§Service Contracts**, collect `Exposes` and `Consumes` rows.
 2. **Match** every `Consumes.contract-id` to the `Exposes.contract-id` of another service → one **edge** (`consumer → provider`) in the call-graph. `contract-id` is the join key.
    - Unmatched consume, no plausible provider → `⚠️ dangling consumer` (missing dependency — a provider service may be absent / not yet onboarded).
-   - Unmatched consume that **near-matches** an `Exposes.contract-id` (differs only by a typo / version suffix — e.g. `order.craete` vs `order.create`, `payment.charge` vs `payment.charge.v2`) → `⚠️ contract-id near-miss (typo / version drift)` — **fix the id on one side, do NOT add a service**. (`contract-id` must match **exactly** — see `arch.md §3.2`.)
+   - Unmatched consume that **near-matches** an `Exposes.contract-id` (differs only by a typo / version suffix — e.g. `order.craete` vs `order.create`, `payment.charge` vs `payment.charge.v2`) → `⚠️ contract-id near-miss (typo / version drift)` — flag it and **recommend which side to fix** (route the fix to that repo's own `/arch` conformance/DELTA — this command is read-only on service repos and never edits their contracts); do NOT add a service. (`contract-id` must match **exactly** — see `arch.md §3.2`.)
    - Unmatched expose → note `no first-party consumer` (may be an external client).
 3. Draw `system-context.md` (C4 L1) + `container.md` (C4 L2 — services + edges + shared infra: gateway, message bus, shared stores).
 4. Reconstruct **cross-service journeys** (`journeys/*.md`) by following edges for the main flows; tag each with a system scenario id `@SYS-US-NNN`.
@@ -80,6 +80,8 @@ architecture/system/            # commit to the platform repo (shared documentat
 
 ## Quality Gate — System Map
 
+Run the §Orchestrator disk-check (below) first, then review.
+
 - [ ] `service-catalog.md` lists **every** workspace repo (or marks it `⚠️ incomplete`)
 - [ ] Each repo's `Service id` is **unique** across the workspace and **matches** between its Project Profile and its §Service Contracts; collisions / mismatches flagged `⚠️ service-id collision/mismatch` (a wrong canonical key merges catalog rows / mis-targets call-graph edges)
 - [ ] Every call-graph edge has **both** ends (consumer + provider matched by `contract-id`); dangling consumers flagged — and `contract-id` **near-misses** (typo / version drift) flagged **separately** from true missing-dependency dangling
@@ -88,9 +90,24 @@ architecture/system/            # commit to the platform repo (shared documentat
 - [ ] Drift vs previous map surfaced (not silently overwritten)
 - [ ] Output committed to the platform repo (documentation, one-way — no per-repo runtime dependency)
 
+### Orchestrator disk-check (run BEFORE presenting the system map)
+
+A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.md` §Verification After Delegation, applied at artifact level:
+
+- [ ] **Catalog completeness** — diff the workspace directory listing against `service-catalog.md` rows: every repo present (or `⚠️ incomplete`), no fabricated row without a repo.
+- [ ] **Read-only across repos, verified** — `git status` in EVERY service repo is clean; only the platform repo gains `architecture/system/`.
+- [ ] **Service-id uniqueness** — collect each repo's `Project Profile → Service id` and dedupe yourself (a collision merges catalog rows).
+- [ ] **Edge integrity** — every `Consumes` row across all §Service Contracts appears as a matched edge OR is flagged (`dangling` / `near-miss`) — none silently dropped.
+- [ ] **Inferred flags present** — every event-derived journey carries `inferred: true`.
+- [ ] **No template residue** — no `[ … ]` placeholders left in `architecture/system/`.
+
+Any mismatch → fix on disk first.
+
 ## Agent
 
 Invoke: **Systems Architect** (leads system-scope discovery, as it leads per-repo `/discover` + `/arch`).
+
+**Phase ownership** — the Systems Architect sub-agent cannot converse with the user: the **human review** of event-derived (`inferred`) journeys, and the **which-side-fixes-it** decision on a contract-id near-miss (it touches another team's contract) → **return early** with the flagged list instead of deciding alone. The orchestrator obtains the review/decision, runs the disk-check, and presents the system map in the main loop.
 
 ```text
 "As Systems Architect, run /discover-system across the workspace: aggregate each repo's

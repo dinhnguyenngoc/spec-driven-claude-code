@@ -61,7 +61,7 @@ Steps / Expected / Actual / Root cause `file:line` / Impact / Evidence /
 Proposed fix / Regression test).
 
 ## 9. Gaps identified, not closed
-Things acknowledged but deferred — frontend coverage, CI verification on other archs, E2E expansion, etc. Each line names the next owner.
+Things acknowledged but deferred — frontend coverage, CI verification on other archs, E2E expansion, etc. Each line names the next owner. *(A gap whose next owner is `/review` also gets an `OPEN-###` row in §12 — §12 is the single list `/review` reconciles.)*
 
 ## 10. Files added during `/test`
 List every new/modified file. Repeat the boundary rule: "No production code under `src/` was modified."
@@ -70,5 +70,5 @@ List every new/modified file. Repeat the boundary rule: "No production code unde
 PASS / PASS WITH CONDITIONS / FAIL with one-paragraph justification. If PWC or FAIL: name the blocker(s), reference BUG-### in §8.
 
 ## 12. Open items for `/review`
-Numbered, actionable list — what `/review` must do (fix BUG-001) + optional items (add `@vitest/coverage-v8`, expand E2E suite, …).
+Numbered list with **stable `OPEN-###` ids** (sequential): what `/review` must do (OPEN-001: fix BUG-001) + optional items (OPEN-002: add `@vitest/coverage-v8`, …). `/review` dispositions **each id** as CLOSED / DEFERRED-to-Pn / ESCALATED — an id that disappears between the two reports is a gate failure.
 ````

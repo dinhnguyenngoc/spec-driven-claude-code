@@ -41,7 +41,7 @@
 - [ ] Unit tests cover edge cases
 - [ ] Integration tests for API endpoints
 - [ ] Tests actually assert behavior (not just run)
-- [ ] Coverage meets threshold (≥ 80%)
+- [ ] Coverage meets threshold (≥ 80% — per Mode: brownfield gates on **delta coverage + ratchet**, `rules/testing.md §Coverage Thresholds`)
 
 ```csharp
 // ✅ Good: Edge case handled

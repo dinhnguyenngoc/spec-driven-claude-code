@@ -154,6 +154,47 @@ Double:    ═ ║ ╔ ╗ ╚ ╝ ╠ ╣ ╦ ╩ ╬
 
 ---
 
+## 8. UI Wireframe (screen)
+
+> Used by `/spec` Phase 2.5 (`specs/wireframes/screens/US-*.md`). Intent-level: regions + controls + real UI copy — no pixels, no tokens (those are `/arch`).
+
+```
+┌──────────────────────────────────────────────┐
+│ ◀ Back        Orders                 [+ New] │  ← header: title + primary action
+├──────────────────────────────────────────────┤
+│ [Search orders…          ]  [Status ▾]       │  ← toolbar: search + filter
+├──────────────────────────────────────────────┤
+│ ┌──────────────────────────────────────────┐ │
+│ │ #1042 · John Smith        [View] [Delete]│ │  ← list row (repeats)
+│ │ 2026-07-01 · PAID                        │ │
+│ └──────────────────────────────────────────┘ │
+│                                              │
+│ Email *                                      │
+│ ┌──────────────────────────────────────────┐ │
+│ │ user@example.com                         │ │  ← text input (filled)
+│ └──────────────────────────────────────────┘ │
+│ ⚠ Invalid email format                       │  ← inline error under field
+│                                              │
+│              [ Cancel ]  [ Save ]            │  ← footer: ghost + primary
+└──────────────────────────────────────────────┘
+```
+
+**Control conventions:**
+
+| Control | Notation |
+|---------|----------|
+| Button | `[Label]` — primary last in a row; ghost/secondary in `[ Spaced ]` or noted |
+| Text input | boxed row (`┌─┐│…│└─┘`) or `[placeholder…]` inline |
+| Dropdown / select | `[Label ▾]` |
+| Checkbox / radio | `[x] label` · `( ) option` |
+| Back / breadcrumb | `◀ Back` |
+| Required field | `*` after the label |
+| Annotation | `←` note outside the right edge (or a numbered legend below) |
+
+Draw one frame per screen; a separate frame per state only when the **layout** differs — otherwise the States table in the screen template carries it.
+
+---
+
 ## Tips
 
 1. **Alignment**: Use a monospace font and ensure columns line up

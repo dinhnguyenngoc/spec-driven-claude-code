@@ -11,7 +11,7 @@ description: QA verification with real dependencies — the quality gate before 
 
 Verify code works correctly in **production-like environment** with real dependencies (database, cache). This is the quality gate before `/review`.
 
-> **Stack Profile note:** TestContainers image follows the `Project Profile`. Default = SQL Server; if Oracle is declared → Oracle XE/Free, MySQL → `mysql:8.0` (see `rules/overrides/database-*.md`). Observability ELK → `rules/overrides/monitoring-elk.md`. Core test stack (xUnit/Moq/FluentAssertions) does not change. **On Apple Silicon (arm64):** swap the SQL Server image to `azure-sql-edge` + a TCP/port-wait — the default `mssql/server:2022` image segfaults under qemu; see `rules/testing.md` Template B arm64 note.
+> **Stack Profile note:** read `Project Profile` first. **Core = Node.js** → `rules/overrides/test-nodejs.md` replaces the test stack (Jest/Vitest instead of xUnit/Moq/FluentAssertions; `@testcontainers/*` fixtures + `prisma migrate deploy` per its §Template B; coverage via `npm test -- --coverage`) — the `dotnet` commands in this file map accordingly. **Database** → the TestContainers image follows the Profile: SQL Server (default) · Oracle → Oracle XE/Free · MySQL → `mysql:8.0` · PostgreSQL → `postgres:16-alpine` · MongoDB → `mongo:7.0` (see `rules/overrides/database-*.md`). Observability ELK → `rules/overrides/monitoring-elk.md`. **On Apple Silicon (arm64):** swap the SQL Server image to `azure-sql-edge` + a TCP/port-wait — the default `mssql/server:2022` image segfaults under qemu; see `rules/testing.md` Template B arm64 note.
 
 ## Prerequisites
 
@@ -100,6 +100,8 @@ dotnet test --collect:"XPlat Code Coverage" --settings coverlet.runsettings --re
 docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
 docker-compose -f docker-compose.test.yml down -v
 ```
+
+> **E2E transport by pipeline position:** on a greenfield first pass, `/infra` (step 9) has not run yet — there is no `docker/Dockerfile` or compose file to `--build`. Run Playwright E2E against the **locally hosted stack** (Kestrel `dotnet run` / `npm run preview`, with dependencies TestContainers-backed) — the fully containerized pass is re-exercised by `/verify` against the real artifact. From `/infra` onward (and in brownfield, where Docker artifacts already exist), use the compose overlay above; if `docker-compose.test.yml` is missing there, the **Test Engineer authors it as a test-only overlay** (listed in TEST_REPORT §10 — a test artifact, not production config).
 
 ### Test Categories
 
@@ -206,6 +208,8 @@ open ./coverage/report/index.html
 | Branch coverage | 75% | 85% |
 | Method coverage | 80% | 90% |
 
+> Scope per Mode — the table above is the **greenfield whole-repo** gate; brownfield per-change gates on **delta coverage + whole-repo ratchet** instead (`rules/testing.md §Coverage Thresholds`; the Gate 6 item below states which number gates).
+
 ### Identify Coverage Gaps
 
 ```bash
@@ -230,17 +234,19 @@ open ./coverage/report/index.html
 
 > **Boilerplate template (fill-only — saves time):** copy [`templates/TEST_REPORT_TEMPLATE.md`](../templates/TEST_REPORT_TEMPLATE.md) and fill in the placeholders — do NOT re-author the 12-section structure on every run. Every section must be present even when it is "n/a, see §X".
 
-**12 sections:** 1 Summary (verdict PASS / PASS-WITH-CONDITIONS / FAIL — PWC = baseline green + ≥1 BUG-### + no Critical blocker) · 2 Backend in-memory re-run · 3 TestContainers (NEW) · 4 Frontend Vitest re-run · 5 E2E live · 6 Coverage (scope policy + metrics + top-5 uncovered with rationale) · 7 Gate-6 checklist · 8 Bug reports (BUG-###, Prove-It) · 9 Gaps deferred (each line names the next owner) · 10 Files added (+ boundary statement) · 11 Gate 6 verdict · 12 Open items for `/review`.
+**12 sections:** 1 Summary (verdict PASS / PASS-WITH-CONDITIONS / FAIL — PWC = baseline green + ≥1 BUG-### + no Critical blocker) · 2 Backend in-memory re-run · 3 TestContainers (NEW) · 4 Frontend Vitest re-run · 5 E2E live · 6 Coverage (scope policy + metrics + top-5 uncovered with rationale) · 7 Gate-6 checklist · 8 Bug reports (BUG-###, Prove-It) · 9 Gaps deferred (each line names the next owner) · 10 Files added (+ boundary statement) · 11 Gate 6 verdict · 12 Open items for `/review` (stable `OPEN-###` ids).
 
 > **Boundary rule:** `/test` MUST NOT modify production code under `src/` or `web/src/`. Bugs found during `/test` are filed as reports in §8 with a proposed fix; the fix happens in `/review` (or `/fix-issue` for production hotfixes). This is what makes the regression net in §3 trustworthy — the TestContainers tests are written against unchanged production code.
 
 ## Quality Gate 6 — Exit Criteria
 
+Per `CLAUDE.md` §Verification After Delegation, the **orchestrator re-runs the canonical gate-deciding commands itself, once** (the single coverage run · `npm test` · the E2E run in whichever transport applies) and diffs the real exit codes / test counts against `TEST_REPORT.md` — the sub-agent's report is not ground truth. *(The "do not run the suite multiple times" warnings in this file target redundant runs inside the sub-agent's own workflow; this single orchestrator re-run is the documented price of blocking false-green — it is exactly how the "`npm test` RED, report PASS" bug class is caught.)*
+
 Before proceeding to `/review`:
 
 - [ ] All tests pass — **confirmed by the canonical commands exiting 0** (`dotnet test` AND `npm test`), not merely asserted in `TEST_REPORT.md`. A green report with a red command = gate FAIL.
 - [ ] **Adding a new test runner did NOT break the unit-test command** — when scaffolding Playwright/visual/E2E tooling, `npm test` (vitest) MUST still exit 0 (runner isolation: exclude `e2e/`/Playwright specs from the unit runner's glob). The unit command staying green is part of this gate.
-- [ ] **No production config mutated for test isolation** — `git diff` shows no changes to `appsettings*.json` / `Program.cs` / `docker-compose*.yml` originating from test setup; isolation was achieved runtime-only (fixture DI swap / env vars / `appsettings.Testing.json`), so the artifact deploys with its **original** connections
+- [ ] **No production config mutated for test isolation** — `git diff` shows no changes to `appsettings*.json` / `Program.cs` / `docker-compose*.yml` originating from test setup; isolation was achieved runtime-only (fixture DI swap / env vars / `appsettings.Testing.json`), so the artifact deploys with its **original** connections *(the test-only overlay `docker-compose.test.yml` is a test artifact — authoring/updating it is allowed; the production `docker-compose.yml` / `docker-compose.deploy.yml` are not)*
 - [ ] **Every `@US-XXX-Snn` has a test asserting its observable *Then*** (effect, not presence); scenarios needing UI-layer proof and deferred to `/verify` are listed in §9, not counted as covered
 - [ ] **Consumer↔API contract conformance checked** — first-party client/SDK/BFF calls match the contract's method/path/status (no `PUT`-vs-`PATCH`-style drift)
 - [ ] Code coverage meets the threshold **per Mode** (`rules/testing.md §Coverage Thresholds`): greenfield = whole-repo ≥ 80% · brownfield per-change = **delta-coverage ≥ 80%** (files changed) + whole-repo **does not drop** (ratchet) — TEST_REPORT §Coverage records BOTH numbers + states clearly which one is the gate (with `coverlet.runsettings` scope applied — exemptions documented)

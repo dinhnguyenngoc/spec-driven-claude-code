@@ -96,7 +96,7 @@ Chạy các lệnh theo thứ tự, đọc duyệt từng artifact trên đườ
 /infra     → cấu hình Docker                          → docker/ + docker-compose.yml
 /docs      → tài liệu                                 → docs/
 /verify    → exercise trên artifact thật              → reports/VERIFY_REPORT.md
-/deploy    → rollout production theo từng giai đoạn    → 🚀
+/deploy    → đưa artifact đã verify lên staging → STAGED (promote production = thủ công, RUNBOOK §8)
 ```
 
 > **Đó là toàn bộ vòng lặp.** Để làm prototype nhanh, bạn chỉ cần `/spec → /plan → /build → /test`. Để lên production, đi đủ 12 bước.
@@ -124,7 +124,7 @@ Mở [plans/todo.md](plans/todo.md) bất cứ lúc nào để xem việc đã x
 | 9 | `/infra` | Backend Developer | Docker + docker-compose cho local dev | `docker/` |
 | 10 | `/docs` ⃰ | Technical Writer | Getting-started, API, deployment docs | `docs/` |
 | 11 | `/verify` ⃰ | Test Engineer | Exercise mọi feature trên artifact thật | `reports/VERIFY_REPORT` |
-| 12 | `/deploy` | Release Manager | Promote artifact đã verify, rollout từng giai đoạn | Production |
+| 12 | `/deploy` | Release Manager | Đưa artifact đã verify lên staging — promote production là bước thủ công (RUNBOOK §8) | Staging (`STAGED`) |
 
 <sub>⃰ = bước optional, nhưng **blocking nếu chạy** (security gate là không thể thương lượng).</sub>
 
@@ -138,6 +138,7 @@ Mở [plans/todo.md](plans/todo.md) bất cứ lúc nào để xem việc đã x
 |------|----------|
 | `/discover` | **Onboard brownfield** — khảo sát codebase có sẵn, verify build/run, sinh Project Profile |
 | `/discover-system` | **Multi-repo** — gom discovery per-repo thành bản đồ hệ thống (service catalog, call-graph, journey xuyên service); read-only, tài liệu một chiều |
+| `/inspect` | **Hỏi hiện trạng** — trả lời "tính năng X có chưa / Y cấu hình ra sao?" bằng 3 tầng bằng chứng (records → code → live); read-only, không gate |
 | `/debug` | Debug có hệ thống — tìm root cause, không vá triệu chứng |
 | `/simplify` | Giảm độ phức tạp mà không đổi behavior |
 | `/fix-issue` | Phân tích và sửa bug trong chu kỳ dev (kết thúc ở `/review`) |
@@ -222,7 +223,7 @@ Override chỉ thay phần dialect/backend-specific — mọi nguyên lý agnost
 ```
 .claude/
 ├── CLAUDE.md          # Bộ não — pipeline, gate, Project Profile, index rules
-├── commands/          # 18 workflow slash-command (/spec, /arch, /build, …)
+├── commands/          # 19 workflow slash-command (/spec, /arch, /build, …)
 ├── agents/            # 11 playbook agent chuyên biệt
 ├── rules/             # 17 quy tắc kỹ thuật bắt buộc
 │   └── overrides/     # 8 override theo stack (Postgres, Node.js, ELK, …)

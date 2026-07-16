@@ -44,7 +44,7 @@ Per-repo Phase A must be complete for **each** service: every repo has `docs/COD
 |---|---|
 | `service-catalog.md` | Service table: `id · repo · responsibility · stack · owner · last-synced` |
 | `system-context.md` | C4 L1 — product boundary + actors + all services |
-| `container.md` | C4 L2 — services + bus + gateway + `ai↔ai` edges (assembled from §Service Contracts) |
+| `container.md` | C4 L2 — services + bus + gateway + `api↔api` edges (assembled from §Service Contracts) |
 | `journeys/*.md` | Cross-service sequences + `@SYS-US` (marked `inferred` if derived from event/async) |
 | `contracts/event-catalog.md` | `topic · schema · producer · consumers` + cross-service REST |
 | `traceability.md` | `@SYS-US → {service:@US}` |

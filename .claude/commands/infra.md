@@ -11,7 +11,7 @@ description: Setup Docker infrastructure for local development
 
 Create Docker infrastructure for local development and deployment on Docker Desktop.
 
-> **Stack Profile note:** the DB service in `docker-compose.yml` follows the `Project Profile`. Default = SQL Server (arm64: Azure SQL Edge); Oracle/MySQL → corresponding image + healthcheck (`rules/overrides/database-*.md`). Observability ELK → add Elasticsearch/Kibana instead of Grafana/Prometheus (`rules/overrides/monitoring-elk.md`). Core images (`dotnet/aspnet`, `dotnet/sdk`) do not change.
+> **Stack Profile note:** read `Project Profile` first. **Core = Node.js** → the Dockerfile swaps the dotnet images for a `node:20-alpine` multi-stage (`npm ci && npm run build` → pruned runtime via `npm ci --omit=dev`; same §4 must-haves apply: non-root, HEALTHCHECK, pinned tags — the icu-libs/invariant-mode block in the template is **.NET-only**, do not copy it into a node image), and the EF-migration notes map to the declared ORM's equivalent (`prisma migrate deploy` via a startup flag or migrator container). **Database** → the DB service follows the Profile: SQL Server default (arm64: Azure SQL Edge) · Oracle / MySQL / PostgreSQL / MongoDB → corresponding image + healthcheck per `rules/overrides/database-*.md` (MongoDB: mind the replica-set requirement for transactions — override §F). Observability ELK → Elasticsearch/Kibana instead of Grafana/Prometheus (`rules/overrides/monitoring-elk.md`).
 
 > **Brownfield-aware:** When `Project Profile → Mode: brownfield`, the skill runs in **REVERSE-BOOTSTRAP** mode (no Dockerfile/compose yet) or **CONFORMANCE-CHECK** mode (already present) — see §Brownfield Mode. The default template below applies only to greenfield.
 
@@ -29,7 +29,7 @@ Create Docker infrastructure for local development and deployment on Docker Desk
 - Application code complete
 
 **Optional (if available):**
-- Security scan passed (`security/SCAN_REPORT.md` from `/scan`)
+- Security scan passed (`security/SCAN_REPORT.md` from `/scan`) — **if `/scan` was run, Gate 8 must be green** (no open Critical / unapproved High, per `SCAN_SUMMARY.json` totals) before building images (Gate 8 is BLOCKING if run)
 
 ## Workflow
 
@@ -249,6 +249,8 @@ docker-compose.deploy.yml    # Optional: release-tag pin overlay
 
 ## Quality Gate 9 — Verification
 
+Per `CLAUDE.md` §Verification After Delegation, the **orchestrator re-runs the gate-deciding checks itself**: `docker compose build` + `docker compose up -d`, probe `/health` and one DB-backed endpoint, `docker exec <container> whoami` (non-root), and grep the Dockerfile/compose for `:latest` — read the real container states, don't trust the sub-agent's report.
+
 Before proceeding to `/docs`:
 - [ ] `docker compose build` succeeds without warnings
 - [ ] `docker compose up -d` brings all services to `healthy` state
@@ -361,6 +363,8 @@ When the codebase already exists, `/infra` **auto-detects** behavior based on th
 ## Agent
 
 Invoke: **Backend Developer** (DevOps mode)
+
+**Phase ownership** — the Backend Developer sub-agent cannot converse with the user: the two brownfield decision points — Next.js missing `output: 'standalone'` (user confirmation before touching source), and serious drift in CONFORMANCE-CHECK (user decides whether to remove committed artifacts and rerun REVERSE-BOOTSTRAP) → **return early** with the item instead of deciding alone. The orchestrator obtains the confirmation, re-runs the Gate 9 checks, and presents the result in the main loop.
 
 ```text
 "Setup Docker infrastructure for the project.

@@ -115,7 +115,7 @@ Verify the measurable NFRs in `specs/SPEC.md`:
 
 - **Performance**: P95/P99 latency below the spec threshold, measured over the real network (e.g., k6, autocannon, wrk).
 - **Accessibility** (if UI exists): automated scan (e.g., axe-core) reaches the spec-required level (WCAG A/AA…), 0 critical violations.
-- **Responsive / layout correctness** (if UI exists): run a **responsive smoke** — for every screen × **each breakpoint declared in the design system** (`UI_DESIGN_SYSTEM.md` / `tailwind.config` screens), assert **no horizontal overflow** (`document.scrollingElement.scrollWidth <= clientWidth`). This is a page-agnostic invariant (≈10 lines of Playwright, no baselines) that catches stretched/broken responsive layout generally — the failure class a single-viewport run misses. Optional further invariants: interactive target ≥ 44px, no overlapping interactive controls.
+- **Responsive / layout correctness** (if UI exists): run a **responsive smoke** — for every screen × **each breakpoint declared in the design system** (`architecture/design-system.md` / `tailwind.config` screens), assert **no horizontal overflow** (`document.scrollingElement.scrollWidth <= clientWidth`). This is a page-agnostic invariant (≈10 lines of Playwright, no baselines) that catches stretched/broken responsive layout generally — the failure class a single-viewport run misses. Optional further invariants: interactive target ≥ 44px, no overlapping interactive controls.
 - **Resilience**: graceful degradation when a dependency is slow/fails (if the spec requires it).
 - Other NFRs in the spec that can be measured at runtime.
 
@@ -134,6 +134,8 @@ For EVERY scenario ID in specs/SPEC.md (the @US-XXX-Snn tags; and specs/user-sto
     - an API-only / headless one → a Phase-2 contract test
 Any missing scenario, OR a UI scenario satisfied only by an API-layer test → print it → GATE FAIL (exit non-zero).
 ```
+
+> **Brownfield per-change scope** (canonical: `references/brownfield-pipeline.md` §Scope per-change — WRITE per delta, RUN everything): the 100%-coverage demand above applies to **this change-set's scenarios** (the stories in its DELTA Revision History row). Baseline scenarios are covered by the verify tests **accumulated from prior releases** — RUN them all (the regression net, including the zero-seed golden journey), but a baseline scenario that never had a verify test is a **visible backlog row in VERIFY_MATRIX**, not a gate failure. **B4 hotfix** = scoped minimum: liveness + the bug area's contract + the related story's scenarios + a test reproducing the incident. Greenfield: unchanged — the demand is the whole spec.
 
 Recommendation: tag each verify test with the **scenario ID** (`@US-001-S01`, `[Trait("Scenario","US-001-S01")]`, `test.describe("US-001-S01 ...")` …) so the coverage script can parse it. Output to `reports/VERIFY_MATRIX.md` — note the **Layer** column, which is what stops an API test from masquerading as UI coverage:
 
@@ -190,6 +192,8 @@ reports/
 
 > When the pipeline **does not** run `/verify`, Gate 11 does not apply and `/deploy` proceeds with its own precondition. When `/verify` is run (recommended for production promote, **required for `/hotfix`**), every checklist below becomes BLOCKING — fail = Gate 11 not passed.
 
+Per `CLAUDE.md` §Verification After Delegation (its invariant #2 names exactly these), the **orchestrator cross-checks the machine evidence itself** before reading the checklist: `reports/verify-artifacts/report/results.json` pass/fail counts match the report's §1 table; the Phase-5 set-check re-run against `specs/` (scoped per Mode — see the Phase 5 note) matches `VERIFY_MATRIX.md`; and the digest in `verify-artifact.lock` equals the candidate digest `/deploy` will promote. A full suite re-run is NOT required — the runner's machine output is the evidence; a mismatch between it and the report = gate FAIL.
+
 `/deploy` may only promote when:
 
 - [ ] **Artifact lock**: tested digest matches the digest to promote (no rebuild between verify and deploy)
@@ -199,7 +203,7 @@ reports/
 - [ ] **≥ 1 zero-seed golden journey** PASS (UI-only, no API seeding, core lifecycle chained with persistence asserted per step) — if a UI exists
 - [ ] **Phase 4 NFR** meets measurable spec thresholds
 - [ ] **Responsive smoke** (if a UI exists) — no horizontal overflow on every screen × each design-system breakpoint
-- [ ] **Phase 5 traceability** — 100% scenario IDs have a verify test **at the required Layer** (UI-observable → E2E-UI, not an API test alone); missing/wrong-layer → signed-off waiver, or FAIL
+- [ ] **Phase 5 traceability** — 100% scenario IDs have a verify test **at the required Layer** (UI-observable → E2E-UI, not an API test alone); missing/wrong-layer → signed-off waiver, or FAIL *(brownfield per-change: 100% of the change-set's scenarios; baseline coverage accumulates — see the Phase 5 scope note)*
 - [ ] `reports/VERIFY_REPORT.md` + `VERIFY_MATRIX.md` + `verify-artifact.lock` produced
 - [ ] Failure artifacts captured for every failing test
 
@@ -227,6 +231,8 @@ reports/
 ## Agent
 
 Invoke: **Test Engineer** (owns verification suite design + execution + gate), collaborating with **Release Manager** (owns artifact identity / tag / promotion decision).
+
+**Phase ownership** — the Test Engineer sub-agent cannot converse with the user: a scenario that needs a **waiver** (Gate 11 requires reason + a human approver — self-waiving a scenario you failed to cover is fabricated sign-off), or a **PASS WITH CONDITIONS** verdict (accepting conditions is the promoter's decision, per the Release Manager's ownership above) → **return early** with the list instead of deciding alone. The orchestrator obtains the sign-off, cross-checks the machine evidence (pointer above), and presents the gate verdict in the main loop.
 
 ```text
 "As Test Engineer, run /verify against the deployed candidate and gate promotion on full acceptance-criteria coverage.

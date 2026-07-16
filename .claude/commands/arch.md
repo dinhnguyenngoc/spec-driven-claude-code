@@ -14,6 +14,7 @@ Transform requirements into technical architecture **before** planning implement
 ## Prerequisites
 
 - A specification exists (`specs/SPEC.md` from `/spec`)
+- The spec passed Gate 1 — header `Status` is **Approved**, not Draft (stop and finish `/spec` sign-off otherwise)
 - Understanding of non-functional requirements (scale, performance, security)
 
 ## References to Rules
@@ -34,7 +35,7 @@ The following rules provide detailed standards. **The Purpose column is self-suf
 ### Phase 1: Architecture Analysis
 
 1. **Read the spec** — Understand functional requirements
-2. **Carry-forward Open Questions** — Read `specs/SPEC.md` §Open Questions; copy each into `ARCHITECTURE.md` §Open Questions and tag the blocking phase (`/secure`, `/plan`, or stakeholder). Any new OQ surfaced during this phase is added to the same table with `Source: /arch`.
+2. **Carry-forward Open Questions** — Read `specs/SPEC.md` §Open Questions & Decisions; carry the **Open** items only (Resolved ones stay in the spec as the decision record). Items deferred to `/arch` → **resolve them in this phase**; copy the rest into `ARCHITECTURE.md` §Open Questions tagged with their blocking phase (`/secure`, `/plan`, or stakeholder). Any new OQ surfaced during this phase is added to the same table with `Source: /arch`.
 3. **Cross-check NFRs (completeness)** — list every NFR in `specs/SPEC.md §NFR` **plus** every project-mandatory NFR in the rules (`security.md` incl. §HTTP Security Headers, `principles-and-practices.md §4`); ensure each has a NFR-mechanism row, a §Security Considerations line, or a tagged Open Question — no silent drop (see the Completeness rule under the NFR table).
 4. **Identify components** — What systems/services are needed?
 5. **Map integrations** — How do components communicate?
@@ -73,6 +74,17 @@ Create for:
 - **Error handling flows** — Retry logic, circuit breaker behavior
 
 Template: [`ascii-diagram-guide.md` §4](../references/ascii-diagram-guide.md#4-sequence-diagram).
+
+#### 2.6 Design System — *UI products only*
+
+The **UI/UX Designer** produces `architecture/design-system.md` — the system-level UI contract that `/spec` Phase 2.5 explicitly defers here. It does **NOT** re-draw screens — screens / layout / flows are already signed off in `specs/wireframes/`; this file defines the shared vocabulary those screens are built with:
+
+- **Design tokens** — the `tailwind.config.ts` block (colors, typography, spacing, radius) per [`ui-ux-designer.md`](../agents/ui-ux-designer.md) §Design Tokens.
+- **State-per-component matrix** — default / hover / focus / active / disabled / loading / error / empty for each shared component (owned HERE, not in `/spec` — fidelity boundary in ui-ux-designer.md).
+- **Component contracts** — shared components (Button, Input, Card, EmptyState…) with props/variants at design level.
+- **Navigation / IA decisions + state-management choice** — cite an ADR when a choice constrains future change.
+
+Consumed by the Frontend Developer at the start of `/build`. Skip for headless / API-only products.
 
 ### Phase 3: API Contract Design
 
@@ -139,6 +151,7 @@ When this service is **one repo of a multi-repo microservices product**, `ARCHIT
 ```text
 architecture/
 ├── ARCHITECTURE.md           # Main architecture document
+├── design-system.md          # UI products only — tokens + component contracts (consumed by /build FE)
 ├── adr/                      # Architecture Decision Records (filename: ADR-NNN-kebab-title.md)
 │   ├── ADR-001-database-choice.md
 │   ├── ADR-002-auth-strategy.md
@@ -205,12 +218,12 @@ architecture/
 - [Questions to resolve]
 
 ## ADR References
-- [ADR-001](adr/001-database-choice.md)
+- [ADR-001](adr/ADR-001-database-choice.md)
 ```
 
 ## Quality Gate 2 — Architecture Review
 
-Before proceeding to `/plan`:
+Run the §Orchestrator disk-check (below) first, then review. Before proceeding to `/plan`:
 - [ ] Architecture document reviewed
 - [ ] Diagrams are clear and complete (System Context + Container **mandatory**; Component & Sequence as needed)
 - [ ] ADRs document key decisions
@@ -223,6 +236,20 @@ Before proceeding to `/plan`:
 - [ ] **No "either is acceptable" hedges** — every option is committed; alternatives live in `v2 Upgrade Trigger`
 - [ ] API contracts defined (OpenAPI 3.0.3)
 - [ ] **Security controls listed** — §Security names HTTP security headers + CORS + auth/authz/secrets/transport, each with a mechanism or deferred to `/secure` with an OQ (not just "addressed")
+- [ ] **(UI products) Design system defined** — `architecture/design-system.md` with tokens + state-per-component matrix + component contracts (skip for headless / API-only)
+
+### Orchestrator disk-check (run BEFORE presenting for Gate 2 review)
+
+A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.md` §Verification After Delegation, applied at artifact level. The orchestrator re-checks the **mechanical** invariants on disk itself (design quality — whether patterns/mechanisms are *right* — remains human judgment at review):
+
+- [ ] **Files exist** — `architecture/ARCHITECTURE.md`, `architecture/api/openapi.yaml`, and the two mandatory diagrams (system context + container — in `diagrams/` or embedded).
+- [ ] **ADR completeness** — every Decision-ADR in `architecture/adr/` contains the `## Options Considered` and `## v2 Upgrade Trigger` headings; filenames follow `ADR-NNN-kebab-title.md`. *(Exception: the consolidated Rejection ADR follows its own table pattern — check it has the v2-trigger column instead.)*
+- [ ] **NFR mechanisms** — the NFR table has no empty third column.
+- [ ] **Contract tables** — the error-code table and the §Open Questions table exist; every OQ row is tagged a blocking phase.
+- [ ] **(UI products)** `architecture/design-system.md` exists with the tokens block + state matrix.
+- [ ] **No template residue** — no `TODO` / unfilled placeholders left in `architecture/`.
+
+Any mismatch → fix on disk first; never present an architecture that fails its own gate mechanics.
 
 ## Brownfield Mode (when `Project Profile → Mode: brownfield`)
 
@@ -230,7 +257,7 @@ Before proceeding to `/plan`:
 
 | Flow | Mode | Behavior |
 |------|------|----------|
-| Discovery (no `architecture/ARCHITECTURE.md` yet) | **REVERSE** | **First consume the `/discover` artifacts** (`Project Profile` + `docs/CODEBASE_MAP.md`) as the index — do not re-survey the tree. Draw the **actual** architecture from code: container/component diagrams from project refs, ER from DbContext/migrations, sequence for the main flows. Record **inferred ADRs** for decisions already embedded (e.g., "JWT 15min no-refresh — inferred from JwtTokenService"). Describe as-is, do not propose changes. **Bound the inferred ADRs per the general rule in §2.4** (full ADR only for decisions that constrain future change; routine settings → ARCHITECTURE.md notes list) — applied here to *inferred* decisions. |
+| Discovery (no `architecture/ARCHITECTURE.md` yet) | **REVERSE** | **First consume the `/discover` artifacts** (`Project Profile` + `docs/CODEBASE_MAP.md`) as the index — do not re-survey the tree. Draw the **actual** architecture from code: container/component diagrams from project refs, ER from DbContext/migrations, sequence for the main flows. Record **inferred ADRs** for decisions already embedded (e.g., "JWT 15min no-refresh — inferred from JwtTokenService"). Describe as-is, do not propose changes. **Bound the inferred ADRs per the general rule in §2.4** (full ADR only for decisions that constrain future change; routine settings → ARCHITECTURE.md notes list) — applied here to *inferred* decisions. **Fallback guard:** `docs/CODEBASE_MAP.md` missing/incomplete → **STOP** and run `/discover` first (or re-scan only the missing area) — never silently fall back to a full-tree survey (same guard as `/spec` REVERSE and `/plan`). |
 | B1 new feature / B2 modify feature (ARCHITECTURE.md exists) | **CONFORMANCE-GATE** | Default is to **keep as-is**. Answer one question: *"does this change REQUIRE an architecture change?"* → NO: proceed with the current ARCHITECTURE.md; lightweight ADR only when a small new decision is made. → YES: stop, switch to the B5 flow. |
 | B5 architecture/technology upgrade | **REDESIGN** | The **only** time proactive changes are allowed: propose **minimal** changes + **mandatory ADR** (supersede old ADR if needed, with v2-trigger) + **migration plan** (strangler-fig per `rules/brownfield.md`). |
 
@@ -246,7 +273,9 @@ Before proceeding to `/plan`:
 
 Invoke: **Systems Architect**
 
-For UI-heavy features, also consult: **UI/UX Designer** (design system, tokens, key user flows). The **state-per-component matrix** (default / hover / focus / active / disabled / loading / error / empty) is owned here — see [`../agents/ui-ux-designer.md`](../agents/ui-ux-designer.md) §States; `/spec` only produces the 5 page-level states.
+For any product with a UI, also consult: **UI/UX Designer** (design system → §2.6, written to `architecture/design-system.md`). The **state-per-component matrix** (default / hover / focus / active / disabled / loading / error / empty) is owned here — see [`../agents/ui-ux-designer.md`](../agents/ui-ux-designer.md) §States; `/spec` only produces the 5 page-level states.
+
+**Phase ownership** — the SA sub-agent cannot converse with the user: an ambiguity that needs stakeholder input → return early with the question, or tag it as an Open Question with its blocking phase. The orchestrator runs the Gate 2 disk-check and presents the architecture for review in the main loop.
 
 ```text
 "As Systems Architect, design the architecture for [feature].

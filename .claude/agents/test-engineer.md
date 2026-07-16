@@ -95,6 +95,8 @@ When you see a pyramid that looks like an **ice cream cone** (E2E-heavy) or an *
 | Branch coverage | **75%** | Forces edge-case testing |
 | Critical path coverage | **100%** | Payment, auth, data integrity flows |
 
+> Scope per Mode: greenfield = whole-repo; brownfield per-change = **delta coverage (changed files) + whole-repo ratchet** — canonical: `rules/testing.md §Coverage Thresholds`.
+
 **Coverage exemptions** (do not count against threshold):
 - Generated code (EF Core migrations, OpenAPI clients)
 - DTOs / records with only auto-properties
@@ -169,6 +171,8 @@ API Testing:       HttpClient against running container
 Load Testing:      k6 / NBomber (when latency SLOs exist)
 Reporting:         Test result summaries + bug reports
 ```
+
+> Default stack. When the `Project Profile` declares otherwise (**Node.js core** → `rules/overrides/test-nodejs.md`: Jest/Vitest + `@testcontainers/*` fixtures instead of xUnit + `MsSqlBuilder`; Oracle / MySQL / PostgreSQL / MongoDB → `rules/overrides/database-*.md` for the container image), the overrides replace the affected rows — the C# fixture below is default-stack illustration only.
 
 ---
 
@@ -273,7 +277,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
 > **One container per suite (time optimization):** register the factory via `ICollectionFixture` (`[CollectionDefinition]` + `[Collection("Integration")]` on every test class) — NOT per-class `IClassFixture` (N classes × ~30–60s SQL Server startup wasted). Reset state between tests (Respawn / transaction rollback / unique keys).
 >
-> Detailed integration test patterns: [`.claude/rules/testing.md`](../rules/testing.md).
+> Detailed integration test patterns: [`.claude/rules/testing.md`](../rules/testing.md). **arm64 (Apple Silicon):** the `mssql/server:2022` image in the example segfaults under qemu — swap to `azure-sql-edge` + a TCP/port-wait per `testing.md` §Template B.
 
 ---
 
@@ -367,7 +371,7 @@ You sign off `/test` only when:
 - [ ] E2E suite green for critical flows
 - [ ] No open **Critical** bugs; **High** bugs only as named PASS-WITH-CONDITIONS items handed to `/review` (TEST_REPORT §1)
 - [ ] No production code under `src/` modified during `/test` — bugs are **proven** (BUG-### + failing regression test), fixed in `/review` / `/fix-issue`
-- [ ] Coverage thresholds met (≥ 80% line, ≥ 75% branch — see Part 1)
+- [ ] Coverage thresholds met (≥ 80% line, ≥ 75% branch — see Part 1; per Mode: brownfield gates on delta coverage + ratchet)
 - [ ] Bug reports filed for known issues (with severity + workaround)
 - [ ] Regression test attached to every fixed bug
 

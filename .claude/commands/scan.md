@@ -106,7 +106,7 @@ python3 -c "import json; s=json.load(open('security/SCAN_SUMMARY.json')); print(
 
 **This is the part the agent MUST do itself — the script cannot automate it because it requires reading file:line in the source code and verifying mitigation logic.**
 
-Walk **every** threat ID in `security/THREAT_MODEL.md` and confirm the mitigation lives in the code. **If `security/PRE_DEV_REVIEW.md` exists, also walk every `RC-X.Y` Required Control** (minted by `/secure`) — confirm it is implemented + cite file:line, using the same status legend below; an RC that is `Not implemented` → a new Finding F-### (feeds Gate 8 like a threat). This is the most load-bearing artifact `/scan` produces — it proves the threat model + required controls are not paperwork.
+Walk **every** threat ID in `security/THREAT_MODEL.md` and confirm the mitigation lives in the code. **If `security/PRE_DEV_REVIEW.md` exists, also walk every `RC-N` Required Control** (minted by `/secure`) — confirm it is implemented + cite file:line, using the same status legend below; an RC that is `Not implemented` → a new Finding F-### (feeds Gate 8 like a threat). This is the most load-bearing artifact `/scan` produces — it proves the threat model + required controls are not paperwork.
 
 Status legend (use exactly these values):
 - **Verified** — code + tests prove mitigation
@@ -136,7 +136,7 @@ End tally:
 
 Any **Not implemented** count > 0 means at least 1 Finding open against a pre-dev threat — the gate decision must reference it in §Approval.
 
-### Phase 3: Live Verification (MANDATORY cho high-risk surface)
+### Phase 3: Live Verification (MANDATORY for high-risk surfaces)
 
 Static analysis catches code patterns. Live verification proves the **running binary** refuses attack. The script does NOT run live tests itself (it needs a test framework already set up). The agent identifies the surfaces that need testing:
 
@@ -267,6 +267,8 @@ For a **large legacy repo**, a per-change `/scan` should not re-run whole-tree *
 
 > Step optional per CLAUDE.md §Quality Gates — **BLOCKING if run**.
 
+Run the §Orchestrator disk-check (below) first, then review.
+
 **Deployment CANNOT proceed** if:
 
 - Any **Critical** vulnerability in `SCAN_SUMMARY.json` (`totals.critical > 0`)
@@ -276,6 +278,19 @@ For a **large legacy repo**, a per-change `/scan` should not re-run whole-tree *
 - **STRIDE Re-evaluation matrix is missing** when `security/THREAT_MODEL.md` exists — every threat ID must have a `Verified / Partial / Deferred / Not implemented` status with file:line evidence
 - A compensating control in `SCAN_SUMMARY.json §compensating_controls` has `must_add_to_pipeline: true` but is not flagged in the report
 - **A diff-scoped scan is not disclosed** — if `SCAN_SUMMARY.json.sast_scope` ≠ `"whole-repo"` but the report does NOT state the scope, OR this release has no recent full whole-repo baseline scan (newly-reachable code not yet covered)
+
+### Orchestrator disk-check (run BEFORE presenting for Gate 8 sign-off)
+
+A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.md` §Verification After Delegation, applied at artifact level (mechanical invariants only; finding triage stays with the auditor):
+
+- [ ] **Read the machine truth yourself** — open `security/SCAN_SUMMARY.json` and read `totals` / `tools_missing` / `sast_scope` directly; the report's numbers must MATCH the JSON (a report saying 0 Critical while the JSON says 1 = gate FAIL, whatever the narrative says).
+- [ ] **STRIDE/RC set-check** — every threat ID in `THREAT_MODEL.md` and every `RC-N` in `PRE_DEV_REVIEW.md` has a status row in the re-eval matrix (diff the sets — no ID silently dropped).
+- [ ] **Scope disclosure** — `SCAN_REPORT.md §Summary` states the same `sast_scope` as the JSON; a diff-scoped run names its base.
+- [ ] **Compensating controls surfaced** — every JSON entry with `must_add_to_pipeline: true` appears in the report.
+- [ ] **Live verification rows** — each Phase-3 surface whose trigger condition matched has a row with a real test file + pass count (no triggered surface left blank).
+- [ ] **No template residue** — no unfilled `[…]`/`<…>` placeholders in `security/SCAN_REPORT.md`.
+
+Any mismatch → fix on disk first.
 
 ## Severity Definitions
 
@@ -291,6 +306,8 @@ For a **large legacy repo**, a per-change `/scan` should not re-run whole-tree *
 ## Agent
 
 Invoke: **Security Auditor**
+
+**Phase ownership** — the Security Auditor sub-agent cannot converse with the user: a High finding that needs an "explicitly recorded exception", or the Security-Lead approval itself → **return early** with the F-### items instead of deciding alone (self-filling the report's §Approval is fabricated sign-off). The orchestrator obtains those decisions, runs the Gate 8 disk-check, and presents the verdict in the main loop.
 
 ```text
 "As Security Auditor, perform security scan.

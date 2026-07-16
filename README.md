@@ -96,7 +96,7 @@ Run the commands in order, reviewing each artifact as you go:
 /infra     → Docker setup                          → docker/ + docker-compose.yml
 /docs      → documentation                         → docs/
 /verify    → exercise the real artifact            → reports/VERIFY_REPORT.md
-/deploy    → staged production rollout             → 🚀
+/deploy    → stage the verified artifact → STAGED (production promote = manual, RUNBOOK §8)
 ```
 
 > **That's the whole loop.** For a quick prototype you can run just `/spec → /plan → /build → /test`. For production, walk the full 12 steps.
@@ -124,7 +124,7 @@ Open [plans/todo.md](plans/todo.md) anytime to see what's done (`- [x]`) and wha
 | 9 | `/infra` | Backend Developer | Docker + docker-compose for local dev | `docker/` |
 | 10 | `/docs` ⃰ | Technical Writer | Getting-started, API, deployment docs | `docs/` |
 | 11 | `/verify` ⃰ | Test Engineer | Exercise every feature on the real artifact | `reports/VERIFY_REPORT` |
-| 12 | `/deploy` | Release Manager | Promote the verified artifact, staged rollout | Production |
+| 12 | `/deploy` | Release Manager | Stage the verified artifact — production promote is a manual step (RUNBOOK §8) | Staging (`STAGED`) |
 
 <sub>⃰ = optional step, but **blocking if run** (security gates are non-negotiable).</sub>
 
@@ -138,6 +138,7 @@ Open [plans/todo.md](plans/todo.md) anytime to see what's done (`- [x]`) and wha
 |---------|---------|
 | `/discover` | **Brownfield onboarding** — survey an existing codebase, verify build/run, generate the Project Profile |
 | `/discover-system` | **Multi-repo** — aggregate per-repo discovery into a system-wide map (service catalog, call-graph, cross-service journeys); read-only, one-way docs |
+| `/inspect` | **Query current state** — answer "does feature X exist / how is Y configured?" with 3 evidence tiers (records → code → live); read-only, no gate |
 | `/debug` | Systematic debugging — find the root cause, not the symptom |
 | `/simplify` | Reduce complexity without changing behavior |
 | `/fix-issue` | Analyze and fix a reported bug during the dev cycle (ends at `/review`) |
@@ -222,7 +223,7 @@ Overrides only replace the dialect/backend-specific parts — all agnostic princ
 ```
 .claude/
 ├── CLAUDE.md          # The brain — pipeline, gates, Project Profile, rules index
-├── commands/          # 18 slash-command workflows (/spec, /arch, /build, …)
+├── commands/          # 19 slash-command workflows (/spec, /arch, /build, …)
 ├── agents/            # 11 specialized agent playbooks
 ├── rules/             # 17 mandatory engineering rules
 │   └── overrides/     # 8 stack-specific overrides (Postgres, Node.js, ELK, …)

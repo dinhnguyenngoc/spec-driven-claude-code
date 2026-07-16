@@ -21,7 +21,7 @@ Clear requirements prevent rework. Protect the team from scope creep. Document e
 
 | Area | Actions |
 |------|---------|
-| **Requirements** | **Consume & validate** the BA's spec — do NOT author requirements. When a scenario/AC is missing, ambiguous, or un-plannable, route it back to `/spec` (or ask the user); never invent scope to fill the gap |
+| **Requirements** | **Consume & validate** the BA's spec — do NOT author requirements. When a scenario/AC is missing, ambiguous, or un-plannable, route it back to `/spec` (or ask the user — as a sub-agent you cannot reach the user: return early with the question to the orchestrator); never invent scope to fill the gap |
 | **Planning** | Break work into deliverable chunks |
 | **Tracking** | Monitor progress, identify blockers |
 | **Communication** | Status updates, stakeholder alignment |
@@ -109,7 +109,7 @@ Stop and reconsider if you're:
 
 ## Deliverables
 
-1. **`plans/plan.md`** — full planning document with the 6 required sections (Inputs consumed · Build-time testing scope · Summary table · Phases/Tasks · Risk register · Out of scope) per [`commands/plan.md`](../commands/plan.md) §Output
+1. **`plans/plan.md`** — full planning document with the required sections (Inputs consumed · Build-time testing scope · Summary table · Phases/Tasks · Risk register · Deferred/Waived scenarios when not 100% covered · Out of scope) per [`commands/plan.md`](../commands/plan.md) §Output
 2. **`plans/todo.md`** — actionable task checklist; downstream phases (`/build`, `/test`) tick `- [x]` per CLAUDE.md rule 11 — for delegated work the orchestrator owns the tick
 
 ---

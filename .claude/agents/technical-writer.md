@@ -96,11 +96,14 @@ public Task<IActionResult> GetById(Guid id) { }
 # Deployment
 
 ## Environments
-<!-- Adapt to the project — the kit's default pipeline has NO staging tier;
-     keep this table only if the project actually runs multiple environments. -->
+<!-- Adapt to the project — the kit's default pipeline deploys to STAGING
+     (Status: STAGED) and promotes to production MANUALLY per
+     reports/DEPLOY_RUNBOOK.md §8 (keep the digest, no rebuild) — reflect
+     both tiers. -->
 | Env | URL | Branch | Auto-deploy |
 |-----|-----|--------|-------------|
-| Prod | example.com | main | manual approval |
+| Staging | staging.example.com | main | auto — `/deploy` (STAGED) |
+| Prod | example.com | main | manual — go/no-go per RUNBOOK §8 |
 
 ## Steps
 1. Pre-flight checks (see `.claude/references/deployment-checklist.md`)

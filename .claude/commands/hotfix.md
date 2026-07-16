@@ -67,7 +67,7 @@ The first question of an incident is NOT "what's the root cause" but "what's the
 | Bug has existed for a long time / no good version to revert to / rollback would cause data loss | **FIX-FORWARD** (proceed to Step 2) |
 | Unsure | **ROLLBACK first** (limit damage), investigate later |
 
-> Principle: **minimize user impact first, patch cleanly later**. If rollback is chosen → execute via `/deploy` §Rollback (switch to the previous tag, re-run smoke), open an incident note, and convert the underlying bug into a high-priority `/fix-issue` for the next release. `/hotfix` may end here if rollback has already restored service.
+> Principle: **minimize user impact first, patch cleanly later**. If rollback is chosen → **production rollback is executed by the human operator** (the kit holds no production credentials — hand them the procedure: previous digest + `DEPLOY_RUNBOOK §4/§8`, target < 1 minute, re-run smoke); the kit itself executes the **staging** rollback via `/deploy` §Rollback. Open an incident note, and convert the underlying bug into a high-priority `/fix-issue` for the next release. `/hotfix` may end here once the operator confirms service is restored.
 
 ### Step 2 — Fix (REUSES `/fix-issue`)
 
@@ -128,11 +128,13 @@ The patch must have its own **identity** for audit & rollback:
 
 ## Quality Gate — Exit Criteria
 
+Each reused step carries its own verification layer (`/fix-issue` VAD pointer, `/verify` Gate-11 evidence check, `/deploy` exit criteria). Per `CLAUDE.md` §Verification After Delegation, the orchestrator **additionally verifies the hotfix-unique artifacts on disk**: `CHANGELOG.md` has the `vX.Y.(Z+1)` entry, `reports/RELEASE_NOTES_vX.Y.Z+1.md` exists, `git diff` shows `DEPLOY_RUNBOOK.md §Troubleshooting` gained the new failure mode, and the incident note carries all required fields (timeline · MTTR · root cause · preventive action).
+
 - [ ] **Deliberate triage** — rollback-vs-fix-forward decided and recorded (do not default to fix-forward)
 - [ ] If fix-forward: regression test **fails before fix, passes after fix**; root cause `file:line` identified
 - [ ] **Patch version bump** + CHANGELOG entry + RELEASE_NOTES for the patch
 - [ ] **`/verify` Gate 11 PASS on the new digest**, including a test that reproduces the incident scenario
-- [ ] `/deploy` promotes the verified digest, rollback-ready, post-deploy smoke passes on live
+- [ ] `/deploy` stages the verified digest (`STAGED`), rollback-ready; staging smoke (incl. the incident scenario) passes — the production smoke is re-run and recorded AFTER the manual promote (§8), per Step 5
 - [ ] DEPLOY_RUNBOOK §Troubleshooting updated with the new failure mode
 - [ ] **Incident note recorded** — timeline + detection→recovery (MTTR) + root cause + preventive action, in `reports/incidents/INC-<id>.md` (recommended) or the release notes — do not skip (audit trail is a core deliverable of `/hotfix`)
 - [ ] Permanent preventive test added at the layer that should-have-caught (not just a regression for this case)
@@ -153,6 +155,8 @@ The patch must have its own **identity** for audit & rollback:
 Invoke: **Release Manager** (incident commander — owns triage, version, rollback, promotion), collaborating with:
 - **Backend / Frontend Developer** — implements the fix via `/fix-issue`.
 - **Test Engineer** — re-verifies the patch via `/verify`.
+
+**Phase ownership** — sub-agents cannot converse with the user: any action that **touches production** (rollback / promote — hand the procedure + digest to the human operator instead), and the **level of trimming** of the staging test round (Step 5 — the promoter decides and signs it) → **return early** with the proposed procedure/trim list instead of deciding alone. The orchestrator obtains the operator/promoter confirmation, verifies the hotfix-unique artifacts, and presents the incident status in the main loop.
 
 > Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 

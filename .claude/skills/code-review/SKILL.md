@@ -191,7 +191,7 @@ Use the canonical four labels (see *Comment Severity Labels* above):
 [1-2 sentences on overall assessment]
 
 ### 🔴 Critical
-- **[file:line]** [Issue description] — *Relates-to: US-XXX | RC-X.Y | ADR-NNN*
+- **[file:line]** [Issue description] — *Relates-to: US-XXX | RC-N | ADR-NNN*
 
 ### 🟡 Warning
 - **[file:line]** [Issue description] — *Relates-to: …*

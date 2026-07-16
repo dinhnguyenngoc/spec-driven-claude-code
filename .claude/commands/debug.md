@@ -11,6 +11,8 @@ description: Systematic debugging and error recovery — find root cause, not sy
 
 Systematically diagnose and fix errors. Stop feature work, preserve evidence, find root cause, add guards, then resume.
 
+> **Stack Profile note:** the `dotnet` commands, triage trees, error catalog, and §Debugging Tools below use the **default profile**. **Core = Node.js** → map accordingly (`npm test` / `npx vitest --reporter=verbose`, `node --inspect`, Prisma `log: ['query']` instead of EF Core logging) — the .NET error catalog is default-stack illustration only.
+
 ## Agent
 
 Invoke based on the layer where the error occurs:
@@ -23,6 +25,8 @@ Invoke based on the layer where the error occurs:
 | Security-related error | 🔒 **Security Auditor** |
 
 > Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+
+> Sub-agent prompt MUST also include: "Ambiguity policy: implementation details → decide per rules, never ask; non-blocking behavior/contract gaps → implement the most conservative interpretation and add an Assumptions-log entry (`A-xx` — it joins the running `/build` phase's log, dispositioned at Gate 5); blocking or expensive-if-wrong gaps → stop and return early with the question (see `rules/principles-and-practices.md` §2.5)."
 
 ---
 
@@ -364,6 +368,9 @@ catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx)
 | **`reports/DEBUG_REPORT.md`** | (Optional) For complex bugs, record root cause analysis |
 
 **Verification checklist:**
+
+Per `CLAUDE.md` §Verification After Delegation, the **orchestrator re-runs the checks itself** (full test suite + Release build — or their npm equivalents) and confirms the regression test exists and passes on disk — the sub-agent's report is not ground truth.
+
 - [ ] Root cause identified (not a workaround)
 - [ ] Regression test added and passing
 - [ ] All existing tests passing

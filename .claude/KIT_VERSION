@@ -1,6 +1,6 @@
 # AI SDLC Kit — version marker (CORE, kit-owned)
 # Semver theo release tag của repo kit. Đọc bởi người + script upgrade (Phase 2).
-version: 1.3.0
-released: 2026-07-07 (sau v1.2.0 2026-06-26; gồm: P0 dual-implementation-parity + brownfield coverage policy, P1 spec Phase-0 DISCOVERY + deploy 3-state SCAN guard, STAGING-only /deploy, /inspect, kit layering Phase 1)
+version: 1.4.0
+released: 2026-07-16 (sau v1.3.0 2026-07-07; gồm: full-kit hardening audit 19 lệnh — Orchestrator disk-check/VAD pointer cho mọi quality gate, return-early cho mọi sub-agent, stack-override path (Node core / 5 DB / ELK) thông suốt lệnh+agent, join-key thống nhất (RC-N, Task N.N, OPEN-###, Service id), hoàn tất đồng bộ STAGING-only, brownfield scoping cho verify/plan/coverage)
 # Phase 2 (chưa làm): bổ sung manifest — danh sách file CORE + sha256 để script upgrade
 # chỉ thay file thuộc kit, cảnh báo file core bị sửa local (đối chiếu local/KIT_DEVIATIONS.md).

@@ -31,6 +31,8 @@ Code Reviewer owns the `/review` phase (Gate 7 — optional step · **blocking w
 
 > **Canonical detail: [`../references/code-review-checklist.md`](../references/code-review-checklist.md).** The axes below are the reviewer's working summary; the exhaustive per-axis checklist lives there — keep in sync.
 
+> Default stack. When the `Project Profile` declares otherwise (**Node.js core** → review against the idioms in `rules/overrides/lang-nodejs.md` + `framework-nodejs-web.md` — `AppError` not `AppException`, Zod not FluentValidation, Prisma/Kysely not EF Core; database / observability per their overrides), the C#-flavored checks and examples throughout this file are **default-stack illustration only** — the five axes themselves are stack-agnostic.
+
 ### 1. Correctness
 
 - Does the implementation match requirements?
@@ -106,10 +108,10 @@ reports/CODE_REVIEW.md
 The report must include:
 1. **Executive Summary** — Overall verdict + severity counts
 2. **Five-Axis Scores** — numerical score **1–5 per axis** with a one-line justification **anchored to findings** (open 🔴 ⇒ ≤2; open 🟡 ⇒ ≤4; 5 only if the axis has no outstanding finding) (per `commands/review.md` §Output File)
-3. **Findings** — Organized by severity (🔴 → 🟡 → 🟢 → ✅); **every finding ends with `Relates-to: <US-XXX | RC-X.Y | ADR-NNN | T-XX | S1..E10>`** (mandatory traceability)
+3. **Findings** — Organized by severity (🔴 → 🟡 → 🟢 → ✅); **every finding ends with `Relates-to: <US-XXX | RC-N | ADR-NNN | Task N.N | S1..E10>`** (mandatory traceability)
 4. **Action Items** — Checklist with priority (P0/P1/P2)
 5. **Test Coverage** — cite numbers from `reports/TEST_REPORT.md`; every `OPEN-XXX` debt tagged **CLOSED / DEFERRED-to-Pn / ESCALATED** — none silently dropped
-6. **Compliance Check** — every `.claude/rules/*.md` → PASS / WARNING / FAIL (frees `/scan` from re-checking rule compliance)
+6. **Compliance Check** — every `.claude/rules/*.md` → PASS / WARNING / FAIL (frees `/scan` from re-checking rule compliance); **a PASS requires an `Evidence` citation** — file:line / wired-pipeline ref / test name; cross-cutting controls must be verified as **wired**, not just defined
 7. **Approval Status** — Final decision with conditions (if any)
 
 Create the `reports/` folder if it doesn't exist.

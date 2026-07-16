@@ -11,6 +11,8 @@ description: Reduce complexity without changing behavior — code simplification
 
 Simplify code for clarity and maintainability. Reduce complexity **without changing behavior**.
 
+> **Stack Profile note:** the `dotnet` commands and C# catalog below use the **default profile**. **Core = Node.js** → map to the npm equivalents (`npm test`, `npm run build`); the Common Simplifications are default-stack illustration — apply the equivalent TS idioms per `rules/overrides/lang-nodejs.md` (early returns, discriminated unions + `switch`, arrow shorthand).
+
 ## When to Use
 
 - After `/review` identifies complexity issues
@@ -291,11 +293,23 @@ Stop if you find yourself:
 - All tests still passing
 - Atomic commits with clear messages
 
+## Orchestrator verification (run BEFORE accepting the result)
+
+A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.md` §Verification After Delegation, applied to a command that modifies production code:
+
+- [ ] **Green-after, verified** — re-run the full suite + build yourself (`dotnet test` + `dotnet build -c Release`, or the npm equivalents); compare against the Step-0 green baseline. Any new red → apply Step 6 (revert), don't debug mid-simplification.
+- [ ] **Scope, verified** — `git diff --stat` touches ONLY the assigned area's files; an unrelated file in the diff = the no-gratuitous-refactor rule was broken — revert that file and surface it.
+- [ ] **No new abstractions / no behavior-bearing diff** — spot-check the diff for added public surface or changed conditionals beyond the catalogued simplification patterns (Red Flags list).
+
+Any mismatch → fix on disk first.
+
 ## Agent
 
 Invoke: **Code Reviewer** (simplification mode)
 
 The Code Reviewer agent applies the same quality lens used in `/review`, but focuses specifically on reducing complexity while preserving behavior.
+
+**Phase ownership** — the sub-agent cannot converse with the user: a Chesterton's-Fence case it cannot resolve ("ask team members if unsure" — attach the git-history evidence already checked), or the need to **quarantine a flaky test** in Step 0 (disabling part of the safety net is a user-visible decision) → **return early** with the item instead of deciding alone. The orchestrator confirms, runs the verification block above, and presents the result in the main loop.
 
 > Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 

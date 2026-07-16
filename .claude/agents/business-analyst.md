@@ -82,7 +82,7 @@ Before writing specs:
 - Identify any gaps or contradictions
 - Get explicit sign-off on scope
 
-**Ask, don't assume (mandatory).** Whenever a requirement is missing, ambiguous, or you are about to fill a gap with a default/guess: **ask the user** (use `AskUserQuestion`). If you must proceed before an answer, log it as an explicit **Assumption** in *Open Questions & Decisions* and flag it for confirmation — a "sensible default" the user has not confirmed is an *unconfirmed assumption*, not a decision. Every assumption must reach Gate 1 either **Confirmed (+ date)** or **Open (with owner)**. (Assumptions reuse the existing *Open Questions & Decisions* section — no new artifact.)
+**Ask, don't assume (mandatory).** Whenever a requirement is missing, ambiguous, or you are about to fill a gap with a default/guess: **ask the user** (use `AskUserQuestion`; when running as a sub-agent you cannot reach the user — return early with the question to the orchestrator instead). If you must proceed before an answer, log it as an explicit **Assumption** in *Open Questions & Decisions* and flag it for confirmation — a "sensible default" the user has not confirmed is an *unconfirmed assumption*, not a decision. Every assumption must reach Gate 1 either **Confirmed (+ date)** or **Open (with owner)**. (Assumptions reuse the existing *Open Questions & Decisions* section — no new artifact.)
 
 ---
 
@@ -320,8 +320,8 @@ Before handoff to `/arch`, verify:
 - [ ] Non-Functional Requirements identified, including project-mandatory NFRs from `.claude/rules/*`
 - [ ] Open questions resolved or explicitly deferred (every item is in `Resolved` with a date, or in `Open` with a target command/owner)
 - [ ] **No unconfirmed assumptions** — every gap is either asked & `Confirmed (date)`, or an `Open` item with owner; no unconfirmed guess embedded as a "default"
-- [ ] **Every user-facing screen has a wireframe (ASCII/Mermaid) + states (empty / loading / error / no-result) in `specs/wireframes/`, with each UI region mapped to its `@US-[ID]-Snn`** (skip only for headless / API-only products)
-- [ ] **The visual UI is signed off by stakeholder + PO (record date + name) — blocking before `/arch`** (UI products only). Sign-off is done on the ASCII wireframes; the clickable HTML prototype (`specs/wireframes/prototype/`) is an **opt-in aid (default OFF)** — generate it only when requested or when the stakeholder needs to click through to sign off confidently (intent-level fidelity, no real backend)
+- [ ] **Every user-facing screen has a wireframe (ASCII/Mermaid) + states (empty / loading / error / no-result) in `specs/wireframes/`, with each UI region mapped to its `@US-[ID]-Snn`** (skip for headless / API-only products; brownfield REVERSE baseline: waived — wireframes are produced per-change for the screens each change touches, see /spec §Brownfield Mode)
+- [ ] **The visual UI is signed off by stakeholder + PO (record date + name) — blocking before `/arch`** (UI products only). Sign-off is done on the ASCII wireframes; the clickable HTML prototype (`specs/wireframes/prototype/`) is an **opt-in aid (default OFF)** — generate it only when requested or when the stakeholder needs to click through to sign off confidently (intent-level fidelity, no real backend). *Waived for the brownfield REVERSE baseline — the as-is UI already shipped; baseline approval = the spec sign-off.*
 - [ ] Stakeholder sign-off obtained — spec `Status` is `Approved`, not `Draft`
 - [ ] **Revision History has an append-only row for the current change-set** — correct Type + version bump per §Revision History semantics; `Breaking` → ADR cited in Reference; every extended/superseded story carries its one-line marker
 - [ ] Glossary includes all domain terms

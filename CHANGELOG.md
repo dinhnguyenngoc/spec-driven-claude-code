@@ -4,6 +4,76 @@ Toàn bộ thay đổi đáng chú ý của **AI SDLC Kit** được ghi tại �
 [Keep a Changelog](https://keepachangelog.com/); phiên bản theo [SemVer](https://semver.org/).
 Các phiên bản trước `v1.3.0` (`v1.0.0`, `v1.1.0`, `v1.2.0`) được đánh dấu bằng git tag tương ứng.
 
+## [1.4.0] — 2026-07-16
+
+> Bản này là **đợt audit gia cố toàn kit — 19/19 lệnh**: mọi Quality Gate giờ có lớp kiểm
+> độc lập của orchestrator (không tin báo cáo sub-agent), mọi sub-agent có đường escalation
+> thay vì tự quyết/tự ký, đường override stack (Node core / 5 DB / ELK) thông suốt từ lệnh
+> tới agent, và hoàn tất các đồng bộ STAGING-only còn sót từ v1.3.0. Không xoá nội dung nào —
+> thuần bổ sung và chính-xác-hoá.
+
+### Added
+- **Orchestrator disk-check cho mọi gate** — 12 lệnh ngoài danh sách §Verification After
+  Delegation nhận block kiểm bất biến cơ học riêng (so tập hợp scenario/RC/OPEN, Evidence
+  không rỗng, score-honesty, template residue, `git status` read-only…); 7 lệnh trong danh
+  sách nhận pointer "orchestrator tự chạy lại lệnh quyết định gate".
+- **Phase ownership / return-early cho mọi lệnh** — sub-agent không với tới user: waiver,
+  stakeholder ack, Security-Lead/QA sign-off, `ACK_NO_SCAN`, chọn license, quyết định chạm
+  production… → **return early**, orchestrator lấy quyết định ở main loop.
+- **`architecture/design-system.md`** — điểm đáp mới cho design system (`/arch` §2.6):
+  tokens + state-per-component matrix + component contracts; khép chuỗi `/spec` wireframes
+  → `/arch` design system → `/build` FE.
+- **Join-key mới có producer thật** — `OPEN-###` (TEST_REPORT §12 → `/review` disposition)
+  và `Service id` (Profile ← `/discover` → `/discover-system`).
+- **`ascii-diagram-guide.md` §8 UI Wireframe** — mẫu vẽ màn hình + bảng control conventions
+  cho `/spec` Phase 2.5.
+- **`A-xx` disposition trên `/fix-issue`** — assumption phải được user duyệt → AC amendment
+  + Revision History; không quyết định behavior nào sống chỉ trong commit body.
+
+### Changed
+- **Join-key thống nhất**: `RC-X.Y` → **`RC-N`** (10 chỗ/7 file) · `T-XX` → **`Task N.N`**
+  (7 chỗ/4 file) — producer định nghĩa, consumer theo.
+- **Stack Profile note viết lại trên build/test/infra/deploy/docs/debug/simplify/fix-issue**
+  + blockquote override cho 5 agent — diệt trọn họ khẳng định sai *"core/test stack does not
+  change"*; Node core giờ có đường ánh xạ lệnh (npm/prisma/jest) ở mọi tầng.
+- **Brownfield scoping**: `/verify` Phase-5 đòi 100% theo **change-set** (baseline tích lũy,
+  B4 = scoped minimum) · REVERSE **miễn wireframe + visual sign-off** (per-change cho màn
+  hình bị chạm) · delta-coverage + ratchet đồng bộ 5 điểm còn thiếu.
+- **`/plan` Prerequisites**: architecture chuyển từ Optional → Required (greenfield Gate 2 /
+  brownfield conformance verdict 1-câu-hỏi); spec phải `Status: Approved` (cả `/arch`).
+- **`/test` E2E transport theo vị trí pipeline** — greenfield trước `/infra` chạy Playwright
+  trên stack local + TestContainers; compose overlay do Test Engineer author khi thiếu.
+
+### Hardened
+- **Chặn fabricated sign-off** — sub-agent tự điền bảng Approval/ack/waiver bị gọi tên và
+  cấm tường minh ở `/secure`, `/scan`, `/verify`, `/deploy`.
+- **BLOCKING-if-run thực thi tại consumer** — `/build` kiểm Gate 4 APPROVED, `/infra` kiểm
+  Gate 8 green, `/deploy` ghi chú `/review`-if-run; `RR-N` coverage nâng SHOULD → MUST.
+- **Read-only guarantee kiểm bằng `git` thật** — `/discover`, `/discover-system` (mọi repo
+  sạch), `/simplify` (diff đúng scope + green-before/after).
+- **`/hotfix` ranh giới production** — rollback production do human operator thực hiện (kit
+  đưa procedure + digest); chặn false-recovery "rollback staging nhưng báo đã khôi phục".
+
+### Fixed
+- Di tích tiền-v1.3.0: release-manager (prod-server, canary tự động, đếm 7/5 section),
+  technical-writer ("no staging tier"), hotfix ("on live"), README×2 (`/deploy → Production`),
+  VERIFY template ("production-config").
+- Dangling refs & nits: `UI_DESIGN_SYSTEM.md` → `architecture/design-system.md` · typo
+  `ai↔ai` → `api↔api` · link ví dụ ADR sai convention · comment `data-us` lệch cơ chế ·
+  near-miss "fix the id" mâu thuẫn read-only ở `/discover-system` · sót tiếng Việt trong
+  heading `/scan`.
+- Mặt tiền: README×2 + quick-start bổ sung `/inspect` (thiếu từ v1.3.0), đếm đúng 19 lệnh;
+  `/inspect` phủ split-layout (`specs/user-stories/*`).
+
+### ⚠️ Upgrade notes (behavior changes)
+- **Mọi gate giờ yêu cầu disk-check của orchestrator PASS trước khi present** — flow tự động
+  cũ trình gate thẳng từ báo cáo sub-agent sẽ dừng sớm hơn (đúng thiết kế).
+- **Brownfield `/verify` không còn fail trên baseline chưa phủ** — Phase-5 scope theo
+  change-set; script coverage nạp tập scenario theo Mode.
+- **`/plan` từ chối chạy khi thiếu `architecture/`** hoặc spec còn `Draft`.
+- Tooling grep token cũ (`RC-X.Y`, `T-XX`) phải đổi sang `RC-N` / `Task N.N`;
+  Profile có field optional mới `Service id` (multi-repo).
+
 ## [1.3.0] — 2026-07-07
 
 > Bản này bổ sung tầng quản trị cho kit (layering + versioning), lệnh `/inspect` để tra hiện

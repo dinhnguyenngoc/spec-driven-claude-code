@@ -4,7 +4,7 @@
 
 ## Kit này là gì?
 
-Một bộ "harness" SDLC cho Claude Code: **12 lệnh pipeline** (`/spec` → `/arch` → `/plan` → `/secure` → `/build` → `/test` → `/review` → `/scan` → `/infra` → `/docs` → `/verify` → `/deploy`) + 6 lệnh hỗ trợ, mỗi lệnh do một **agent chuyên trách** đảm nhiệm và kết thúc bằng một **Quality Gate**. Mục tiêu: output tái lập được, có truy vết spec → code → test → deploy, không phụ thuộc trí nhớ của người chạy.
+Một bộ "harness" SDLC cho Claude Code: **12 lệnh pipeline** (`/spec` → `/arch` → `/plan` → `/secure` → `/build` → `/test` → `/review` → `/scan` → `/infra` → `/docs` → `/verify` → `/deploy`) + 7 lệnh hỗ trợ, mỗi lệnh do một **agent chuyên trách** đảm nhiệm và kết thúc bằng một **Quality Gate**. Mục tiêu: output tái lập được, có truy vết spec → code → test → deploy, không phụ thuộc trí nhớ của người chạy.
 
 ## Cách bắt đầu — KHÔNG cần nhớ lệnh nào
 
@@ -40,6 +40,7 @@ Sau đó Claude hỏi bạn chọn **chế độ thực thi**:
 | "Nâng cấp kiến trúc / công nghệ" | **B5** | ADR bắt buộc + strangler-fig, không big-bang rewrite |
 | "Bump dependency / vá CVE" | **B5-lite** | ADR nhẹ; **full regression bắt buộc** |
 | "Dọn nợ kỹ thuật / refactor" | **`/simplify`** | Không đổi behavior; characterization làm lưới |
+| "Tính năng X có chưa? / Y đang cấu hình ra sao?" (hỏi hiện trạng — không phải yêu cầu sửa) | **`/inspect`** | Read-only, 3 tầng bằng chứng (records → code → live), KHÔNG route vào B-flow, không hỏi chế độ thực thi |
 
 Bảng đầy đủ + thứ tự lệnh từng luồng: [`.claude/references/brownfield-pipeline.md`](.claude/references/brownfield-pipeline.md).
 

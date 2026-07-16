@@ -31,7 +31,7 @@
 ## 3. Findings (by severity: 🔴 → 🟡 → 🟢 → ✅)
 
 ### 🔴 Critical
-- **[file:line]** [Description] — [Recommendation] — *Relates-to: <US-XXX | RC-X.Y | ADR-NNN | T-XX | S1..E10>*
+- **[file:line]** [Description] — [Recommendation] — *Relates-to: <US-XXX | RC-N | ADR-NNN | Task N.N | S1..E10>*
 
 ### 🟡 Warning
 - …— *Relates-to: …*

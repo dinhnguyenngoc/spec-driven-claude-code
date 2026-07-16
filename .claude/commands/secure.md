@@ -109,7 +109,7 @@ One deep table beats 15 shallow paragraphs.
 
 1. Copy the `§A` 10-row table into `PRE_DEV_REVIEW.md`. Fill in the **Status** and **Evidence** columns for **all 10 rows** (A01–A10), leaving none blank.
    - Only A06 may be `Deferred to /scan`. The other categories must be `Addressed` / `Partial` / `N/A` with a rationale.
-2. Copy the `§C` Residual Risks table into `PRE_DEV_REVIEW.md`. Each `[Deferred to v2]` or `[Accepted]` mitigation from Phase 3 SHOULD have one RR-N row.
+2. Copy the `§C` Residual Risks table into `PRE_DEV_REVIEW.md`. Each `[Deferred to v2]` or `[Accepted]` mitigation from Phase 3 MUST have one RR-N row.
 3. The v2 trigger MUST be an **observable condition** (measurable, verifiable), not vague ("when we have time").
 
 ### Phase 6: Output Structure
@@ -150,6 +150,8 @@ Already defined in `STRIDE_TEMPLATE.md §F` — copy it verbatim; the agent only
 
 > **Brownfield (delta mode):** the OWASP Top 10 + Security Requirements coverage below is assessed **for the delta surface**; categories the change does not touch **cite the baseline `PRE_DEV_REVIEW.md`** instead of being re-filled. Whole-system completeness is required only on the baseline run (or B5). See §Brownfield Mode.
 
+Run the §Orchestrator disk-check (below) first, then review.
+
 **Development CANNOT proceed** without:
 
 - [ ] Threat model completed — every threat has a unique ID, a risk rating from the `STRIDE_TEMPLATE §C` matrix, and a `Required for v1?` decision
@@ -166,9 +168,26 @@ Already defined in `STRIDE_TEMPLATE.md §F` — copy it verbatim; the agent only
 - [ ] Security Auditor approval recorded in `PRE_DEV_REVIEW.md`
 - [ ] PRE_DEV_REVIEW.md marked as APPROVED
 
+### Orchestrator disk-check (run BEFORE presenting for Gate 4 sign-off)
+
+A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.md` §Verification After Delegation, applied at artifact level (mechanical invariants only; threat judgment stays human at sign-off). Template self-checks are the agent's own claim — re-verify on disk:
+
+- [ ] **Files exist** — `security/THREAT_MODEL.md`, `SECURITY_REQUIREMENTS.md`, `PRE_DEV_REVIEW.md`.
+- [ ] **OWASP table** — all 10 rows A01–A10 present, no blank Status/Evidence cell; only A06 is `Deferred to /scan`. *(Brownfield delta: a cell citing the baseline `PRE_DEV_REVIEW.md` counts as filled.)*
+- [ ] **Threat blocks** — threat IDs unique; every Critical/High threat has a `[Required for v1]` mitigation.
+- [ ] **Residual-risk completeness** — every threat whose `Required for v1?` is `Deferred` / `Accepted` has a matching RR-N row in `PRE_DEV_REVIEW.md §Residual Risks` (diff the two sets).
+- [ ] **Task-id cross-check** — every `Owner task(s)` id cited in `THREAT_MODEL.md` exists in `plans/plan.md` (diff the two sets yourself; a mitigation pointing at a non-existent task is an unowned mitigation).
+- [ ] **RC table** — the Phase 3.5 table has ≥3 controls with `RC-N` ids; every `[NEW]` control reappears in §"Controls added beyond ADRs" with the same id.
+- [ ] **OQ reconciliation** — every row of `ARCHITECTURE.md §Open Questions` appears in `PRE_DEV_REVIEW.md` as resolved or deferred-with-ack (no row silently dropped).
+- [ ] **No template residue** — no unfilled `[…]` placeholders left in `security/`.
+
+Any mismatch → fix on disk first; never present a review that fails its own gate mechanics.
+
 ## Agent
 
 Invoke: **Security Auditor**
+
+**Phase ownership** — the Security Auditor sub-agent cannot converse with the user: a mitigation that fits no existing plan task (Phase 3 "escalate to the PM"), or an Open Question that needs stakeholder acknowledgment to defer → **return early** with the item instead of deciding alone. The orchestrator obtains the ack / routes the plan change, runs the Gate 4 disk-check, and presents the review for sign-off in the main loop.
 
 ```text
 "As Security Auditor, perform pre-development security review for [feature].

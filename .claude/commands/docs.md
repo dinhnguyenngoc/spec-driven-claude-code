@@ -13,6 +13,8 @@ Consolidate existing documentation and complete missing pieces before deployment
 
 > **Principle**: Don't duplicate — link and reference existing artifacts from `/spec`, `/arch`, `/secure`, `/infra`.
 
+> **Stack Profile note:** read `Project Profile` first. **Core = Node.js** → generate API docs from the framework's OpenAPI tooling (`@nestjs/swagger`, Fastify schema-first — see `rules/overrides/framework-nodejs-web.md`), and the `dotnet`/DocFX commands in Phase 4 & §Auto-Generation Tools map to their npm equivalents. The templates stay default-stack illustration — their "example only" disclaimers apply; DB/observability lines follow the Profile + `rules/overrides/*`.
+
 ## Prerequisites
 
 - Implementation complete (`/build` done)
@@ -137,7 +139,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## License
 
-MIT
+[per the user's decision — never invent one]
 ```
 
 ### Phase 3: Documentation Structure
@@ -311,7 +313,9 @@ dotnet ./publish/MyApp.Api.dll
 
 ## Quality Gate 10 — Documentation Checklist
 
-Before proceeding to `/deploy`:
+> Per CLAUDE.md §Quality Gates, `/docs` is an **optional** pipeline step (Legend: `*`). If run, the checklist below must pass before `/verify` / `/deploy`.
+
+Run the §Orchestrator disk-check (below) first, then review. Before proceeding to `/deploy`:
 
 > **Incremental run:** items already satisfied by a prior `/docs` run stay checked if still accurate; only re-verify the docs the change touched. The link-check + no-duplication (Integrity) below run over the **whole** set regardless — so integrity holds even when only part was regenerated.
 
@@ -346,13 +350,25 @@ Before proceeding to `/deploy`:
 ### Meta
 - [ ] CONTRIBUTING.md
 - [ ] CHANGELOG.md
-- [ ] LICENSE
+- [ ] LICENSE — never invent one (the license is the user's legal decision); absent → return early / record an Open item for the user
 
 ### Integrity
 - [ ] **No broken internal links** — verify with `markdown-link-check '**/*.md'` or `lychee docs/ *.md` (exit code 0 = clean)
 - [ ] **No duplication** — each fact lives in exactly one canonical place; other docs link to it
 - [ ] **Output-style conformance** (`rules/output-style.md`) — each doc opens with a plain-language summary (what / why / for-whom); register matches its reader (getting-started/api = newcomer/dev; deployment/troubleshooting = operator, step-by-step); jargon defined on first use
 - [ ] Existing root `README.md` / `CHANGELOG.md` preserved if framework-level (see Phase 0 last row)
+
+### Orchestrator disk-check (run BEFORE presenting for Gate 10 review)
+
+A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.md` §Verification After Delegation, applied at artifact level (mechanical invariants only; prose quality stays with the reviewer):
+
+- [ ] **Gate-10 minimum exists** — `README.md`, `docs/getting-started.md`, `docs/api/`, `docs/deployment.md` on disk; `docs/README.md` hub present with its Audience column.
+- [ ] **Run the link check yourself** — `lychee docs/ *.md` (or `markdown-link-check '**/*.md'`) exits 0 over the **whole** set (per the Integrity note — even on an incremental run); don't trust the report's "no broken links".
+- [ ] **Preserve check** — if Phase 0 marked the root `README.md` / `CHANGELOG.md` as framework-level, `git diff` shows them untouched.
+- [ ] **CHANGELOG entry** — this change-set has a row (incremental runs especially).
+- [ ] **No template residue** — no `[…]` placeholders and no carried-forward aspirational components (e.g. a Tech-Stack line for a component the Rejection ADR excluded).
+
+Any mismatch → fix on disk first.
 
 ## Auto-Generation Tools
 
@@ -372,6 +388,8 @@ docfx docfx.json --serve
 ## Agent
 
 Invoke: **Technical Writer**
+
+**Phase ownership** — the Technical Writer sub-agent cannot converse with the user: a missing `LICENSE` (choosing a license is the user's **legal** decision — never generate one, not even "MIT by default"), or an overwrite conflict the Phase-0 PRESERVE rule doesn't already resolve → **return early** with the item instead of deciding alone. The orchestrator obtains the decision, runs the Gate 10 disk-check, and presents the docs for review in the main loop.
 
 ```text
 "As Technical Writer, generate documentation for the project.

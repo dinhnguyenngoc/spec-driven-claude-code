@@ -95,7 +95,7 @@ A sub-agent's internal output (the `Agent` tool) **does NOT stream to the user's
 
 ## Verification After Delegation (MANDATORY)
 
-> **Applies to every command that spawns sub-agents which make changes / perform verification** (`/build`, `/test`, `/infra`, `/verify`, `/deploy`, `/fix-issue`, `/hotfix`…).
+> **Applies to every command that spawns sub-agents which make changes / perform verification** (`/build`, `/test`, `/infra`, `/verify`, `/deploy`, `/fix-issue`, `/hotfix`…). Commands outside this list apply the **same discipline at artifact level** via their own §Orchestrator disk-check — every quality gate in the kit now carries one.
 
 **A sub-agent's "green" report is NOT ground truth.** Before declaring a gate/step PASS, the orchestrator **MUST re-run the *gate-deciding* checks on disk itself** and read the real result — do not blindly trust the sub-agent's summary:
 
@@ -133,6 +133,7 @@ This kit supports **two modes**. The mode + peripheral technologies are declared
 - Observability: Serilog/Grafana (base) | ELK → rules/overrides/monitoring-elk.md
 - Structure: Clean Architecture | N-tier | monolith
 - Frontend: <if any>
+- Service id: <multi-repo products only — unique key consumed by /discover-system; single-repo → omit>
 ```
 
 > **Brownfield pipeline summary:**
@@ -468,12 +469,13 @@ project-root/
 │   └── api/
 │
 ├── plans/                          # /plan output
-│   ├── sprint-*.md
+│   ├── sprint-*.md                 # optional — on-request PM aid (PM agent §Delivery tracking), not a /plan gate output
 │   ├── plan.md
 │   └── todo.md
 │
 ├── security/                       # /secure + /scan output
 │   ├── THREAT_MODEL.md
+│   ├── SECURITY_REQUIREMENTS.md
 │   ├── PRE_DEV_REVIEW.md
 │   └── SCAN_REPORT.md
 │
@@ -491,7 +493,8 @@ project-root/
 │   ├── VERIFY_REPORT.md            # /verify — gate verdict for /deploy
 │   ├── VERIFY_MATRIX.md            # /verify — acceptance-criteria → test traceability
 │   ├── verify-artifact.lock        # /verify — digest tested == digest promoted
-│   └── incidents/                  # /hotfix — incident notes (INC-<id>.md: timeline, MTTR, prevention)
+│   ├── incidents/                  # /hotfix — incident notes (INC-<id>.md: timeline, MTTR, prevention)
+│   └── inspect/                    # /inspect --report (opt-in) — INSPECT-<slug>.md
 │
 ├── docker/                         # /infra output — Dockerfile only
 │   └── Dockerfile
@@ -512,7 +515,7 @@ project-root/
     ├── rules/
     ├── skills/
     ├── references/
-    ├── templates/                  # fill-only boilerplates: STRIDE/OWASP (/secure,/scan) · TEST_REPORT (/test) · VERIFY_REPORT (/verify) · CODE_REVIEW (/review) · RUNBOOK_RELEASE (/deploy) · wireframes (/spec)
+    ├── templates/                  # fill-only boilerplates: STRIDE/OWASP (/secure,/scan) · TEST_REPORT (/test) · VERIFY_REPORT (/verify) · CODE_REVIEW (/review) · RUNBOOK_RELEASE (/deploy) · wireframes (/spec) · system (/discover-system)
     ├── scripts/                    # scan-all.sh + scan-summarize.py for /scan
     └── CLAUDE.md
 ```

@@ -61,7 +61,7 @@ specs/wireframes/
 
 ### Fidelity rule & the `/spec` ↔ `/arch` boundary
 - `/spec` (here) = **intent-level**: *what* screens, layout, states, and flow — for stakeholder sign-off. ASCII is always produced; the HTML prototype is produced **on demand only (opt-in, default OFF)**.
-- `/arch` = the **design system**: design tokens, component contracts, navigation/IA decisions, state-management choice. **The `tailwind.config.ts` token block in §Design Process below is `/arch` territory — do not lock it during `/spec`.**
+- `/arch` = the **design system**: design tokens, component contracts, navigation/IA decisions, state-management choice. **The `tailwind.config.ts` token block in §Design Process below is `/arch` territory — do not lock it during `/spec`.** Written to **`architecture/design-system.md`** (see `/arch` §2.6).
 
 ---
 

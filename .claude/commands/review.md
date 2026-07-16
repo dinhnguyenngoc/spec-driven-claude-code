@@ -25,8 +25,8 @@ The reviewer MUST ingest these artifacts before scoring. A finding without trace
 |----------|----------------|
 | `specs/SPEC.md` + `specs/user-stories/*` | **Correctness** — does the implementation match each `US-XXX` acceptance criterion? |
 | `architecture/adr/*.md` + `architecture/api/*` | **Architecture** — are ADR decisions honored? Do API contracts match the implemented routes/DTOs? |
-| `plans/todo.md` | **Scope** — did `/build` close exactly the tasks it claimed (`T-XX`)? Flag orphan changes or unticked tasks. |
-| `security/PRE_DEV_REVIEW.md` | **Security** — are the Required Controls (`RC-X.Y`) and threat mitigations (`S1..E10` from STRIDE) present in code? |
+| `plans/todo.md` | **Scope** — did `/build` close exactly the tasks it claimed (`Task N.N`)? Flag orphan changes or unticked tasks. |
+| `security/PRE_DEV_REVIEW.md` | **Security** — are the Required Controls (`RC-N`) and threat mitigations (`S1..E10` from STRIDE) present in code? |
 | `reports/TEST_REPORT.md` | **Gate-6 PASS verdict** (Step 2 trusts this instead of re-running the suite) + **Coverage numbers** + every `OPEN-XXX` debt from `/test` must be tagged **CLOSED / DEFERRED-to-Pn / ESCALATED** in this review — none may be silently dropped. |
 | `.claude/rules/*.md` | **Compliance Check** table (see Output File §6). |
 
@@ -42,7 +42,7 @@ The reviewer MUST ingest these artifacts before scoring. A finding without trace
 ## Workflow
 
 1. **Identify Scope** — Determine files/PR/branch to review
-2. **Confirm the build & trust the test gate** — run `dotnet build` (cheap compile sanity). Do **NOT** re-run the full `dotnet test` suite (especially TestContainers) up front: `/test` already certified it green on this unchanged code in `reports/TEST_REPORT.md` (Gate 6 PASS). **Re-run the affected tests only after a fix** made during this review (the §Resolution verification numbers come from that re-run). **Fallback:** if `TEST_REPORT.md` is absent (review run standalone, no `/test`), run the full suite once.
+2. **Confirm the build & trust the test gate** — run `dotnet build` (cheap compile sanity; Node core → `npm run typecheck && npm run build`). Do **NOT** re-run the full `dotnet test` suite (especially TestContainers) up front: `/test` already certified it green on this unchanged code in `reports/TEST_REPORT.md` (Gate 6 PASS). **Re-run the affected tests only after a fix** made during this review (the §Resolution verification numbers come from that re-run). **Fallback:** if `TEST_REPORT.md` is absent (review run standalone, no `/test`), run the full suite once.
 3. **Apply Five-Axis Review** — Correctness, Readability, Architecture, Security, Performance
 4. **Document Findings** — Create `reports/CODE_REVIEW.md`
 5. **Decision** — APPROVE / REQUEST CHANGES / NEEDS DISCUSSION
@@ -100,7 +100,7 @@ Provide feedback as:
 - 🟢 **Suggestion** — Nice to have improvement
 - ✅ **Good** — Highlight what's done well
 
-> **MANDATORY — `Relates-to` traceability.** Every finding (Critical / Warning / Suggestion) MUST end with a `Relates-to: <ID(s)>` line citing the source artifacts it touches: User Stories (`US-XXX`), Required Controls (`RC-X.Y`), ADRs (`ADR-NNN`), plan tasks (`T-XX`), or threat IDs (`S1..E10`). This is the bridge that lets `/scan` and `/deploy` close the loop back to spec and threat model. A finding without `Relates-to` is half-done.
+> **MANDATORY — `Relates-to` traceability.** Every finding (Critical / Warning / Suggestion) MUST end with a `Relates-to: <ID(s)>` line citing the source artifacts it touches: User Stories (`US-XXX`), Required Controls (`RC-N`), ADRs (`ADR-NNN`), plan tasks (`Task N.N`), or threat IDs (`S1..E10`). This is the bridge that lets `/scan` and `/deploy` close the loop back to spec and threat model. A finding without `Relates-to` is half-done.
 
 ## Output File
 
@@ -130,7 +130,7 @@ Create the `reports/` folder if it doesn't exist.
 
 > Per CLAUDE.md §Quality Gates, `/review` is an **optional** pipeline step (Legend: `*`). **If run**, the checklist below must fully pass before `/scan` — no partial pass.
 
-Before proceeding to `/scan`:
+Run the §Orchestrator disk-check (below) first, then review. Before proceeding to `/scan`:
 
 - [ ] Five-axis review completed **with numerical scores (1-5) per axis**
 - [ ] **Cross-layer conformance checked** — consumer↔contract method/path match · no orphan (every behavior wired) · each `@US-XXX-Snn` maps to a wired path + an effect-asserting test (anti-vacuous)
@@ -139,15 +139,28 @@ Before proceeding to `/scan`:
 - [ ] `reports/CODE_REVIEW.md` created with approval decision
 - [ ] All critical feedback addressed before merge
 - [ ] **Compliance Check table** present — every `.claude/rules/*.md` → PASS / WARNING / FAIL **with an `Evidence` citation per PASS** (no PASS without `file:line` / wired-pipeline ref / test name); cross-cutting controls verified as wired, not just defined
-- [ ] **Every finding has `Relates-to: <US-XXX | RC-X.Y | ADR-NNN | T-XX>`** for downstream traceability
+- [ ] **Every finding has `Relates-to: <US-XXX | RC-N | ADR-NNN | Task N.N>`** for downstream traceability
 - [ ] If verdict flipped post-fix, §Resolution section documents what changed + verification numbers + re-scored axes
+
+### Orchestrator disk-check (run BEFORE presenting for Gate 7 review)
+
+A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.md` §Verification After Delegation, applied at artifact level (mechanical invariants only; review judgment stays with the reviewer):
+
+- [ ] **Structure** — `reports/CODE_REVIEW.md` exists with all 7 sections.
+- [ ] **Relates-to complete** — every 🔴/🟡/🟢 finding carries a `Relates-to:` line (count findings vs `Relates-to` occurrences — must match).
+- [ ] **Compliance table full** — one row per `.claude/rules/*.md`; no PASS row with an empty Evidence cell.
+- [ ] **OPEN reconciliation** — the §5 disposition table covers exactly the `OPEN-###` set from `TEST_REPORT.md §12` (diff the two sets — none silently dropped).
+- [ ] **Score-honesty consistency** — no axis scored >2 while §3 shows an open 🔴 on that axis; none >4 with an unresolved 🟡 (cross-check §2 vs §3).
+- [ ] **No template residue** — no unfilled `[…]` placeholders in `reports/CODE_REVIEW.md`.
+
+Any mismatch → fix on disk first.
 
 ## Brownfield Mode (when `Project Profile → Mode: brownfield`)
 
 `/review` is **per-change** on legacy — review the **diff/slice**, not the whole repo:
 
 - **Scope the review to the diff** — the Five-Axis applies to the changed lines **+ their blast radius** (callers/callees the change can affect), not the entire reverse-engineered codebase. Run `/review` on the branch diff / changed files.
-- **Ingest relates-to only** — pull in only the spec stories, ADRs, and `RC-X.Y` controls the diff *relates to* (via the plan's task → scenario map), not the full baseline `SPEC.md` / `ARCHITECTURE.md` (which describe the whole as-is system).
+- **Ingest relates-to only** — pull in only the spec stories, ADRs, and `RC-N` controls the diff *relates to* (via the plan's task → scenario map), not the full baseline `SPEC.md` / `ARCHITECTURE.md` (which describe the whole as-is system).
 - **Backward-compat is a Critical axis** — for a B2 (modify) change, verify the diff does NOT break an existing contract / response shape / behavior; a regression here is a 🔴 Critical. This is the review counterpart of `/plan`'s backward-compat AC and `/secure`'s regression-security check.
 - **Characterization tests present** — confirm any touched legacy area without prior tests got a characterization test (per `rules/brownfield.md`) before modification; flag its absence as a finding.
 - **Trust the regression net** — the full-suite regression run is `/test`'s job (Gate 6); `/review` trusts `TEST_REPORT.md` (Step 2). Do not re-review unchanged modules.
@@ -157,6 +170,8 @@ Before proceeding to `/scan`:
 ## Agent
 
 Invoke: **Code Reviewer** (Senior Staff Engineer perspective) for deep review.
+
+**Phase ownership** — the Code Reviewer sub-agent cannot converse with the user: a `NEEDS DISCUSSION` verdict, a 🟡 Warning that needs an "explicitly accepted" decision, or a fix that would exceed the scope of a documented finding → **return early** with the item instead of deciding alone. The orchestrator obtains those decisions, runs the Gate 7 disk-check, and presents the verdict in the main loop.
 
 > Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 

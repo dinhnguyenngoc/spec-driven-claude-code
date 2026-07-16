@@ -14,18 +14,15 @@ Transform a specification into an ordered list of small, verifiable tasks. Each 
 ## Prerequisites
 
 **Required:**
-- A specification exists (`specs/SPEC.md` from `/spec`)
+- A specification exists (`specs/SPEC.md` from `/spec`), passed Gate 1 — header `Status` is **Approved**, not Draft
+- Architecture exists (`architecture/` from `/arch`) — greenfield: Gate 2 passed; brownfield B1/B2: the Phase A baseline + this change's CONFORMANCE-GATE verdict (a one-question check — do not skip it for "small" changes; the verdict IS the cheap path). Includes `architecture/api/openapi.yaml` when the feature has an API surface.
 - Understanding of the codebase structure
-
-**Optional (if available):**
-- Architecture documents (`architecture/` from `/arch`)
-- API contracts (`architecture/api/openapi.yaml`)
 
 ## Workflow
 
 ### Phase 1: Analysis (Read-Only)
 
-1. **Spec-readiness pre-check** — confirm the spec passed Gate 1: every scenario has a stable ID (`@US-XXX-Snn`) and a testable, observable AC. If a scenario is missing an ID, has a vague/untestable AC, or a needed behaviour isn't in the spec at all → **do not start decomposing it.**
+1. **Spec-readiness pre-check** — confirm the spec passed Gate 1: the header `Status` is **Approved**, every scenario has a stable ID (`@US-XXX-Snn`) and a testable, observable AC. If the Status is still Draft, a scenario is missing an ID, has a vague/untestable AC, or a needed behaviour isn't in the spec at all → **do not start decomposing it.**
 2. **Read the spec** — Understand objectives and acceptance criteria
 3. **Survey the codebase** — Identify relevant files, patterns, and integration points. *(Brownfield: consume `/discover` artifacts as the index — see §Brownfield Mode — do not re-survey the tree.)*
 4. **Review architecture (if exists)** — Check ADRs, API contracts, diagrams
@@ -33,7 +30,7 @@ Transform a specification into an ordered list of small, verifiable tasks. Each 
 
 > **Do NOT modify code during planning.**
 
-> **Don't invent scope — route gaps back (mandatory).** `/plan` decomposes **what the spec says**; it does not author requirements. When a scenario/AC is missing, ambiguous, or un-plannable, **STOP and route it back to `/spec`** (or ask the user with `AskUserQuestion`) — get it added/clarified there, or record it as a **blocking Open item**. Never fill a spec gap by inventing a task scope or guessing the behaviour — a planner's guess is an unconfirmed requirement, and it bypasses the BA's Gate 1.
+> **Don't invent scope — route gaps back (mandatory).** `/plan` decomposes **what the spec says**; it does not author requirements. When a scenario/AC is missing, ambiguous, or un-plannable, **STOP and route it back to `/spec`** (or ask the user with `AskUserQuestion`; when running as a sub-agent you cannot reach the user — return early with the question to the orchestrator instead) — get it added/clarified there, or record it as a **blocking Open item**. Never fill a spec gap by inventing a task scope or guessing the behaviour — a planner's guess is an unconfirmed requirement, and it bypasses the BA's Gate 1.
 
 ### Phase 2: Vertical Slicing
 
@@ -111,9 +108,9 @@ Insert checkpoints between major phases:
 
 **Verify before proceeding**:
 - [ ] All CRUD operations work
-- [ ] Test coverage > 80%
+- [ ] Test coverage ≥ 80%
 - [ ] No console errors
-- [ ] Performance acceptable
+- [ ] NFR spot-check passes (e.g. P95 latency < spec threshold)
 
 ---
 ```
@@ -157,7 +154,9 @@ The plan document MUST include the following sections, in this order:
    |------|------|----------------------------|
    | 2.2 | SSRF mitigation has many ranges; missing one = vulnerability | One unit test per documented IPv4/IPv6 range in `IpRangeCheckerTests` |
 
-6. **Out of scope** — explicit list of what later workflow phases own and will NOT be done here:
+6. **Deferred/Waived scenarios** *(only when not 100% covered by tasks)* — table `@US-XXX-Snn | Deferred to (phase/owner) / Waived | Reason`. The union of this table + all tasks' "Scenarios covered" MUST equal the change-set's full scenario set — rule: [`references/scenario-traceability.md`](../references/scenario-traceability.md) §5 (no silent drops).
+
+7. **Out of scope** — explicit list of what later workflow phases own and will NOT be done here:
 
    - `/test` — TestContainers + Playwright E2E
    - `/scan` — SCA, full STRIDE walk-through
@@ -169,7 +168,7 @@ The plan document MUST include the following sections, in this order:
 
 ### `plans/todo.md` — template
 
-> **Projection only:** each line is `- [ ] Task <id>: <same title as its Task block>` — do not re-describe or add scope. Update `plan.md` first, then re-project.
+> **Projection only:** each line is `- [ ] Task <id>: <same title as its Task block>` — do not re-describe or add scope. Update `plan.md` first, then re-project. *(Status annotations appended by downstream phases — the `- [x]` tick, `[A-xx]` assumption flags — are allowed; new scope text is not.)*
 
 ```markdown
 # TODO: [Feature Name]
@@ -194,7 +193,7 @@ The plan document MUST include the following sections, in this order:
 
 ## Quality Gate 3 — Task Breakdown
 
-Before proceeding to `/secure`:
+Run the §Orchestrator disk-check (below) first, then review. Before proceeding to `/secure`:
 - [ ] Tasks broken into vertical slices (no horizontal "all DB → all API → all UI" tasks)
 - [ ] Every task traces to a user story (or is flagged "Foundation" with reason)
 - [ ] **Scenario coverage 100% — every `@US-XXX-Snn` from the spec is listed under some task's "Scenarios covered", or in a Deferred/Waived table (reason + owner). No scenario hidden inside a bundled task.**
@@ -205,8 +204,20 @@ Before proceeding to `/secure`:
 - [ ] **No invented scope** — every task traces to a spec scenario/NFR; any spec gap or ambiguity was routed back to `/spec` (or asked), not filled by guessing. Spec-readiness pre-check passed (every scenario has an ID + testable AC).
 - [ ] Dependencies mapped between tasks
 - [ ] Checkpoints inserted between phases
-- [ ] `plans/plan.md` includes: Inputs consumed · Build-time testing scope · Summary table · Phases/Tasks · Risk register · Out of scope
+- [ ] `plans/plan.md` includes: Inputs consumed · Build-time testing scope · Summary table · Phases/Tasks · Risk register · Deferred/Waived scenarios (if any) · Out of scope
 - [ ] `plans/todo.md` is actionable
+
+### Orchestrator disk-check (run BEFORE presenting for Gate 3 review)
+
+A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.md` §Verification After Delegation, applied at artifact level (mechanical invariants only; slicing quality & ordering stay human judgment):
+
+- [ ] **Scenario set reconciliation** — extract the full `@US-XXX-Snn` set from `specs/` and the union of every task's "Scenarios covered" + the Deferred/Waived table: the two sets must be **equal** (no missing, no unknown IDs). Count + diff yourself — don't trust the report's "100%". *(Brownfield per-change: the spec-side set = the scenarios of THIS change-set — the stories in its DELTA Revision History row — not the whole baseline spec.)*
+- [ ] **Required sections** — `plans/plan.md` contains every section of the §required structure, in order.
+- [ ] **Projection integrity** — every `todo.md` line and Summary-table row reuses a Task block's id + title verbatim; no orphan row, no task missing from the projections.
+- [ ] **Tests declared** — no task has an empty "Tests to add"; every Risk-register mitigation names an existing AC/test (no `TBD`).
+- [ ] **No template residue** — no `TODO` / unfilled placeholders in `plans/`.
+
+Any mismatch → fix on disk first; never present a plan that fails its own gate mechanics.
 
 ## Brownfield Mode (when `Project Profile → Mode: brownfield`)
 
@@ -224,6 +235,8 @@ Planning on legacy differs from greenfield in that it must **protect what is alr
 ## Agent
 
 Invoke: **Project Manager**
+
+**Phase ownership** — the PM sub-agent cannot converse with the user: a spec gap or ambiguity that blocks decomposition → return early with the question (so the orchestrator routes it back to `/spec` / asks the user); a non-blocking gap → record it as a blocking Open item for the gate. The orchestrator runs the Gate 3 disk-check and presents the plan for review in the main loop.
 
 > Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 

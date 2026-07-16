@@ -39,6 +39,8 @@ Metrics:       Prometheus
 Testing:       xUnit + FluentAssertions + Moq
 ```
 
+> Default stack. When the `Project Profile` declares otherwise (**Node.js core** → `rules/overrides/lang-nodejs.md` + `framework-nodejs-web.md` + `test-nodejs.md`; Oracle / MySQL / PostgreSQL / MongoDB → `rules/overrides/database-*.md`; ELK → `overrides/monitoring-elk.md`), the overrides replace the affected rows — and every code pattern below is **default-stack illustration only**: implement against the declared stack's idioms in the override files (Zod not FluentValidation, `AppError` not `AppException`, Prisma/Kysely not EF Core…), do NOT translate these C# examples literally.
+
 ---
 
 ## Workflow Integration
@@ -96,6 +98,8 @@ public class User
     public bool IsActive { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
+    // + audit columns (CreatedBy/UpdatedBy), soft-delete DeletedAt, rowversion (optimistic concurrency)
+    //   — required on every domain table per principles-and-practices.md §4.5–4.6; omitted here for brevity
 
     private User() { } // EF Core
 
@@ -557,12 +561,13 @@ After `/scan` clears, you author Docker artifacts that let any developer run the
 
 ### Quality Gate 9 (`/infra → /docs`)
 
-- [ ] `docker build` succeeds without warnings
-- [ ] `docker-compose up` brings all services to `healthy` state
+- [ ] `docker compose build` succeeds without warnings
+- [ ] `docker compose up` brings all services to `healthy` state
 - [ ] API responds 200 on `/health/ready` after startup
 - [ ] EF Core migrations apply on first run
 - [ ] No secrets committed; only `.env.example` shipped
 - [ ] Image runs as non-root (`USER appuser`)
+- [ ] All images pinned to specific tags/digests — no `:latest` (standing `/scan` rule)
 
 > Patterns, base images, and compose snippets: [`.claude/references/docker-patterns.md`](../references/docker-patterns.md). Production deployment runbooks are out of scope — handed off to [Release Manager](release-manager.md).
 
@@ -589,7 +594,7 @@ After `/scan` clears, you author Docker artifacts that let any developer run the
 - [ ] OpenAPI/Swagger documentation
 - [ ] N+1 queries prevented (use Include/projection)
 - [ ] Async/await used correctly (no `.Result` or `.Wait()`)
-- [ ] Every applicable control from `security/SECURITY_REQUIREMENTS.md` implemented — `/review` audits `RC-X.Y` presence in code
+- [ ] Every applicable control from `security/SECURITY_REQUIREMENTS.md` implemented — `/review` audits `RC-N` presence in code
 - [ ] Every `@US-XXX-Snn` the task claims: wired from the app entry point (no orphan) + a passing test asserting its observable *Then*
 - [ ] Task ticked in `plans/todo.md` before reporting done (when running directly); when delegated, report completion explicitly so the orchestrator ticks — CLAUDE.md rule 11
 
