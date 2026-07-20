@@ -11,6 +11,8 @@ description: Implement tasks incrementally using TDD and vertical slices
 
 Implement tasks one at a time using Test-Driven Development. Each increment leaves the system in a working, testable state.
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 > **Stack Profile note:** examples + commands below use the **default profile** (C#/.NET + SQL Server). Read `Project Profile` (`.claude/PROJECT_PROFILE.md`) first: **Core = Node.js** → `rules/overrides/lang-nodejs.md` + `framework-nodejs-web.md` + `test-nodejs.md` replace the language/framework/test layers — the `dotnet` commands in this file map to their npm equivalents (`npm test`, `tsc --noEmit`, `npm run build`; in-memory integration template per `test-nodejs.md` §Template A). **Database ≠ SQL Server** → `rules/overrides/database-*.md` (Oracle / MySQL / PostgreSQL / MongoDB) for data access + test setup. Brownfield: follow `rules/brownfield.md` (characterization test before modifying legacy code that has no tests).
 
 ## Prerequisites

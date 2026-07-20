@@ -11,6 +11,8 @@ description: Reduce complexity without changing behavior — code simplification
 
 Simplify code for clarity and maintainability. Reduce complexity **without changing behavior**.
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 > **Stack Profile note:** the `dotnet` commands and C# catalog below use the **default profile**. **Core = Node.js** → map to the npm equivalents (`npm test`, `npm run build`); the Common Simplifications are default-stack illustration — apply the equivalent TS idioms per `rules/overrides/lang-nodejs.md` (early returns, discriminated unions + `switch`, arrow shorthand).
 
 ## When to Use

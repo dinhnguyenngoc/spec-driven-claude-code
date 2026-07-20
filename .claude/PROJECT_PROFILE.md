@@ -5,6 +5,7 @@
 > **Cách dùng theo tình huống:**
 > - **Repo ĐÃ có code (brownfield — mặc định của kit):** chạy `/discover` — lệnh khảo sát repo và tự sinh/cập nhật block dưới bằng giá trị thật (kèm red-flags).
 > - **Repo mới tinh (chưa có business code):** đổi `Mode: greenfield` + khai stack sẽ dùng. Lưu ý: routing đối chiếu Mode với hiện trạng repo — lệch sẽ cảnh báo và đề nghị sửa Mode giúp bạn (chỉ sửa sau khi bạn đồng ý).
+> - **Sản phẩm NHIỀU repo (workspace):** đặt kit ở thư mục cha (`myproject/.claude`), KHÔNG copy kit vào từng repo. Chạy `/discover` tại thư mục cha — Phase 0 phát hiện các repo con, hỏi xác nhận rồi tự sinh **workspace profile** (`Mode: workspace` + `Repos:` registry) cho file này, đồng thời sinh per-repo profile (schema block dưới) bên trong từng repo con. Chi tiết: `CLAUDE.md` §Workspace Mode.
 
 ## Project Profile
 
@@ -23,7 +24,7 @@
 
 | Trường | Base (mặc định — không cần override) | Khai khác → đọc kèm override |
 |--------|--------------------------------------|------------------------------|
-| Mode | `brownfield` — repo có code đang chạy/đã release → Phase A (`/discover` → `/spec` reverse → `/arch` reverse), luồng B1–B5, `rules/brownfield.md` active | `greenfield` — xây từ số 0 → pipeline 12 bước tuyến tính |
+| Mode | `brownfield` — repo có code đang chạy/đã release → Phase A (`/discover` → `/spec` reverse → `/arch` reverse), luồng B1–B5, `rules/brownfield.md` active | `greenfield` — xây từ số 0 → pipeline 12 bước tuyến tính · `workspace` — CHỈ dùng cho profile ở thư mục cha của sản phẩm multi-repo (meta-mode, kèm `Repos:` registry) → `CLAUDE.md` §Workspace Mode; repo thường KHÔNG dùng giá trị này |
 | Core | C# 12 + ASP.NET Core 8 + EF Core 8 | Node.js → `rules/overrides/lang-nodejs.md` + `framework-nodejs-web.md` + `test-nodejs.md` |
 | Database | SQL Server 2022 | Oracle → `database-oracle.md` · MySQL → `database-mysql.md` · PostgreSQL → `database-postgres.md` · MongoDB → `database-mongodb.md` |
 | Observability | Serilog + Prometheus + Grafana (+ Jaeger tracing) | ELK → `monitoring-elk.md` |

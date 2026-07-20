@@ -11,6 +11,8 @@ description: Pre-development security review with threat modeling (STRIDE)
 
 Review architecture for security concerns **BEFORE** writing any code. Identify threats, define security requirements, and establish controls upfront.
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 ## Scope
 
 **This command is DESIGN-LEVEL threat modeling — no code exists yet.**

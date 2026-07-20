@@ -11,6 +11,8 @@ description: QA verification with real dependencies — the quality gate before 
 
 Verify code works correctly in **production-like environment** with real dependencies (database, cache). This is the quality gate before `/review`.
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 > **Stack Profile note:** read `Project Profile` first. **Core = Node.js** → `rules/overrides/test-nodejs.md` replaces the test stack (Jest/Vitest instead of xUnit/Moq/FluentAssertions; `@testcontainers/*` fixtures + `prisma migrate deploy` per its §Template B; coverage via `npm test -- --coverage`) — the `dotnet` commands in this file map accordingly. **Database** → the TestContainers image follows the Profile: SQL Server (default) · Oracle → Oracle XE/Free · MySQL → `mysql:8.0` · PostgreSQL → `postgres:16-alpine` · MongoDB → `mongo:7.0` (see `rules/overrides/database-*.md`). Observability ELK → `rules/overrides/monitoring-elk.md`. **On Apple Silicon (arm64):** swap the SQL Server image to `azure-sql-edge` + a TCP/port-wait — the default `mssql/server:2022` image segfaults under qemu; see `rules/testing.md` Template B arm64 note.
 
 ## Prerequisites

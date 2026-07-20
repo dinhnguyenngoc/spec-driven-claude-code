@@ -4,23 +4,26 @@
 
 ## Core principles
 
-- **Pipeline unit = 1 repo / 1 service.** Each service runs its own pipeline (its own Project Profile, its own stack via `overrides/*`, its own tests, its own deploy). Do NOT lump N repos into a single `/discover` run — a single-valued `Project Profile` cannot represent N stacks.
+- **Pipeline unit = 1 repo / 1 service.** Each service runs its own pipeline (its own Project Profile, its own stack via `overrides/*`, its own tests, its own deploy). Do NOT merge N repos into a single **Profile** — a single-valued `Project Profile` cannot represent N stacks. (Workspace Mode honors this: one `/discover` session at the parent **loops per repo** — each repo gets its own Profile and its own discovery; see `CLAUDE.md` §Workspace Mode.)
 - **System layer = system-understanding documentation, ONE-WAY.** `/discover-system` reads the per-repo output → builds a system-wide map. Per-repo does **not** have a runtime dependency on the system layer.
 - **Cross-service safety = backward-compat discipline** (repo-local), NOT a runtime dependency on the system layer. See [`../rules/brownfield.md`](../rules/brownfield.md).
 
-## Two repo layout patterns
+## Three repo layout patterns
 
 | Pattern | When | What `/discover-system` reads |
 |---|---|---|
 | **A. Workspace** | All repos cloned side by side under a single parent directory | Reads the per-repo artifacts in the subfolders |
 | **B. Separate repos** (common) | Each service repo is independent | Create a **temporary workspace** (clone them all under one parent) then run it as A |
+| **C. Workspace-kit** (recommended for day-to-day cross-repo work) | ONE kit at the workspace parent (`myproject/.claude`); member repos hold CONFIG only; sessions open at the workspace root — see `CLAUDE.md` §Workspace Mode | Same workspace — the `Repos:` registry in the workspace Profile is the canonical list |
 
-> Both reduce to: having **one workspace** containing the repos side by side for `/discover-system` to read.
+> All reduce to: having **one workspace** containing the repos side by side for `/discover-system` to read.
 
 ## Flow — one-way ↑
 
 ```
 1. Create the workspace: clone all service repos under a single parent directory.
+   Pattern C → place the kit at the parent (`.claude`) and run everything from there;
+   do NOT copy the kit into each repo.
 
 2. [per-repo, in parallel]  each repo Phase A:
    /discover → /spec(reverse) → /arch(reverse)

@@ -11,6 +11,8 @@ description: Post-development security scanning and vulnerability assessment
 
 Comprehensive security scan of completed code **before deployment**. Detect vulnerabilities, insecure dependencies, and security misconfigurations.
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 ## Prerequisites
 
 **Required:**

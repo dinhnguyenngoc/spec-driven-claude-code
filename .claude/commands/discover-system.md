@@ -11,6 +11,8 @@ description: Multi-repo onboarding — aggregate per-repo discovery into a syste
 
 For a microservices product spread across **many repos**, build a **system-wide map** by aggregating the per-repo discovery artifacts. This is the system-scope counterpart of `/discover` (which is repo-scope). **Read-only · run once + incremental.**
 
+> **Workspace Mode:** this is the ONE command that runs AT the workspace root itself — do not scope it to a member repo.
+
 > **One-way by design.** `/discover-system` reads per-repo output → produces `architecture/system/` as **documentation to understand the system**. Individual services keep developing + testing **independently**; they do NOT take a runtime dependency on the system layer. Cross-service safety = backward-compat discipline (`rules/brownfield.md`). Full convention: [`../references/microservices-multirepo.md`](../references/microservices-multirepo.md).
 
 ## When to Use
@@ -39,7 +41,7 @@ For a microservices product spread across **many repos**, build a **system-wide 
 
 ### Phase 1 — Aggregate (service catalog)
 
-Enumerate every service repo in the workspace. For each, read its `Service id`, `CODEBASE_MAP`, `openapi`, `ARCHITECTURE` → one row in `service-catalog.md`: `id · repo · responsibility · stack · owner · last-synced`. Mark missing-artifact repos `⚠️ incomplete`.
+Read the repo list from the workspace Profile's `Repos:` registry (canonical — Workspace Mode); no registry (Patterns A/B) → enumerate workspace subfolders as before. **Cross-check registry vs actual folders**: a git subfolder missing from the registry → flag `⚠️ unregistered repo` (never silently skip); a registry row without a folder → flag it too. For each repo, read its `Service id`, `CODEBASE_MAP`, `openapi`, `ARCHITECTURE` → one row in `service-catalog.md`: `id · repo · responsibility · stack · owner · last-synced`. Mark missing-artifact repos `⚠️ incomplete`.
 
 ### Phase 2 — Synthesize (call-graph + diagrams + journeys)
 
@@ -83,6 +85,7 @@ architecture/system/            # commit to the platform repo (shared documentat
 Run the §Orchestrator disk-check (below) first, then review.
 
 - [ ] `service-catalog.md` lists **every** workspace repo (or marks it `⚠️ incomplete`)
+- [ ] Registry cross-checked against the workspace directory listing — unregistered repos / dangling registry rows flagged
 - [ ] Each repo's `Service id` is **unique** across the workspace and **matches** between its Project Profile and its §Service Contracts; collisions / mismatches flagged `⚠️ service-id collision/mismatch` (a wrong canonical key merges catalog rows / mis-targets call-graph edges)
 - [ ] Every call-graph edge has **both** ends (consumer + provider matched by `contract-id`); dangling consumers flagged — and `contract-id` **near-misses** (typo / version drift) flagged **separately** from true missing-dependency dangling
 - [ ] Every cross-service journey tagged `@SYS-US`; event-derived journeys marked `inferred` and human-reviewed

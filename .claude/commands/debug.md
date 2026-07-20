@@ -11,6 +11,8 @@ description: Systematic debugging and error recovery — find root cause, not sy
 
 Systematically diagnose and fix errors. Stop feature work, preserve evidence, find root cause, add guards, then resume.
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 > **Stack Profile note:** the `dotnet` commands, triage trees, error catalog, and §Debugging Tools below use the **default profile**. **Core = Node.js** → map accordingly (`npm test` / `npx vitest --reporter=verbose`, `node --inspect`, Prisma `log: ['query']` instead of EF Core logging) — the .NET error catalog is default-stack illustration only.
 
 ## Agent

@@ -11,6 +11,8 @@ description: Answer a question about the software's current state/features — r
 
 Answer **a specific question** about the software's current state (*"does feature X exist/work?"*, *"how is Y configured?"*, *"does a newly added bookmark get checked for duplicates?"*) using **3 independent evidence tiers**, and **detect mismatches** among them. Read-only — changes nothing, no gate, no artifact pipeline.
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 > **Free-text goes down this same path:** the user asks a current-state question in plain language (without typing `/inspect`) → the orchestrator answers per **this command's exact output contract** (see `CLAUDE.md` §Natural-Language Task Routing). `/inspect` is only the explicit entry point; the answering discipline is one and the same.
 
 ## Usage

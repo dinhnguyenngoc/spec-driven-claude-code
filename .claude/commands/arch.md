@@ -11,6 +11,8 @@ description: Design system architecture with diagrams, ADRs, and API contracts
 
 Transform requirements into technical architecture **before** planning implementation tasks. This ensures alignment on system design, technology choices, and integration patterns.
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 ## Prerequisites
 
 - A specification exists (`specs/SPEC.md` from `/spec`)

@@ -40,7 +40,7 @@ Sau đó Claude hỏi bạn chọn **chế độ thực thi**:
 | "Nâng cấp kiến trúc / công nghệ" | **B5** | ADR bắt buộc + strangler-fig, không big-bang rewrite |
 | "Bump dependency / vá CVE" | **B5-lite** | ADR nhẹ; **full regression bắt buộc** |
 | "Dọn nợ kỹ thuật / refactor" | **`/simplify`** | Không đổi behavior; characterization làm lưới |
-| "Tính năng X có chưa? / Y đang cấu hình ra sao?" (hỏi hiện trạng — không phải yêu cầu sửa) | **`/inspect`** | Read-only, 3 tầng bằng chứng (records → code → live), KHÔNG route vào B-flow, không hỏi chế độ thực thi |
+| "Tính năng X có chưa? / Y đang cấu hình ra sao? / Tính năng export CSV được thêm ở version nào, gồm những scenario gì?" (hỏi hiện trạng — không phải yêu cầu sửa) | **`/inspect`** | Read-only, 3 tầng bằng chứng (records → code → live), KHÔNG route vào B-flow, không hỏi chế độ thực thi. Lịch sử version tính năng đọc từ `specs/SPEC.md` §Revision History; version phát hành từ `CHANGELOG.md` + `RELEASE_NOTES` |
 
 Bảng đầy đủ + thứ tự lệnh từng luồng: [`.claude/references/brownfield-pipeline.md`](.claude/references/brownfield-pipeline.md).
 

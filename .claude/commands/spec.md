@@ -23,6 +23,8 @@ Create a comprehensive specification document **before** writing any code — de
 
 ## Phase 0 — Mode Auto-Detection (run BEFORE Phase 1)
 
+> **Workspace precondition (BEFORE the signal table):** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode first, then evaluate ALL three signals below **inside the target repo** (CODE probes `<repo>/src/**`, `<repo>/web/package.json`; DISCOVERY probes `<repo>/docs/CODEBASE_MAP.md`). Evaluating them at the workspace root mis-resolves to greenfield — the root owns no build manifest.
+
 `/spec` resolves the mode itself at runtime instead of trusting `Project Profile → Mode` absolutely (it can be stale). Three signals:
 
 - **ARGS** — does `/spec` come with input requirements? (`/spec <requirements>` vs bare `/spec`)

@@ -11,6 +11,8 @@ description: Build, test, deploy with staged rollout
 
 Execute deployment to the **STAGING** environment (Docker Desktop / staging server): build images, run containers, verify health, rollback if needed.
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 > **The kit's boundary (by design):** `/deploy` is the last automated step — it pushes the artifact to **staging** with Status = **`STAGED`**, NOT production. After `STAGED`: the human test team checks it manually on staging (using `reports/VERIFY_MATRIX.md` as the test script) → decides go/no-go → **promoting to production is a MANUAL step outside the kit**, carried out per `DEPLOY_RUNBOOK §8 Promote production`. The kit never needs (and should never have) production credentials — least privilege. If you want to automate further later → add a separate `/promote` command, do not extend this one.
 
 > **Note**: Dockerfile and docker compose are created in `/infra`. This command **executes** deployment.

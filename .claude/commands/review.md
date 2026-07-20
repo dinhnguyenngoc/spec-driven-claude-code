@@ -11,6 +11,8 @@ description: Review a pull request or branch changes using the Five-Axis Framewo
 
 Perform a thorough code review of specified files, branch changes, or a pull request using the **Five-Axis Framework** (Correctness, Readability, Architecture, Security, Performance).
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 ## Prerequisites
 
 - Code implementation complete (`/build` done)

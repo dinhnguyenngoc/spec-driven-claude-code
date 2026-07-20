@@ -4,6 +4,44 @@ Toàn bộ thay đổi đáng chú ý của **AI SDLC Kit** được ghi tại �
 [Keep a Changelog](https://keepachangelog.com/); phiên bản theo [SemVer](https://semver.org/).
 Các phiên bản trước `v1.3.0` (`v1.0.0`, `v1.1.0`, `v1.2.0`) được đánh dấu bằng git tag tương ứng.
 
+## [1.5.0] — 2026-07-19
+
+> Bản này thêm **Workspace Mode** — MỘT bộ kit đặt ở thư mục cha của sản phẩm nhiều repo
+> (`myproject/.claude`) dùng chung cho mọi repo con: phiên làm việc mở ở workspace, mọi
+> lệnh tự xác định repo đích rồi ghi output vào đúng repo đó; repo con chỉ giữ CONFIG
+> (`PROJECT_PROFILE.md`). **Backward-compatible tuyệt đối**: không khai `Mode: workspace`
+> → hành vi kit không đổi một ly.
+
+### Added
+- **`CLAUDE.md` §Workspace Mode** — meta-mode `workspace` + `Repos:` registry cho profile
+  thư mục cha; scope-resolution 4 bước (xác định repo đích — không chắc thì HỎI → đọc
+  per-repo profile → mọi path/git theo repo đích → cross-repo: chốt contract trước,
+  provider → consumer); workspace disk-check gắn mọi gate (artifact không rơi ở workspace
+  root, `git status` repo không-đích sạch).
+- **`/discover` Phase 0 — Workspace scope check** — detect-once-then-declare: ≥2 git repo
+  con + root không có business code → liệt kê, hỏi xác nhận + duyệt `Service id` → ghi
+  registry → lặp Phase 1–4 per repo, output vào từng repo.
+- **Khối Workspace Mode chuẩn trên 16 lệnh** (`arch` `plan` `secure` `build` `test`
+  `review` `scan` `infra` `docs` `verify` `deploy` `fix-issue` `hotfix` `debug` `simplify`
+  `inspect`) — chỉ trỏ về §Workspace Mode; logic sống đúng một chỗ.
+- **`microservices-multirepo.md` Pattern C — Workspace-kit** — layout khuyến nghị cho
+  cross-repo hằng ngày; A/B giữ nguyên cho kit-in-repo.
+
+### Changed
+- **`/spec` Phase 0 Mode Auto-Detection** — thêm workspace precondition: resolve repo đích
+  trước, 3 tín hiệu (ARGS/CODE/DISCOVERY) dò BÊN TRONG repo đích — chặn false-greenfield
+  khi CODE probe chạy ở workspace root (nơi không có build manifest).
+- **`/discover-system`** — danh sách service đọc từ `Repos:` registry (canonical); dò thư
+  mục hạ xuống làm cross-check → cờ `⚠️ unregistered repo` / dangling registry row.
+- **`microservices-multirepo.md`** — chính-xác-hoá nguyên tắc: "Do NOT lump N repos into
+  a single /discover run" → "không gộp N repo vào MỘT Profile" (workspace mode vẫn
+  per-repo: mỗi repo một profile, một discovery riêng).
+- **`PROJECT_PROFILE.md` (template)** — thêm tình huống dùng thứ 3 (sản phẩm nhiều repo)
+  + giá trị `workspace` vào bảng Mode (chỉ hợp lệ ở thư mục cha).
+- Mặt tiền: `quick-start.md` hàng `/inspect` bổ sung ví dụ tra version tính năng
+  (*"export CSV được thêm ở version nào, gồm những scenario gì?"*) + chỉ nguồn đọc
+  (`SPEC.md` §Revision History · `CHANGELOG.md`/`RELEASE_NOTES`).
+
 ## [1.4.0] — 2026-07-16
 
 > Bản này là **đợt audit gia cố toàn kit — 19/19 lệnh**: mọi Quality Gate giờ có lớp kiểm

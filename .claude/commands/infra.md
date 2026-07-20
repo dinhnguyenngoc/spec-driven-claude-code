@@ -11,6 +11,8 @@ description: Setup Docker infrastructure for local development
 
 Create Docker infrastructure for local development and deployment on Docker Desktop.
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 > **Stack Profile note:** read `Project Profile` first. **Core = Node.js** → the Dockerfile swaps the dotnet images for a `node:20-alpine` multi-stage (`npm ci && npm run build` → pruned runtime via `npm ci --omit=dev`; same §4 must-haves apply: non-root, HEALTHCHECK, pinned tags — the icu-libs/invariant-mode block in the template is **.NET-only**, do not copy it into a node image), and the EF-migration notes map to the declared ORM's equivalent (`prisma migrate deploy` via a startup flag or migrator container). **Database** → the DB service follows the Profile: SQL Server default (arm64: Azure SQL Edge) · Oracle / MySQL / PostgreSQL / MongoDB → corresponding image + healthcheck per `rules/overrides/database-*.md` (MongoDB: mind the replica-set requirement for transactions — override §F). Observability ELK → Elasticsearch/Kibana instead of Grafana/Prometheus (`rules/overrides/monitoring-elk.md`).
 
 > **Brownfield-aware:** When `Project Profile → Mode: brownfield`, the skill runs in **REVERSE-BOOTSTRAP** mode (no Dockerfile/compose yet) or **CONFORMANCE-CHECK** mode (already present) — see §Brownfield Mode. The default template below applies only to greenfield.

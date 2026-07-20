@@ -11,6 +11,8 @@ description: Post-deploy verification — exercise every feature against the rea
 
 > **Status: step optional · BLOCKING if run.** Strongly recommended before `/deploy` stages the artifact, especially for brownfield (missing legacy test suite) or releases with infra/config changes. **Required** when called from the `/hotfix` orchestrator (Step 4 re-verify on the patched digest).
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 Verifies **every user-observable feature** works correctly on **the exact artifact about to be staged** (correct image/build, **staging config** — the same env that `/deploy` will use ⇒ within the kit's scope the env always matches, over real network) — before `/deploy` declares `STAGED`. The kit stops at staging; promoting to production is a manual step (see `deploy.md` §The kit's boundary) — config differences between staging↔production belong to the manual checklist `DEPLOY_RUNBOOK §8`.
 
 `/verify` closes the **fidelity gap** that earlier test layers cannot touch: `/build` (in-memory) and `/test` (TestContainers + in-process host) both run in a test-environment via in-process transport. A class of bugs only surfaces at **(production environment) × (real network) × (real client)**: CORS, security headers, env-gating middleware, TLS, reverse-proxy headers, container networking, env-var injection, build-time config baking. `/verify` is the only layer that exercises that intersection.

@@ -11,6 +11,8 @@ description: Analyze and fix a reported bug or issue systematically
 
 Analyze and fix a **reported** bug or issue systematically. This command handles issues from external sources (QA, production, users, issue trackers).
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 > **Stack Profile note:** the `dotnet` commands and C# examples below use the **default profile**. **Core = Node.js** → map to the npm equivalents (`npm test`, `tsc --noEmit`, `npm run build`; debug tooling per the declared stack) — the Common Issue Patterns are default-stack illustration only (`rules/overrides/lang-nodejs.md` idioms apply).
 
 ## When to Use

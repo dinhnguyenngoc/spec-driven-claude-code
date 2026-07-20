@@ -11,6 +11,8 @@ description: Generate comprehensive project documentation
 
 Consolidate existing documentation and complete missing pieces before deployment. Ensure all technical artifacts from previous phases are properly linked and accessible.
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 > **Principle**: Don't duplicate — link and reference existing artifacts from `/spec`, `/arch`, `/secure`, `/infra`.
 
 > **Stack Profile note:** read `Project Profile` first. **Core = Node.js** → generate API docs from the framework's OpenAPI tooling (`@nestjs/swagger`, Fastify schema-first — see `rules/overrides/framework-nodejs-web.md`), and the `dotnet`/DocFX commands in Phase 4 & §Auto-Generation Tools map to their npm equivalents. The templates stay default-stack illustration — their "example only" disclaimers apply; DB/observability lines follow the Profile + `rules/overrides/*`.

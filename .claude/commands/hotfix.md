@@ -9,6 +9,8 @@ description: Restore a live/released system fast — triage rollback vs fix-forw
 
 ## Purpose
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 Restore a **released artifact currently running live** to a correct state, under time pressure, **with a full audit trail**. `/hotfix` is a **thin orchestrator**: it does NOT re-implement the bug-fixing logic (reuses `/fix-issue`), does NOT re-implement artifact testing (reuses `/verify`), does NOT re-implement promotion (reuses `/deploy`). Its unique value lies in the 3 things those other commands deliberately do not do:
 
 > **`/verify` policy override:** In the standard pipeline, Gate 11 (`/verify`) is **step optional · BLOCKING if run**. Inside `/hotfix`, Gate 11 is **promoted to REQUIRED** — no exceptions. The patch must PASS `/verify` on the new digest before `/deploy` promotes it. When calling `/deploy` from Step 5, set env `HOTFIX_MODE=1` so `/deploy` enforces that `reports/VERIFY_REPORT.md` exists.

@@ -11,6 +11,8 @@ description: Decompose specs into small, verifiable tasks with dependency orderi
 
 Transform a specification into an ordered list of small, verifiable tasks. Each task delivers end-to-end functionality.
 
+> **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
+
 ## Prerequisites
 
 **Required:**

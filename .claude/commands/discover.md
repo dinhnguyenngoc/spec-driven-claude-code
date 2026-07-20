@@ -36,6 +36,17 @@ This is **Phase A** of the brownfield pipeline: `/discover` → `/spec` (reverse
 
 ## Workflow
 
+### Phase 0 — Workspace scope check (multi-repo)
+
+Runs once, BEFORE Phase 1: decide whether this session root is ONE repo (default) or a workspace parent of several repos — never guess silently.
+
+1. **Detect** — trigger when the root Profile already declares `Mode: workspace`, OR the root has no business code of its own AND ≥ 2 direct subfolders are git repos (`.git` present). Signal-based and one-time — later commands read the declaration instead of re-detecting (declare-once, step 3).
+2. **Confirm with the user** (never proceed on detection alone): list the candidate repos → ask (a) is this a workspace? (b) which repo(s) to discover now — one, several, or all sequentially? Propose a kebab-case `Service id` per repo (from the folder name) for approval.
+3. **Declare** — write/update the root `.claude/PROJECT_PROFILE.md`: `Mode: workspace` + the `Repos:` registry. Adding a repo later → re-run `/discover` to update the registry.
+4. **Run per repo** — for each selected repo, run Phases 1–4 below **unchanged**, with ALL outputs written inside that repo (`<repo>/.claude/PROJECT_PROFILE.md`, `<repo>/docs/CODEBASE_MAP.md`). The per-repo Profile carries the approved `Service id`.
+
+Single repo detected (or the user says "not a workspace") → skip; Phases 1–4 run at the session root exactly as before.
+
 ### Phase 1 — Stack & structure inventory
 
 - List languages, frameworks, runtime versions (read `*.csproj`, `global.json`, `package.json`, lockfiles).
@@ -96,6 +107,9 @@ Run the §Orchestrator disk-check (below) first, then review.
 - [ ] Obvious security/technical red-flags listed (for `/scan` to dig into)
 - [ ] DDL detected in repo (by file type or content) → **DB-object inventory** present in `CODEBASE_MAP.md`; every code-called DB object missing its defining DDL → listed as `DB-resident logic not in repo` red-flag
 - [ ] No code modifications (read-only guarantee)
+- [ ] (workspace) Registry in the root Profile matches the actual folders — no unregistered git subfolder, no registry row without a folder
+- [ ] (workspace) Every artifact written inside its repo — nothing new at the workspace root except `.claude/` and `architecture/system/`
+- [ ] (workspace) `git status` per member repo shows only the expected new files (Profile, CODEBASE_MAP, health snapshot)
 
 ### Orchestrator disk-check (run BEFORE presenting the Phase A kickoff)
 
@@ -105,6 +119,7 @@ A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.m
 - [ ] **Profile complete** — every field filled (Mode / Core / Database / Observability / Structure — no `<…>` placeholder left).
 - [ ] **CODEBASE_MAP sections present** — module summary, the endpoint inventory table, the red-flag list (with `file:line`); DB-object inventory present when Phase 1 detected DDL or `EXEC`/raw-SQL calls.
 - [ ] **Build/test status recorded as observed** — the snapshot quotes real command output (exit code, test counts), not a summary adjective.
+- [ ] **(workspace) Placement verified** — diff each member repo's `git status` yourself; any artifact at the workspace root that belongs to a repo = placement bug — move it before presenting.
 
 Any mismatch → fix on disk first.
 
