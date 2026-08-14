@@ -90,33 +90,8 @@ CREATE INDEX idx_users_email ON users(email);
 ```
 
 ### N+1 Query Prevention
-```csharp
-// ❌ N+1: one query per user (EF Core lazy/manual loading)
-var users = await _context.Users.ToListAsync();
-foreach (var user in users)
-{
-    user.Orders = await _context.Orders
-        .Where(o => o.UserId == user.Id)
-        .ToListAsync();
-}
 
-// ✅ Eager loading with Include
-var users = await _context.Users
-    .AsNoTracking()
-    .Include(u => u.Orders)
-    .ToListAsync();
-
-// ✅ Best — projection (only the fields you need)
-var users = await _context.Users
-    .AsNoTracking()
-    .Select(u => new UserWithOrderCountDto
-    {
-        Id = u.Id,
-        Email = u.Email,
-        OrderCount = u.Orders.Count
-    })
-    .ToListAsync();
-```
+One query per parent row is the classic ORM performance killer — load related data **eagerly (`Include`) or via projection**, never in a per-row loop. **Canonical patterns + code: [`database.md`](database.md) §Eager Loading (Prevent N+1)** — do not restate them here.
 
 ---
 

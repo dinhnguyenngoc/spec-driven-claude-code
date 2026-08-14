@@ -29,11 +29,15 @@
 Link to `reports/VERIFY_MATRIX.md`. Assert coverage = 100% acceptance scenarios, or list waived scenarios (with reason + approver).
 
 ## 3. Failures & evidence
-Each failure: test id → US-XXX → symptom → artifact path → suspected root cause.
+Each failure: test id → US-XXX → input/data that triggered it → expected → actual → symptom → artifact path (screenshot/trace) → suspected root cause.
 (`/verify` is read-only on production code — fixes belong to `/fix-issue` or `/hotfix`.)
 
 ## 4. NFR results
-Actual measurements vs spec thresholds (latency, a11y, …).
+One row per NFR in `specs/SPEC.md §NFR`, keyed by its `NFR-xx` id — none omitted (the id is the join key the Gate-11 set-check diffs on).
+
+| NFR | Target (spec) | Measured | Status |
+|-----|---------------|----------|--------|
+| NFR-01 · <P95 latency> | <threshold> | <value> | measured · not-runtime-measurable (verified at <gate>) · waived (<owner> — <reason>) |
 
 ## 5. Gate decision
 SUCCEEDED ⟺ Phase 1-5 PASS + 100% coverage. Otherwise, name the blocker + recommendation (rollback / hotfix / waiver).

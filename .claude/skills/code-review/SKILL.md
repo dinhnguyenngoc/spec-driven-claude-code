@@ -33,6 +33,9 @@ Progress over perfection. Continuous incremental improvement.
 - Do tests verify the claimed behavior?
 - Are negative cases tested?
 - Would a bug slip through?
+- **Scenario coverage · anti-vacuous · dual-implementation parity** — apply the three
+  Correctness checks canonical in [`commands/review.md`](../../commands/review.md)
+  §Cross-layer conformance (a test that would still pass with the feature removed proves nothing).
 
 ---
 

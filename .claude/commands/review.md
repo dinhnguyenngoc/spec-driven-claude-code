@@ -28,8 +28,10 @@ The reviewer MUST ingest these artifacts before scoring. A finding without trace
 | `specs/SPEC.md` + `specs/user-stories/*` | **Correctness** — does the implementation match each `US-XXX` acceptance criterion? |
 | `architecture/adr/*.md` + `architecture/api/*` | **Architecture** — are ADR decisions honored? Do API contracts match the implemented routes/DTOs? |
 | `plans/todo.md` | **Scope** — did `/build` close exactly the tasks it claimed (`Task N.N`)? Flag orphan changes or unticked tasks. |
+| `plans/plan.md` §Impact Analysis | **Blast radius** — diff the actual changed files/components against the declared impact map; changes outside the declared surface = scope-creep finding (ties to `principles-and-practices.md` §2.5 Surgical changes). |
 | `security/PRE_DEV_REVIEW.md` | **Security** — are the Required Controls (`RC-N`) and threat mitigations (`S1..E10` from STRIDE) present in code? |
 | `reports/TEST_REPORT.md` | **Gate-6 PASS verdict** (Step 2 trusts this instead of re-running the suite) + **Coverage numbers** + every `OPEN-XXX` debt from `/test` must be tagged **CLOSED / DEFERRED-to-Pn / ESCALATED** in this review — none may be silently dropped. |
+| `db/schema-snapshot/` | **Schema-evidence freshness** — if the diff contains a migration that changes the schema or a DB-resident object (proc/trigger/view/index) but the snapshot is untouched, the committed baseline is now stale: 🟡 finding (`brownfield.md` checklist). Also flag the reverse smell — a snapshot edited *without* a migration, which means someone changed the database by hand. |
 | `.claude/rules/*.md` | **Compliance Check** table (see Output File §6). |
 
 ## Usage
@@ -52,6 +54,8 @@ The reviewer MUST ingest these artifacts before scoring. A finding without trace
 ---
 
 ## Review Checklist
+
+> **Two layers, one review.** The list below is the **quick pass by rule area** — does this diff comply with each `rules/*.md`? The **axis-organized depth** (per-axis criteria + code examples, incl. §Scope discipline and §Cross-cutting controls — wired, not just defined) lives in [`references/code-review-checklist.md`](../references/code-review-checklist.md); open it when an axis needs more than a yes/no, or when scoring that axis below 5.
 
 ### Code Quality
 - [ ] Code follows style guide (`.claude/rules/code-style.md`)
@@ -102,7 +106,7 @@ Provide feedback as:
 - 🟢 **Suggestion** — Nice to have improvement
 - ✅ **Good** — Highlight what's done well
 
-> **MANDATORY — `Relates-to` traceability.** Every finding (Critical / Warning / Suggestion) MUST end with a `Relates-to: <ID(s)>` line citing the source artifacts it touches: User Stories (`US-XXX`), Required Controls (`RC-N`), ADRs (`ADR-NNN`), plan tasks (`Task N.N`), or threat IDs (`S1..E10`). This is the bridge that lets `/scan` and `/deploy` close the loop back to spec and threat model. A finding without `Relates-to` is half-done.
+> **MANDATORY — `Relates-to` traceability.** Every finding (Critical / Warning / Suggestion) MUST end with a `Relates-to: <ID(s)>` line citing the source artifacts it touches: User Stories (`US-XXX`), NFR keys (`NFR-xx`), Required Controls (`RC-N`), ADRs (`ADR-NNN`), plan tasks (`Task N.N`), or threat IDs (`S1..E10`). This is the bridge that lets `/scan` and `/deploy` close the loop back to spec and threat model. A finding without `Relates-to` is half-done.
 
 ## Output File
 
@@ -141,7 +145,7 @@ Run the §Orchestrator disk-check (below) first, then review. Before proceeding 
 - [ ] `reports/CODE_REVIEW.md` created with approval decision
 - [ ] All critical feedback addressed before merge
 - [ ] **Compliance Check table** present — every `.claude/rules/*.md` → PASS / WARNING / FAIL **with an `Evidence` citation per PASS** (no PASS without `file:line` / wired-pipeline ref / test name); cross-cutting controls verified as wired, not just defined
-- [ ] **Every finding has `Relates-to: <US-XXX | RC-N | ADR-NNN | Task N.N>`** for downstream traceability
+- [ ] **Every finding has `Relates-to: <US-XXX | NFR-xx | RC-N | ADR-NNN | Task N.N | S1..E10>`** for downstream traceability
 - [ ] If verdict flipped post-fix, §Resolution section documents what changed + verification numbers + re-scored axes
 
 ### Orchestrator disk-check (run BEFORE presenting for Gate 7 review)
@@ -175,7 +179,7 @@ Invoke: **Code Reviewer** (Senior Staff Engineer perspective) for deep review.
 
 **Phase ownership** — the Code Reviewer sub-agent cannot converse with the user: a `NEEDS DISCUSSION` verdict, a 🟡 Warning that needs an "explicitly accepted" decision, or a fix that would exceed the scope of a documented finding → **return early** with the item instead of deciding alone. The orchestrator obtains those decisions, runs the Gate 7 disk-check, and presents the verdict in the main loop.
 
-> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+> Sub-agent prompt MUST include: "Output language: \<declared language — resolve from Project Profile → Output Language\> for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)." **(brownfield)** It MUST also carry the resolved flow (**B1/B2/B5**) — B2 makes backward-compat a 🔴 Critical axis; B5 reviews the redesign against its ADR + migration plan, not just a diff (§Brownfield Mode).
 
 ## Next Step
 

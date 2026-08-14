@@ -459,6 +459,27 @@ public partial class AddUserRole : Migration
 }
 ```
 
+#### Expand-contract — the only safe shape for changing a live schema
+
+A running system has **old code and new code alive at the same time** (rolling deploy, cached clients, a consumer you don't control). So a schema change is not one step, it is a sequence spread over releases:
+
+| Phase | Action | Both versions still work because… |
+|-------|--------|-----------------------------------|
+| **Expand** | ADD the new column/table **nullable or with a default**; never rename, never drop | Old code ignores what it doesn't know |
+| **Backfill** | Populate the new shape in batches (idempotent, resumable, no long-held locks) | Nothing reads it yet |
+| **Switch** | New code writes **both** shapes, then reads the new one | Old code still finds the old shape |
+| **Contract** | Only after every old writer is gone: drop the old column/table, tighten to `NOT NULL` | Nothing references it any more |
+
+**Never in one step:** `RENAME COLUMN` · `DROP COLUMN` · adding `NOT NULL` without a default · narrowing a type · adding a unique index to a column with existing duplicates. Each of those breaks the running version the moment the migration lands. A change that genuinely cannot follow expand-contract needs an **ADR + a stated downtime window** — not a "quick" in-place migration.
+
+#### DB-resident objects are source code
+
+Stored procedures, triggers, functions and views live in the database, but they are **code**, so they follow code rules:
+
+- **Every change is authored as a versioned migration script in the repo**, then applied by the pipeline — exactly like a table change.
+- **Never edit the object directly in the database and export it back afterwards.** A schema export (`.claude/scripts/export-db-schema.sh`) exists to *bootstrap a baseline* for a legacy database, **not as a change channel**: an object edited in place has no diff, no review, no rollback path, and every environment silently drifts apart.
+- The definition in the repo is the source of truth; the database is a deployment target. If the two disagree, the database is wrong.
+
 ---
 
 ## Naming Conventions

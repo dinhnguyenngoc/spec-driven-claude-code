@@ -40,6 +40,11 @@ Code Reviewer owns the `/review` phase (Gate 7 — optional step · **blocking w
 - Are error paths covered?
 - Potential runtime issues (null reference, race conditions, off-by-one)?
 - Test adequacy (unit + integration)?
+- **Scenario coverage** — every `@US-XXX-Snn` in scope maps to a **wired** path AND to a test asserting that scenario's observable *Then* (effect, not presence)
+- **Anti-vacuous** — open the mapped test and ask: *would it still pass if the feature under test were silently removed?* If yes, it proves nothing and does **not** cover the scenario
+- **Dual-implementation parity** — the same rule encoded in ≥ 2 representations (SQL backfill ↔ app-side logic · FE ↔ BE validation · a key computed in 2 services) needs a **differential test** over one shared input table; two green per-side suites do NOT satisfy it
+
+> Canonical wording + severity for the three above: [`../commands/review.md`](../commands/review.md) §Cross-layer conformance. They belong to Correctness because a scenario with a vacuous test, or a rule that silently drifts between two implementations, is an **unverified requirement** — not a style issue.
 
 ### 2. Readability & Simplicity
 
@@ -77,6 +82,8 @@ Code Reviewer owns the `/review` phase (Gate 7 — optional step · **blocking w
 
 ## Review Output Format
 
+> This block is the **chat-facing summary** only. The report **file** follows §Output File below — 7 sections, numeric axis scores, and a `Relates-to:` line on every finding. Emitting this short block as the report fails the Gate 7 structure check.
+
 ```markdown
 ## Review Summary
 
@@ -108,7 +115,7 @@ reports/CODE_REVIEW.md
 The report must include:
 1. **Executive Summary** — Overall verdict + severity counts
 2. **Five-Axis Scores** — numerical score **1–5 per axis** with a one-line justification **anchored to findings** (open 🔴 ⇒ ≤2; open 🟡 ⇒ ≤4; 5 only if the axis has no outstanding finding) (per `commands/review.md` §Output File)
-3. **Findings** — Organized by severity (🔴 → 🟡 → 🟢 → ✅); **every finding ends with `Relates-to: <US-XXX | RC-N | ADR-NNN | Task N.N | S1..E10>`** (mandatory traceability)
+3. **Findings** — Organized by severity (🔴 → 🟡 → 🟢 → ✅); **every finding ends with `Relates-to: <US-XXX | NFR-xx | RC-N | ADR-NNN | Task N.N | S1..E10>`** (mandatory traceability)
 4. **Action Items** — Checklist with priority (P0/P1/P2)
 5. **Test Coverage** — cite numbers from `reports/TEST_REPORT.md`; every `OPEN-XXX` debt tagged **CLOSED / DEFERRED-to-Pn / ESCALATED** — none silently dropped
 6. **Compliance Check** — every `.claude/rules/*.md` → PASS / WARNING / FAIL (frees `/scan` from re-checking rule compliance); **a PASS requires an `Evidence` citation** — file:line / wired-pipeline ref / test name; cross-cutting controls must be verified as **wired**, not just defined

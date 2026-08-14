@@ -17,6 +17,7 @@
 #     dotnet.sh                   ← scan_dotnet()
 #     nodejs.sh                   ← scan_nodejs()
 #     python.sh                   ← scan_python()
+#     php.sh                      ← scan_php()
 #     docker.sh                   ← scan_docker()
 #
 # Mở rộng cho stack mới: tạo scanners/<stack>.sh định nghĩa function scan_<stack>()
@@ -36,6 +37,7 @@ mkdir -p security/sast-results security/dependency-audit security/container-scan
 
 LOG_FILE="security/sast-results/scan-all.log"
 TOOL_FILE="security/sast-results/tooling-availability.txt"
+STACK_FILE="security/sast-results/stack-coverage.txt"
 : > "$LOG_FILE"
 
 # Source common utilities (log, has, scan_secrets, write_tool_inventory, detect_stacks)
@@ -67,6 +69,7 @@ if [ ${#DETECTED_STACKS[@]} -eq 0 ]; then
 else
     log "  Detected stacks: ${DETECTED_STACKS[*]}"
 fi
+: > "$STACK_FILE"
 
 # ---------------------------------------------------------------------------
 # Phase 2: Universal — secrets scan (always runs, every stack)
@@ -87,11 +90,14 @@ for stack in "${DETECTED_STACKS[@]+"${DETECTED_STACKS[@]}"}"; do
         # Function name convention: scan_<stack>
         if declare -f "scan_${stack}" >/dev/null; then
             "scan_${stack}"
+            echo "${stack}: scanned" >> "$STACK_FILE"
         else
             log "  [${stack}] plugin loaded but scan_${stack}() not defined — skipping"
+            echo "${stack}: NO SCANNER (scan_${stack}() not defined)" >> "$STACK_FILE"
         fi
     else
         log "  [${stack}] no plugin at $plugin — skipping (extend by creating scanners/${stack}.sh)"
+        echo "${stack}: NO SCANNER (no plugin at scanners/${stack}.sh)" >> "$STACK_FILE"
     fi
 done
 

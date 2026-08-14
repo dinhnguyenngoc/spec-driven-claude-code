@@ -18,7 +18,7 @@ Implement tasks one at a time using Test-Driven Development. Each increment leav
 ## Prerequisites
 
 **Required:**
-- A plan exists — `plans/plan.md` (task detail: AC, **Scenarios covered**, Files to modify, Tests to add) + `plans/todo.md` (the actionable checklist)
+- A plan exists — `plans/plan.md` (task detail: AC, **Scenarios covered**, **NFRs covered** (when the task delivers an NFR mechanism), Files to modify, Tests to add) + `plans/todo.md` (the actionable checklist)
 - Understanding of task acceptance criteria
 - The declared core's SDK installed — .NET SDK 8.0 (default) | Node.js 20 LTS (when the Profile declares Node core)
 
@@ -33,9 +33,9 @@ Implement tasks one at a time using Test-Driven Development. Each increment leav
 | APIs, services, DB, background jobs | 🔧 Backend Developer |
 | Components, pages, routing, UI | 🖥️ Frontend Developer |
 
-> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+> Sub-agent prompt MUST include: "Output language: \<declared language — resolve from Project Profile → Output Language\> for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 
-> Sub-agent prompt MUST also include: "Ambiguity policy: implementation details → decide per rules, never ask; non-blocking behavior/contract gaps → implement the most conservative interpretation and add an Assumptions-log entry (`A-xx`); blocking or expensive-if-wrong gaps → stop and return early with the question (see `rules/principles-and-practices.md` §2.5)."
+> Sub-agent prompt MUST also include: "Ambiguity policy: implementation details → decide per rules, never ask; non-blocking behavior/contract gaps → implement the most conservative interpretation and add an Assumptions-log entry (`A-xx`); blocking or expensive-if-wrong gaps → stop and return early with the question (see `rules/principles-and-practices.md` §2.5). Return every `A-xx` entry (or 'Assumptions: none') in your completion report — the orchestrator owns the `[A-xx]` todo markers and the Gate 5 batch review."
 
 ## Testing Strategy for /build
 
@@ -171,7 +171,8 @@ dotnet test
 dotnet format --verify-no-changes
 
 # Commit with a Conventional Commit message (type(scope): description — see git-workflow.md)
-git add .
+# Stage ONLY this task's files (surgical-change discipline — keeps the blast radius declared)
+git add src/MyApp.Core/Services/TaskService.cs tests/MyApp.UnitTests/Services/TaskServiceTests.cs
 git commit -m "feat(tasks): add CreateAsync method to TaskService"
 ```
 
@@ -276,9 +277,11 @@ dotnet ef migrations add MigrationName --project src/MyApp.Infrastructure --star
 > | Phase | How migrations are applied |
 > |-------|----------------------------|
 > | `/build` tests | `UseInMemoryDatabase` — no migrations |
-> | `/test` integration | TestContainers fixtures call `EnsureCreatedAsync()` on the ephemeral container |
+> | `/test` integration | TestContainers fixtures **apply the repo's migrations** (`Database.MigrateAsync()` / `prisma migrate deploy`) on the ephemeral container — plus repo DDL scripts per `testing.md` §Template B (raw-DDL objects). Migrations themselves are under test here — `EnsureCreated`-style schema-from-model would silently skip them |
 > | `/infra` (local dev) | `docker-compose up` runs migrations against the containerized SQL Server |
 > | `/deploy` (prod) | `dotnet ef migrations script --idempotent` → DBA review → apply via CI/CD |
+
+> **What goes IN the migration** (the table above covers *when* it is applied): a schema change on a **live** system follows **expand-contract** — expand → backfill → switch → contract, planned as separate tasks (`database.md` §Expand-contract · `/plan` Phase 2). Stored procedures, triggers and functions are **source code**: change them by authoring a versioned migration script in the repo — **never edit the object in the database and export it back** (`database.md` §DB-resident objects are source code). And a schema-touching change refreshes **`db/schema-snapshot/` in the same change-set** (`brownfield.md` checklist) — re-export from the `/test` TestContainer once the migration has applied there.
 
 ## Red Flags
 
@@ -299,7 +302,7 @@ Stop and reassess if you find yourself:
 
 ## Quality Gate 5 — Exit Criteria
 
-Per `CLAUDE.md` §Verification After Delegation, the **orchestrator re-runs the gate-deciding checks itself** (`dotnet test` · `dotnet build -c Release` · the npm gate when `web/` exists — or their npm equivalents on a Node core) and cross-checks on disk: `plans/todo.md` ticks match the completed tasks, and every claimed `@US-XXX-Snn` has its named test present and passing — the sub-agent's report is not ground truth.
+Per `CLAUDE.md` §Verification After Delegation, the sub-agent's report is **not** ground truth — the orchestrator re-verifies on disk before this gate passes (§Orchestrator disk-check below).
 
 Before proceeding to `/test`:
 
@@ -312,6 +315,18 @@ Before proceeding to `/test`:
 - [ ] **(If `web/` exists) Frontend gate green** — `npm run typecheck && npm run lint && npm run build && npm run test` all pass, including `tailwindcss/no-custom-classname` (no undefined breakpoint/variant class)
 - [ ] No red flags present (see Red Flags section)
 - [ ] Git commits are clean and atomic
+
+### Orchestrator disk-check (run BEFORE declaring Gate 5 passed)
+
+A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.md` §Verification After Delegation. The orchestrator re-verifies the **mechanical** invariants on disk itself (whether the code is *good* stays human judgment at `/review`):
+
+- [ ] **Gate-deciding commands re-run** — `dotnet build -c Release` + `dotnet test` (or the Node/PHP equivalents), plus the frontend gate when `web/` exists. Read the **real exit code and test count**, never the report's adjective.
+- [ ] **Task ↔ evidence** — every task ticked `- [x]` in `plans/todo.md` is genuinely complete, and every `@US-XXX-Snn` those tasks claim has a **named test that exists and passes**. A tick without its test is an untruthful plan (`CLAUDE.md` §11).
+- [ ] **Blast radius** — `git diff --name-only` ⊆ (the completed tasks' *Files to modify* ∪ tests ∪ migrations). A file outside that surface needs a **disposition**, not a silent pass: either add it to `plans/plan.md` §Impact Analysis with a one-line reason, or revert it. *(`/plan` cannot foresee every helper file — the point is that the surface stays **declared**, not that it was predicted perfectly. Surgical-change rule: `principles-and-practices.md` §2.5.)*
+- [ ] **Assumptions flow-back** — each approved `A-xx` has exactly one AC amendment in `specs/` carrying its `amended @ Gate 5, A-xx` marker; the counts match. An approved assumption that never reached the spec is a behavior decision living only in code.
+- [ ] **(Schema-touching tasks) Migration + snapshot** — the migration script is in the repo **and** `db/schema-snapshot/` was refreshed in the same change-set (`brownfield.md` checklist). A schema change with no snapshot update rots the baseline evidence from this commit onward.
+
+Any mismatch → fix on disk first; never hand `/test` a build whose own gate mechanics fail.
 
 ## Next Step
 

@@ -13,7 +13,7 @@ Simplify code for clarity and maintainability. Reduce complexity **without chang
 
 > **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
 
-> **Stack Profile note:** the `dotnet` commands and C# catalog below use the **default profile**. **Core = Node.js** → map to the npm equivalents (`npm test`, `npm run build`); the Common Simplifications are default-stack illustration — apply the equivalent TS idioms per `rules/overrides/lang-nodejs.md` (early returns, discriminated unions + `switch`, arrow shorthand).
+> **Stack Profile note:** the `dotnet` commands and C# catalog below use the **default profile**. **Core = Node.js** → map to the npm equivalents (`npm test`, `npm run build`); the Common Simplifications are default-stack illustration — apply the equivalent TS idioms per `rules/overrides/lang-nodejs.md` (early returns, discriminated unions + `switch`, arrow shorthand). **Core = PHP** → `php artisan test` / `vendor/bin/pest` for the suite; equivalent idioms per `rules/overrides/lang-php.md` (early returns, `match` expressions over `switch`, backed enums over class constants, arrow functions).
 
 ## When to Use
 
@@ -32,6 +32,7 @@ Don't delete code just because it looks unnecessary. Investigate:
 - Git history: `git log -p -- path/to/file`
 - Related tests
 - Comments or documentation
+- `architecture/ARCHITECTURE.md` §Non-Functional Requirements — code cited there as an **NFR mechanism** (cache, index, `AsNoTracking`, compiled query, rate limiter…) is a **budget, not complexity**: the test net cannot see its removal (thresholds are measured at `/verify` Phase 4, not by the suite), so "all tests still green" proves nothing here. Removing or bypassing a cited mechanism is an `/arch`-level decision (B5 Red Flag below), never a simplification.
 - Ask team members if unsure
 
 ### Rule of 500
@@ -135,7 +136,7 @@ dotnet build
 **Revert immediately.** Don't debug while mid-simplification.
 
 ```bash
-git checkout -- .
+git checkout -- <files touched by this step>   # targeted — never `-- .` (it wipes ANY unrelated uncommitted work in the tree)
 ```
 
 Then:
@@ -259,6 +260,8 @@ public decimal Calculate(decimal a, decimal b)
 public decimal Calculate(decimal a, decimal b) => a + b;
 ```
 
+> **Public surface is not "dead code."** Routes, DTOs, event/message schemas, and exported functions stay — even when no internal test or caller references them: **external consumers do not show up in the test net**, so deleting them keeps the suite green while breaking a running client. Removing public surface is a **deprecation** — B2 + ADR with a deprecation window ([`references/brownfield-pipeline.md`](../references/brownfield-pipeline.md) decision table), never a simplification.
+
 ### Use Expression-Bodied Members
 
 ```csharp
@@ -286,6 +289,7 @@ Stop if you find yourself:
 - Simplifying without tests
 - Making changes across unrelated files
 - Creating new abstractions
+- The simplification requires changing architecture / patterns / layering → **stop: that is B5** (`/arch` redesign + ADR), not a simplification
 
 ---
 
@@ -301,7 +305,7 @@ A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.m
 
 - [ ] **Green-after, verified** — re-run the full suite + build yourself (`dotnet test` + `dotnet build -c Release`, or the npm equivalents); compare against the Step-0 green baseline. Any new red → apply Step 6 (revert), don't debug mid-simplification.
 - [ ] **Scope, verified** — `git diff --stat` touches ONLY the assigned area's files; an unrelated file in the diff = the no-gratuitous-refactor rule was broken — revert that file and surface it.
-- [ ] **No new abstractions / no behavior-bearing diff** — spot-check the diff for added public surface or changed conditionals beyond the catalogued simplification patterns (Red Flags list).
+- [ ] **No new abstractions / no behavior-bearing diff** — spot-check the diff for added **or removed/renamed** public surface (routes, DTOs, event schemas — removing an externally consumable contract is a deprecation: B2 + ADR, never a simplification) or changed conditionals beyond the catalogued simplification patterns (Red Flags list).
 
 Any mismatch → fix on disk first.
 
@@ -313,7 +317,7 @@ The Code Reviewer agent applies the same quality lens used in `/review`, but foc
 
 **Phase ownership** — the sub-agent cannot converse with the user: a Chesterton's-Fence case it cannot resolve ("ask team members if unsure" — attach the git-history evidence already checked), or the need to **quarantine a flaky test** in Step 0 (disabling part of the safety net is a user-visible decision) → **return early** with the item instead of deciding alone. The orchestrator confirms, runs the verification block above, and presents the result in the main loop.
 
-> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+> Sub-agent prompt MUST include: "Output language: \<declared language — resolve from Project Profile → Output Language\> for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 
 ## Next Step
 

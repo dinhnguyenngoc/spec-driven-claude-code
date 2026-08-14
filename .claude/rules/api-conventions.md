@@ -245,12 +245,9 @@ public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Password is required")
-            .MinimumLength(8).WithMessage("Password must be at least 8 characters")
-            .MaximumLength(128)
-            .Matches("[A-Z]").WithMessage("Password must contain uppercase letter")
-            .Matches("[a-z]").WithMessage("Password must contain lowercase letter")
-            .Matches("[0-9]").WithMessage("Password must contain digit")
-            .Matches("[^a-zA-Z0-9]").WithMessage("Password must contain special character");
+            .MaximumLength(128);
+        // Password complexity rules (min length + charset requirements):
+        // canonical policy in security.md §Input Validation — do not restate here.
     }
 }
 ```
@@ -481,30 +478,10 @@ public class UsersController : ControllerBase
 
 ### Rate Limiting
 
+> **Canonical config + budgets (100 req/min global · 5 req/15min auth): [`security.md`](security.md) §Rate Limiting** — the `AddRateLimiter` setup lives there; do not restate it here. This section owns only the API-surface convention: applying a named policy to an endpoint.
+
 ```csharp
-// Program.cs
-builder.Services.AddRateLimiter(options =>
-{
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.User.Identity?.Name ?? context.Request.Headers.Host.ToString(),
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 100,
-                Window = TimeSpan.FromMinutes(1)
-            }));
-
-    options.AddPolicy("auth", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(15)
-            }));
-});
-
-// Controller
+// Controller — apply the named policy defined in security.md §Rate Limiting
 [HttpPost("login")]
 [EnableRateLimiting("auth")]
 public async Task<IActionResult> Login([FromBody] LoginRequest request) { }

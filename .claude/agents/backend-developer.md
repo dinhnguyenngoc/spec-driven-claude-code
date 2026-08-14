@@ -561,6 +561,8 @@ After `/scan` clears, you author Docker artifacts that let any developer run the
 
 ### Quality Gate 9 (`/infra → /docs`)
 
+> **Quick view** — the authoritative gate (incl. **`IMAGE_TAG` parameterization**, the **As-is refresh** sweep, **compose self-containment**) is [`commands/infra.md`](../commands/infra.md) §Quality Gate 9; this list is the day-to-day summary.
+
 - [ ] `docker compose build` succeeds without warnings
 - [ ] `docker compose up` brings all services to `healthy` state
 - [ ] API responds 200 on `/health/ready` after startup

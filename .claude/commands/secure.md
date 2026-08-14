@@ -26,10 +26,10 @@ If a finding requires reading source code to confirm, defer it to `/scan`.
 
 **Input files (must exist before `/secure` starts):**
 
-- `specs/SPEC.md` — for asset inventory, data sensitivity, NFRs
+- `specs/SPEC.md` — for asset inventory, data sensitivity, NFRs, and the **Permission Matrix** (the business authz basis for IDOR / Elevation-of-Privilege threats — the downstream contract `spec.md` §Permission Matrix declares)
 - `architecture/ARCHITECTURE.md` + its **Open Questions** section
 - `architecture/adr/*.md` — every ADR is a design decision with security implications; read them all *(brownfield delta: read the ADRs touching the delta surface — see §Brownfield Mode)*
-- `plans/plan.md` — for mitigation → task ID mapping (see Phase 4)
+- `plans/plan.md` — for mitigation → task ID mapping (Phase 3). **Required for a per-change run only**; a whole-system **baseline run** (brownfield, no active change-set) legitimately has no plan yet and uses evidence ids / Backlog owners instead — see §Brownfield Mode → Baseline run.
 - `.claude/rules/security.md` — non-negotiables
 
 **Boilerplate templates (fixed — the agent fills in data, does not re-author structure):**
@@ -56,6 +56,7 @@ If a finding requires reading source code to confirm, defer it to `/scan`.
 
 1. Read the reference asset categories in `§A.1` (10 standard asset types) — select the ones present in the feature.
 2. Add feature-specific assets (e.g. `Uploaded document URL`, `Shared resource token`).
+2b. **Brownfield — harvest assets from the `/discover` inventories**, which are attack-surface catalogs in disguise: `CODEBASE_MAP.md` **§DB-object inventory** (procs/triggers/functions — dynamic SQL, privilege escalation) · **§Connection inventory** (credentials + endpoints; a `Config source outside repo` row is itself a secrets-handling finding) · **§Messaging inventory** (topics — tampering/replay) · **§Cache-structure inventory** (keys — poisoning, information disclosure) · `db/schema-snapshot/` (the real column-level shape of stored data). Reading these is what keeps the threat model from covering only what the HTTP layer makes obvious.
 3. Copy the `§A.2` table into `THREAT_MODEL.md §Assets`, fill in rows.
 
 **Output:** The `Assets` table in `THREAT_MODEL.md`.
@@ -76,7 +77,7 @@ Do NOT re-write the STRIDE 6-category table. The agent uses `§B` as a reference
    - **Critical/High** → MUST `[Required for v1]` mitigation
    - **Medium** → `[Required for v1]` OR `[Deferred to v2 with trigger]`
    - **Low** → `[Accepted]` allowed (with a rationale)
-4. Each mitigation MUST map to an existing task ID in `plans/plan.md`. If it does not fit → escalate to the PM before expanding scope.
+4. **Every mitigation MUST have a real owner.** Per-change run → an existing task ID in `plans/plan.md`; if it fits no task → escalate to the PM before expanding scope. Baseline run (§Brownfield Mode) → an **evidence id** for a control already implemented, or `Backlog — task id assigned when /plan runs` **plus a matching Residual-Risk row**. **Never invent a task ID**: a fabricated reference reads like ownership and is worse than an openly unowned mitigation.
 
 **Output:** One or more threat blocks in `THREAT_MODEL.md §Threats (STRIDE)`, grouped by S/T/R/I/D/E.
 
@@ -142,7 +143,11 @@ Already defined in `STRIDE_TEMPLATE.md §F` — copy it verbatim; the agent only
 - **Read only the relevant ADRs** — those touching the delta surface, not all.
 - **Regression-security is an acceptance criterion** — the change MUST NOT weaken an existing control (drop an `[Authorize]`, widen CORS, expose a field). Add a check asserting the existing posture is preserved — the security counterpart of `/plan`'s backward-compat AC.
 - **Widen scope when cross-cutting** — if the delta touches a shared control (auth, rate limiter, error contract), widen STRIDE to every surface that control protects. Delta-scoping must not hide a cross-cutting regression.
-- **Baseline fallback** — if no baseline threat model exists, this run first establishes one for the affected subsystem, then proceeds with the delta; later runs are pure delta.
+- **Baseline run (no change-set) — auto-detected, no flag.** Brownfield + no `plans/plan.md` + no `security/THREAT_MODEL.md` → this is a **whole-system baseline**, not a delta: **announce it** ("no active change-set → running a baseline threat model over the whole as-is system") and apply three adaptations, all recorded in `PRE_DEV_REVIEW.md §Scope` so the reader knows which rules were bent and why:
+  1. **Mitigation owner** — implemented control → cite its **evidence id**: an **ADR id**, an **`ARCHITECTURE.md` section**, or — brownfield, where the control already exists in the codebase — the **`file:line` where it is wired** (that IS the evidence; `/discover` produces no security-posture inventory, so never cite one); missing control → `Backlog — task id assigned when /plan runs` **+ a Residual-Risk row with an observable trigger**. Never a fabricated task id.
+  2. **"Required for v1" means "the system as it runs today"** — already-implemented → `[Implemented as-is]` + evidence; gaps: Critical/High → `[Required before next release]` + Backlog owner · Medium → `[Deferred]` + observable trigger · Low → `[Accepted]` + rationale. Template vocabulary otherwise unchanged.
+  3. **Open Questions** — resolve the ones that are genuinely `/secure`-scoped (e.g. encryption-at-rest); the rest get `Deferred — awaiting ack` and are surfaced to the user. The auditor never acknowledges on the user's behalf.
+  A later run over the same system is a **pure delta** against this baseline. *(Partial variant: a delta arrives before any baseline exists → establish the baseline for the affected subsystem first, then proceed with the delta.)*
 
 > **B5 (architecture upgrade) exception:** a redesign may move trust boundaries → re-model the affected boundaries fully (with ADR), not just a delta.
 
@@ -158,7 +163,7 @@ Run the §Orchestrator disk-check (below) first, then review.
 
 - [ ] Threat model completed — every threat has a unique ID, a risk rating from the `STRIDE_TEMPLATE §C` matrix, and a `Required for v1?` decision
 - [ ] All Critical/High risks have a `[Required for v1]` mitigation
-- [ ] Every mitigation maps to a `plans/plan.md` task ID (Phase 3 Owner field)
+- [ ] Every mitigation has a real owner (Phase 3 Owner field) — **per-change:** an existing `plans/plan.md` task ID · **baseline run:** an evidence id, or `Backlog` **with** its Residual-Risk row. No fabricated ids.
 - [ ] All `ARCHITECTURE.md §Open Questions` resolved or explicitly deferred with ack
 - [ ] Phase 3.5 deep-dive table generated from `STRIDE_TEMPLATE §E.2` (≥3 controls), **each control has an `RC-N` id**; `[NEW]` controls also have an `RC-N`
 - [ ] OWASP Top 10 (2021) table filled in for all 10 rows per `OWASP_TEMPLATE §A` (Status + Evidence, no blanks)
@@ -176,9 +181,10 @@ A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.m
 
 - [ ] **Files exist** — `security/THREAT_MODEL.md`, `SECURITY_REQUIREMENTS.md`, `PRE_DEV_REVIEW.md`.
 - [ ] **OWASP table** — all 10 rows A01–A10 present, no blank Status/Evidence cell; only A06 is `Deferred to /scan`. *(Brownfield delta: a cell citing the baseline `PRE_DEV_REVIEW.md` counts as filled.)*
+- [ ] **A05 names the two controls** — the A05 (Security Misconfiguration) row explicitly mentions **security headers** AND **CORS/same-origin**, each with a mechanism or an explicit `/secure`-deferral carrying an OQ id. The bare word "Addressed" does not satisfy this row — it is the line that blocks the "missing security headers" class the Gate item was written for.
 - [ ] **Threat blocks** — threat IDs unique; every Critical/High threat has a `[Required for v1]` mitigation.
 - [ ] **Residual-risk completeness** — every threat whose `Required for v1?` is `Deferred` / `Accepted` has a matching RR-N row in `PRE_DEV_REVIEW.md §Residual Risks` (diff the two sets).
-- [ ] **Task-id cross-check** — every `Owner task(s)` id cited in `THREAT_MODEL.md` exists in `plans/plan.md` (diff the two sets yourself; a mitigation pointing at a non-existent task is an unowned mitigation).
+- [ ] **Owner cross-check** — **per-change:** every `Owner task(s)` id cited in `THREAT_MODEL.md` exists in `plans/plan.md` (diff the two sets yourself; a mitigation pointing at a non-existent task is an unowned mitigation). **Baseline run:** no `plans/plan.md` exists, so instead verify each owner is an evidence id that resolves (the cited ADR file / CODEBASE_MAP row exists) or the literal `Backlog` — and every `Backlog` owner has an RR row. A task-id-shaped string with no plan on disk = fabricated → FAIL.
 - [ ] **RC table** — the Phase 3.5 table has ≥3 controls with `RC-N` ids; every `[NEW]` control reappears in §"Controls added beyond ADRs" with the same id.
 - [ ] **OQ reconciliation** — every row of `ARCHITECTURE.md §Open Questions` appears in `PRE_DEV_REVIEW.md` as resolved or deferred-with-ack (no row silently dropped).
 - [ ] **No template residue** — no unfilled `[…]` placeholders left in `security/`.
@@ -193,9 +199,10 @@ Invoke: **Security Auditor**
 
 ```text
 "As Security Auditor, perform pre-development security review for [feature].
+Mode: <greenfield | brownfield delta — surface: [...] | brownfield baseline (no active change-set)> — resolved by the orchestrator per §Brownfield Mode; a delta run cites baseline controls by id, a baseline run applies the three §Baseline-run adaptations.
 Use .claude/templates/STRIDE_TEMPLATE.md and .claude/templates/OWASP_TEMPLATE.md
 as boilerplate — fill feature-specific data, do NOT re-author template structure.
-Output language: Vietnamese for prose/artifacts, English for technical identifiers
+Output language: <Output Language from Project Profile> for prose/artifacts, English for code and technical identifiers
 (see .claude/CLAUDE.md → Output Language)."
 ```
 

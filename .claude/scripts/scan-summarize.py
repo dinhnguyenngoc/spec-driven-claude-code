@@ -11,6 +11,8 @@ Output schema:
   "totals": {"critical": N, "high": N, "medium": N, "low": N, "unknown": N},
   "tools_run": ["gitleaks", "dotnet", "npm-audit", ...],
   "tools_missing": ["semgrep", "trivy", ...],
+  "stacks_scanned": ["dotnet", "php", "docker"],
+  "stacks_unscanned": ["java"],        ← detect được trong repo nhưng KHÔNG có scanner — Gate 8 buộc công bố
   "findings": [
     {
       "id": "F-001",
@@ -447,9 +449,10 @@ def build_compensating_controls(missing):
     """Map missing tools → compensating control description (matches scan.md matrix)."""
     matrix = {
         "gitleaks": ("Manual regex grep over *.cs/*.ts/*.py/*.go/*.json/*.yml (see secrets-grep.txt)", True),
-        "semgrep": ("Native analyzers per stack: Roslyn (.NET), eslint-plugin-security (Node), bandit (Python), gosec (Go)", True),
+        "semgrep": ("Native analyzers per stack: Roslyn (.NET), eslint-plugin-security (Node), bandit (Python), gosec (Go), PHP dangerous-pattern grep + project-local PHPStan (php.sh)", True),
         "trufflehog": ("Same as gitleaks fallback", False),
-        "snyk": ("Stack-native: dotnet list package --vulnerable, npm audit, pip-audit, govulncheck", False),
+        "snyk": ("Stack-native: dotnet list package --vulnerable, npm audit, pip-audit, govulncheck, composer audit", False),
+        "composer": ("NONE for dependency CVEs — the PHP dangerous-pattern greps cover SAST, not CVEs; install composer or run composer audit in CI", True),
         "trivy": ("Defer to /infra when image is built", True),
         "hadolint": ("Manual review against .claude/references/docker-patterns.md", False),
         "pip-audit": ("Use safety as alternative; or pip list --outdated + manual CVE check", True),
@@ -469,18 +472,24 @@ def build_compensating_controls(missing):
     return controls
 
 
-def detect_stacks_scanned():
-    """Suy ra stack đã scan từ file output có mặt trong security/*."""
-    stacks = []
-    if (DEPS / "nuget-vulnerable.json").exists() or (SAST / "roslyn.log").exists():
-        stacks.append("dotnet")
-    if list(DEPS.glob("npm-audit*.json")) or list(SAST.glob("eslint*.json")) or (SAST / "frontend-xss-grep.txt").exists():
-        stacks.append("nodejs")
-    if list(DEPS.glob("pip-audit*.json")) or (SAST / "bandit.json").exists():
-        stacks.append("python")
-    if list(CONT.glob("trivy-*.json")) or list(SAST.glob("hadolint*.json")):
-        stacks.append("docker")
-    return stacks
+def load_stack_coverage():
+    """Đọc stack-coverage.txt (sự thật do scan-all.sh khai) → (scanned, unscanned).
+
+    KHÔNG suy đoán từ sự tồn tại của file output: danh sách suy đoán là bản liệt kê
+    thứ hai, trôi độc lập khỏi detect_stacks() trong _common.sh — php/java/go/ruby đã
+    bị bỏ sót đúng như vậy. Một stack không quét được phải NHÌN THẤY ĐƯỢC, không im lặng.
+    """
+    scanned, unscanned = [], []
+    path = SAST / "stack-coverage.txt"
+    if not path.exists():
+        return scanned, unscanned
+    for line in path.read_text().splitlines():
+        m = re.match(r"^(\S+):\s+(.+)$", line)
+        if not m:
+            continue
+        name, status = m.group(1), m.group(2)
+        (unscanned if "NO SCANNER" in status else scanned).append(name)
+    return scanned, unscanned
 
 
 def main():
@@ -514,13 +523,15 @@ def main():
         totals[f["severity"].lower()] += 1
 
     installed, missing = load_tool_inventory()
+    stacks_scanned, stacks_unscanned = load_stack_coverage()
 
     summary = {
         "scan_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "totals": totals,
         "tools_installed": installed,
         "tools_missing": missing,
-        "stacks_scanned": detect_stacks_scanned(),
+        "stacks_scanned": stacks_scanned,
+        "stacks_unscanned": stacks_unscanned,
         "sast_scope": (
             f"semgrep diff vs {os.environ['SCAN_DIFF_BASE'].strip()}; other scans whole-repo"
             if os.environ.get("SCAN_DIFF_BASE", "").strip() else "whole-repo"

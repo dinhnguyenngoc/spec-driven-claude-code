@@ -17,6 +17,7 @@ Transform requirements into technical architecture **before** planning implement
 
 - A specification exists (`specs/SPEC.md` from `/spec`)
 - The spec passed Gate 1 — header `Status` is **Approved**, not Draft (stop and finish `/spec` sign-off otherwise)
+- The spec's **`Coverage` is `full`** — a SPEC marked `Coverage: partial (scoped)` (produced by `/spec --scope`) → **STOP**: finish the baseline first (further `--scope` slices, or a full REVERSE). Rationale: `/arch`'s completeness gates read the SPEC — NFR completeness cross-checks `specs/SPEC.md §NFR`, and the Flow-Disposition candidate list reads `specs/wireframes/flows/` — so against a partial spec they would **pass while covering only part of the system**. That is worse than not running at all: it yields a signed-off architecture carrying false assurance. *(A SPEC with no `Coverage` field predates the field → treated as `full` — backward-compatible, same convention as `Output Language`.)*
 - Understanding of non-functional requirements (scale, performance, security)
 
 ## References to Rules
@@ -77,6 +78,20 @@ Create for:
 
 Template: [`ascii-diagram-guide.md` §4](../references/ascii-diagram-guide.md#4-sequence-diagram).
 
+**Flow Disposition (mandatory — no silent omission).** Judgment decides *how* a flow is documented, never *whether it was considered*: enumerate every candidate flow mechanically, then disposition each in a **Flow Disposition table** in `ARCHITECTURE.md`:
+
+| Candidate flow | Source | Disposition |
+|----------------|--------|-------------|
+| <name> | spec-flow / external-dep / code-evidence | `diagrams/sequence/<file>.md` or `Waived — <1-line reason>` |
+
+Candidate sources (building the LIST is mechanical — no judgment):
+
+1. **spec-flow** — every file in `specs/wireframes/flows/*.md` (UI products; headless → skip this source).
+2. **external-dep** — every external system crossing the container-diagram boundary (each appears in ≥ 1 sequence diagram or a waiver row).
+3. **code-evidence** *(brownfield REVERSE)* — every code path with failure semantics recorded in `docs/CODEBASE_MAP.md` (timeout / retry / fail-open / outbound call).
+
+The §2.5 criteria above decide the Disposition column (draw vs waive); a waiver needs one concrete line (e.g. "linear Controller→Service→Repository path — component diagram + OpenAPI suffice"). A flow that carries failure semantics MUST have its failure branches in the diagram (inline `alt` frames or a companion failure table/diagram). Applies to greenfield and brownfield alike.
+
 #### 2.6 Design System — *UI products only*
 
 The **UI/UX Designer** produces `architecture/design-system.md` — the system-level UI contract that `/spec` Phase 2.5 explicitly defers here. It does **NOT** re-draw screens — screens / layout / flows are already signed off in `specs/wireframes/`; this file defines the shared vocabulary those screens are built with:
@@ -104,6 +119,8 @@ paths:
         '200':
           description: Success
 ```
+
+> **Schema `example` values (recommended, non-gate):** populate `example` on request/response schema properties — Swagger UI renders them, and `/export-docs` carries API samples **verbatim** instead of constructing illustrative values (see `export-docs.md` §API sample derivation).
 
 #### 3.1 Error code contract (required)
 
@@ -184,12 +201,12 @@ architecture/
 ## Non-Functional Requirements
 | Requirement | Target | Architectural answer |
 |-------------|--------|----------------------|
-| Availability | 99.9% | [Mechanism that delivers it — e.g., active-passive replica + health probes] |
-| Latency P99 | < 200ms | [Mechanism — e.g., Redis cache + indexed read path + `AsNoTracking()`] |
-| Throughput | 1000 req/s | [Mechanism — e.g., horizontal scaling behind YARP + Kestrel thread pool tuning] |
+| NFR-01 · Availability | 99.9% | [Mechanism that delivers it — e.g., active-passive replica + health probes] |
+| NFR-02 · Latency P99 | < 200ms | [Mechanism — e.g., Redis cache + indexed read path + `AsNoTracking()`] |
+| NFR-03 · Throughput | 1000 req/s | [Mechanism — e.g., horizontal scaling behind YARP + Kestrel thread pool tuning] |
 
 > **Rule:** every row MUST have a concrete architectural mechanism in the third column. An NFR without a mechanism is an unmet NFR.
-> **Completeness rule:** every NFR in `specs/SPEC.md §NFR` **and** every project-mandatory NFR in the rules (`security.md` incl. §HTTP Security Headers, `principles-and-practices.md §4`) MUST appear here as a row, **or** as a line in §Security Considerations, **or** as a tagged Open Question — no NFR is silently dropped. This is the symmetric counterpart of `/plan`'s spec-NFR → task chain.
+> **Completeness rule:** every NFR in `specs/SPEC.md §NFR` **and** every project-mandatory NFR in the rules (`security.md` incl. §HTTP Security Headers, `principles-and-practices.md §4`) MUST appear here as a row, **or** as a line in §Security Considerations, **or** as a tagged Open Question — no NFR is silently dropped. This is the symmetric counterpart of `/plan`'s spec-NFR → task chain. Every spec-sourced row carries its **`NFR-xx` id** (the join key `/plan`'s reconciliation and `/verify` Phase-4 diff on); a row with **no id** is a rules-mandated NFR the spec missed — route it back to the spec (AC amendment / OQ) rather than leaving it keyless.
 
 ## System Context
 [Diagram showing system boundaries]
@@ -227,13 +244,15 @@ architecture/
 
 Run the §Orchestrator disk-check (below) first, then review. Before proceeding to `/plan`:
 - [ ] Architecture document reviewed
-- [ ] Diagrams are clear and complete (System Context + Container **mandatory**; Component & Sequence as needed)
+- [ ] Diagrams are clear and complete (System Context + Container **mandatory**; Component as needed; **Sequence per §2.5 Flow Disposition** — drawn, or waived with a stated reason)
+- [ ] **Flow Disposition table complete** — every candidate (spec flows + container external dependencies + REVERSE code-evidence paths) has a row; every row is a sequence file that exists or a waiver with a reason (§2.5)
 - [ ] ADRs document key decisions
 - [ ] **Every NFR row has a concrete architectural mechanism** (no empty third column)
 - [ ] **NFR completeness** — every spec NFR + every project-mandatory NFR (rules) maps to a mechanism row / §Security line / tagged OQ (no silent drop)
 - [ ] **Every ADR has `Options Considered` and `v2 Upgrade Trigger`** sections populated
 - [ ] **Rejection ADR exists** if any approved-stack component is intentionally excluded — consolidated table by default, or one full ADR per component when `--adr=per-component` was requested
 - [ ] **Error-code contract table** exists in `ARCHITECTURE.md`
+- [ ] **Data Model present** — §Data Model carries the entity/ER design (keys, indexes, relationships, precision) whenever the Profile declares a database; brownfield: the entities match the evidence (`CODEBASE_MAP.md` §DB-object inventory / `db/schema-snapshot/`), DB-resident objects included
 - [ ] **Open Questions table** carried from SPEC + arch-surfaced, each tagged with blocking phase
 - [ ] **No "either is acceptable" hedges** — every option is committed; alternatives live in `v2 Upgrade Trigger`
 - [ ] API contracts defined (OpenAPI 3.0.3)
@@ -246,12 +265,18 @@ A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.m
 
 - [ ] **Files exist** — `architecture/ARCHITECTURE.md`, `architecture/api/openapi.yaml`, and the two mandatory diagrams (system context + container — in `diagrams/` or embedded).
 - [ ] **ADR completeness** — every Decision-ADR in `architecture/adr/` contains the `## Options Considered` and `## v2 Upgrade Trigger` headings; filenames follow `ADR-NNN-kebab-title.md`. *(Exception: the consolidated Rejection ADR follows its own table pattern — check it has the v2-trigger column instead.)*
-- [ ] **NFR mechanisms** — the NFR table has no empty third column.
+- [ ] **NFR mechanisms** — the NFR table has no empty third column, **and every spec-sourced row carries its `NFR-xx` id** (an id-less row = a rules-mandated NFR the spec missed → routed back as a spec amendment/OQ, never silently keyless).
 - [ ] **Contract tables** — the error-code table and the §Open Questions table exist; every OQ row is tagged a blocking phase.
+- [ ] **Data Model non-empty** — when `Project Profile → Database` names an engine, `ARCHITECTURE.md` §Data Model exists and holds at least one entity/table definition (not just the heading). Downstream depends on it: `/export-docs` SDD treats a missing data model as **STOP**, and `/plan` sizes migration work from it.
+- [ ] **OpenAPI is more than a stub** — `architecture/api/openapi.yaml` declares `openapi: 3.0` and has a non-empty `paths:` block with at least one operation; a scaffolded-but-empty file passes "file exists" and then fails everything downstream.
+- [ ] **Security controls named** — grep §Security Considerations for each required control (security headers · CORS · authentication · authorization/IDOR · secrets · transport): each appears **with a mechanism**, or with an explicit deferral to `/secure` carrying an OQ id — the word "addressed" with no mechanism does not count.
+- [ ] **Flow disposition** — diff the Flow Disposition table rows against `specs/wireframes/flows/*.md` filenames and the external systems in the container diagram; every `diagrams/sequence/<file>` cited in the table exists on disk.
 - [ ] **(UI products)** `architecture/design-system.md` exists with the tokens block + state matrix.
 - [ ] **No template residue** — no `TODO` / unfilled placeholders left in `architecture/`.
 
 Any mismatch → fix on disk first; never present an architecture that fails its own gate mechanics.
+
+> **Warning-only check (surfaced, never blocking):** grep for hedge phrasing — `either is acceptable` · `either would work` · `can be either` · `tùy chọn nào cũng được` — and list the hits. A committed architecture states **one** option; alternatives belong in `v2 Upgrade Trigger`. This stays a warning rather than a gate failure because the same words are legitimate *inside* a v2-trigger sentence ("either option becomes viable at v2"), so the judgment stays human.
 
 ## Brownfield Mode (when `Project Profile → Mode: brownfield`)
 
@@ -259,9 +284,18 @@ Any mismatch → fix on disk first; never present an architecture that fails its
 
 | Flow | Mode | Behavior |
 |------|------|----------|
-| Discovery (no `architecture/ARCHITECTURE.md` yet) | **REVERSE** | **First consume the `/discover` artifacts** (`Project Profile` + `docs/CODEBASE_MAP.md`) as the index — do not re-survey the tree. Draw the **actual** architecture from code: container/component diagrams from project refs, ER from DbContext/migrations, sequence for the main flows. Record **inferred ADRs** for decisions already embedded (e.g., "JWT 15min no-refresh — inferred from JwtTokenService"). Describe as-is, do not propose changes. **Bound the inferred ADRs per the general rule in §2.4** (full ADR only for decisions that constrain future change; routine settings → ARCHITECTURE.md notes list) — applied here to *inferred* decisions. **Fallback guard:** `docs/CODEBASE_MAP.md` missing/incomplete → **STOP** and run `/discover` first (or re-scan only the missing area) — never silently fall back to a full-tree survey (same guard as `/spec` REVERSE and `/plan`). |
-| B1 new feature / B2 modify feature (ARCHITECTURE.md exists) | **CONFORMANCE-GATE** | Default is to **keep as-is**. Answer one question: *"does this change REQUIRE an architecture change?"* → NO: proceed with the current ARCHITECTURE.md; lightweight ADR only when a small new decision is made. → YES: stop, switch to the B5 flow. |
+| Discovery (no `architecture/ARCHITECTURE.md` yet) | **REVERSE** | Draw the **actual** architecture from code and describe it **as-is** — never propose changes. Details: §REVERSE — notes below the table. |
+| B1 new feature / B2 modify feature (ARCHITECTURE.md exists) | **CONFORMANCE-GATE** | Default is to **keep as-is**. Answer one question: *"does this change REQUIRE an architecture change?"* → NO: proceed with the current ARCHITECTURE.md; lightweight ADR only when a small new decision is made. → YES: stop, switch to the B5 flow. When the change **implements a previously-planned decision** (an ADR/annotation marked "planned / not yet enforced" — e.g., an optimistic-concurrency ADR awaiting `/build`), refresh the as-is annotations citing it across `ARCHITECTURE.md` / `diagrams/` / `api/openapi.yaml` (append an update note; the ADR itself is NOT edited — it is now fulfilled, not stale). |
 | B5 architecture/technology upgrade | **REDESIGN** | The **only** time proactive changes are allowed: propose **minimal** changes + **mandatory ADR** (supersede old ADR if needed, with v2-trigger) + **migration plan** (strangler-fig per `rules/brownfield.md`). |
+
+**REVERSE — notes:**
+
+- **Consume, don't re-survey:** the `/discover` artifacts (`Project Profile` + `docs/CODEBASE_MAP.md`) are the index — go straight to what you need. **Fallback guard:** map missing/incomplete → **STOP** and run `/discover` first (or re-scan only the missing area); never fall back to a full-tree survey (same guard as `/spec` REVERSE and `/plan`).
+- **Source per artifact:** container/component diagrams ← project references · ER ← DbContext/migrations + the `CODEBASE_MAP.md` DB-object inventory / `db/schema-snapshot/` · sequence diagrams ← §2.5 **Flow Disposition** (candidates: spec flows + container external dependencies + `CODEBASE_MAP.md` failure-semantics paths).
+- **Integration Contracts:** a broker/cache client in the repo → record them in `ARCHITECTURE.md` from the `CODEBASE_MAP.md` messaging/cache inventories (topic + message-schema catalog · key patterns + TTL) — the single-repo counterpart of the multi-repo §Service Contracts (§3.2).
+- **Inferred ADRs:** record decisions already embedded in code (e.g. *"JWT 15min no-refresh — inferred from `JwtTokenService`"*), **bounded per §2.4** — a full ADR only for decisions that constrain future change; routine settings go to the ARCHITECTURE notes list.
+- **Time-bound as-is claims carry a machine-readable marker:** a statement a later pipeline step will invalidate ("no Docker yet", "no `/metrics` yet") MUST name that step — the `` pre-`/<cmd>` `` idiom, or an §Open Questions row owned by that command. The `/infra` + `/deploy` "As-is refresh" gate items sweep for exactly these (backticked command names are language-neutral anchors).
+- **Describe, don't fix:** behavior that looks wrong is documented as-is and flagged — never silently corrected in the diagram.
 
 **CONFORMANCE-GATE output** (B1/B2) — add a table to `ARCHITECTURE.md` or to the report:
 
@@ -277,11 +311,12 @@ Invoke: **Systems Architect**
 
 For any product with a UI, also consult: **UI/UX Designer** (design system → §2.6, written to `architecture/design-system.md`). The **state-per-component matrix** (default / hover / focus / active / disabled / loading / error / empty) is owned here — see [`../agents/ui-ux-designer.md`](../agents/ui-ux-designer.md) §States; `/spec` only produces the 5 page-level states.
 
-**Phase ownership** — the SA sub-agent cannot converse with the user: an ambiguity that needs stakeholder input → return early with the question, or tag it as an Open Question with its blocking phase. The orchestrator runs the Gate 2 disk-check and presents the architecture for review in the main loop.
+**Phase ownership** — the SA sub-agent cannot converse with the user: an ambiguity that needs stakeholder input → return early with the question, or tag it as an Open Question with its blocking phase. The orchestrator runs the Gate 2 disk-check and presents the architecture for review in the main loop. **(UI products)** The orchestrator spawns the **UI/UX Designer as a separate sub-agent AFTER the SA returns** (a sub-agent cannot spawn sub-agents), passing the settled container/component list so §2.6 tokens + state matrix align with the final design; the SA does **not** author `architecture/design-system.md`.
 
 ```text
 "As Systems Architect, design the architecture for [feature].
-Output language: Vietnamese for prose/artifacts, English for code and technical identifiers
+Mode: <greenfield | REVERSE | CONFORMANCE-GATE (B1/B2) | REDESIGN (B5)> — resolved by the orchestrator per §Brownfield Mode; honor that role's behavior table (a CONFORMANCE-GATE run never redesigns).
+Output language: <Output Language from Project Profile> for prose/artifacts, English for code and technical identifiers
 (see .claude/CLAUDE.md → Output Language)."
 ```
 

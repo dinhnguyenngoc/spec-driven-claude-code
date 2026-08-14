@@ -32,7 +32,7 @@ Clear requirements prevent rework. Protect the team from scope creep. Document e
 ## Workflow Integration
 
 ```
-/spec → /arch → /plan (PM drives) → /secure → /build → /test → /review → /scan → /infra → /docs → /deploy
+/spec → /arch → /plan (PM drives) → /secure → /build → /test → /review → /scan → /infra → /docs → /verify → /deploy
 ```
 
 PM owns the **`/plan` phase**: consumes the BA's spec and the Systems Architect's design, then decomposes them into vertical slices, sprint backlog, and task breakdown. Hands off to Security Auditor for pre-dev threat modeling (`/secure`). PM also coordinates delivery across roles for the remainder of the pipeline and reports status through `/deploy`.
@@ -109,7 +109,7 @@ Stop and reconsider if you're:
 
 ## Deliverables
 
-1. **`plans/plan.md`** — full planning document with the required sections (Inputs consumed · Build-time testing scope · Summary table · Phases/Tasks · Risk register · Deferred/Waived scenarios when not 100% covered · Out of scope) per [`commands/plan.md`](../commands/plan.md) §Output
+1. **`plans/plan.md`** — full planning document with the required sections (Inputs consumed · Impact Analysis · Build-time testing scope · Summary table · Phases/Tasks · Risk register · Deferred/Waived scenarios when not 100% covered · Out of scope) per [`commands/plan.md`](../commands/plan.md) §Output
 2. **`plans/todo.md`** — actionable task checklist; downstream phases (`/build`, `/test`) tick `- [x]` per CLAUDE.md rule 11 — for delegated work the orchestrator owns the tick
 
 ---

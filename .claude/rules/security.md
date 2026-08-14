@@ -43,7 +43,7 @@ var jwtSecret = "my-secret-key-123"; // NEVER DO THIS
 
 > **General FluentValidation setup & registration:** see [`api-conventions.md`](api-conventions.md#fluentvalidation-integration).
 >
-> The rules below focus on **security-hardening** validation (password complexity, character whitelisting).
+> The rules below focus on **security-hardening** validation (password complexity, character whitelisting). **The password-complexity policy below is canonical** — `api-conventions.md`'s validator example and agent illustrations point here instead of restating it.
 
 ```csharp
 // Core/Validators/CreateUserRequestValidator.cs — security additions

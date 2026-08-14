@@ -1,10 +1,11 @@
 # Quick-start — Dùng kit Spec-driven Development với Claude Code
 
-> Dành cho teammate lần đầu dùng kit. Đọc 5 phút là bắt đầu được. Tài liệu đầy đủ: [`.claude/CLAUDE.md`](.claude/CLAUDE.md).
+> Dành cho teammate lần đầu dùng kit. Đọc 5 phút là bắt đầu được. Xem tài liệu đầy đủ tại: [`.claude/CLAUDE.md`](.claude/CLAUDE.md).
+> Muốn checklist **từng bước theo mode** thay vì mô tả bằng ngôn ngữ tự nhiên? → [getting-started-brownfield.md](getting-started-brownfield.md) (cho repo có code sẵn) · [getting-started-greenfield.md](getting-started-greenfield.md) (xây dự án từ số 0).
 
 ## Kit này là gì?
 
-Một bộ "harness" SDLC cho Claude Code: **12 lệnh pipeline** (`/spec` → `/arch` → `/plan` → `/secure` → `/build` → `/test` → `/review` → `/scan` → `/infra` → `/docs` → `/verify` → `/deploy`) + 7 lệnh hỗ trợ, mỗi lệnh do một **agent chuyên trách** đảm nhiệm và kết thúc bằng một **Quality Gate**. Mục tiêu: output tái lập được, có truy vết spec → code → test → deploy, không phụ thuộc trí nhớ của người chạy.
+Một bộ "harness" SDLC cho Claude Code gồm **12 lệnh pipeline** (`/spec` → `/arch` → `/plan` → `/secure` → `/build` → `/test` → `/review` → `/scan` → `/infra` → `/docs` → `/verify` → `/deploy`) + 8 lệnh hỗ trợ, mỗi lệnh là một vai trò trong quy trình phát triển phần mềm do một **agent chuyên trách** đảm nhiệm và kết thúc bằng một **Quality Gate**. Mục tiêu: AI agent thực hiện, con người kiểm soát, output tái lập được.
 
 ## Cách bắt đầu — KHÔNG cần nhớ lệnh nào
 
@@ -41,6 +42,7 @@ Sau đó Claude hỏi bạn chọn **chế độ thực thi**:
 | "Bump dependency / vá CVE" | **B5-lite** | ADR nhẹ; **full regression bắt buộc** |
 | "Dọn nợ kỹ thuật / refactor" | **`/simplify`** | Không đổi behavior; characterization làm lưới |
 | "Tính năng X có chưa? / Y đang cấu hình ra sao? / Tính năng export CSV được thêm ở version nào, gồm những scenario gì?" (hỏi hiện trạng — không phải yêu cầu sửa) | **`/inspect`** | Read-only, 3 tầng bằng chứng (records → code → live), KHÔNG route vào B-flow, không hỏi chế độ thực thi. Lịch sử version tính năng đọc từ `specs/SPEC.md` §Revision History; version phát hành từ `CHANGELOG.md` + `RELEASE_NOTES` |
+| "Xuất PRD/SDD chuẩn công ty từ artifact kit" | **`/export-docs`** | Fill-only từ SPEC/ARCHITECTURE vào template công ty ở `.claude/local/doc-templates/` — không bịa nội dung, thiếu nguồn → `N/A`/`[CẦN …]`; kèm trace map 2 chiều `@US-XXX-Snn ↔ AC-x.y.z`; PRD đòi SPEC đã Approved |
 
 Bảng đầy đủ + thứ tự lệnh từng luồng: [`.claude/references/brownfield-pipeline.md`](.claude/references/brownfield-pipeline.md).
 
@@ -52,12 +54,13 @@ Bảng đầy đủ + thứ tự lệnh từng luồng: [`.claude/references/bro
 
 ## Tham số optional hay dùng (biết để dùng khi cần)
 
-Hầu hết việc mô tả bằng câu thường là đủ, nhưng 2 lệnh có tham số đáng nhớ:
+Hầu hết việc mô tả bằng câu thường là đủ, nhưng 3 lệnh có tham số đáng nhớ:
 
 | Lệnh | Mặc định | Bật thêm khi cần |
 |------|----------|------------------|
-| `/spec` | Sản phẩm UI: **ASCII wireframes sinh sẵn** | `--prototype` (hoặc nói *"kèm prototype"*) → thêm clickable HTML prototype cho stakeholder duyệt click-through |
+| `/spec` | Sản phẩm UI: **ASCII wireframes sinh sẵn** (riêng baseline brownfield REVERSE: miễn wireframe) | `--prototype` (hoặc nói *"kèm prototype"*) → thêm clickable HTML prototype cho stakeholder duyệt click-through · `--wireframes` (hoặc *"kèm wireframe"*, chỉ REVERSE) → wireframe **as-is** vẽ từ UI đang chạy, chạy được cả sau khi baseline đã duyệt |
 | `/arch` | Component stack loại trừ → **1 Rejection ADR gộp bảng** | `--adr=per-component` (hoặc *"ADR riêng từng component"*) → mỗi component loại trừ 1 ADR đầy đủ (audit/compliance) |
+| `/export-docs` | `prd` \| `sdd` — PRD cần SPEC `Status: Approved`, SDD cần ARCHITECTURE (Gate 2) | `--draft` → cho phép export khi SPEC còn Draft, đóng watermark lên đầu file |
 
 ## Scope khi làm brownfield — câu hỏi hay gặp nhất
 
@@ -69,6 +72,7 @@ Hầu hết việc mô tả bằng câu thường là đủ, nhưng 2 lệnh có
 
 | Cần gì | Đọc |
 |--------|-----|
+| Checklist từng bước cho người mới (brownfield / greenfield) | [getting-started-brownfield.md](getting-started-brownfield.md) · [getting-started-greenfield.md](getting-started-greenfield.md) |
 | Toàn cảnh pipeline, gates, agents | [`.claude/CLAUDE.md`](.claude/CLAUDE.md) |
 | Thứ tự lệnh từng luồng brownfield | [`.claude/references/brownfield-pipeline.md`](.claude/references/brownfield-pipeline.md) |
 | Kỷ luật legacy (characterization, backward-compat) | [`.claude/rules/brownfield.md`](.claude/rules/brownfield.md) |

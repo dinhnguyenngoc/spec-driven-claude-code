@@ -17,7 +17,7 @@ Execute deployment to the **STAGING** environment (Docker Desktop / staging serv
 
 > **Note**: Dockerfile and docker compose are created in `/infra`. This command **executes** deployment.
 
-> **Stack Profile note:** the `sqlcmd`/DB and `dotnet ef` commands below use the **default profile** (C#/.NET + SQL Server). Read `Project Profile` first: Oracle → `sqlplus` · MySQL → `mysql` · PostgreSQL → `psql` · MongoDB → `mongosh` (per `rules/overrides/database-*.md`); **Core = Node.js** → the migration steps map to the declared tool (`prisma migrate deploy` / `migrate-mongo up`) instead of `dotnet ef`.
+> **Stack Profile note:** the `sqlcmd`/DB and `dotnet ef` commands below use the **default profile** (C#/.NET + SQL Server). Read `Project Profile` first: Oracle → `sqlplus` · MySQL → `mysql` · PostgreSQL → `psql` · MongoDB → `mongosh` (per `rules/overrides/database-*.md`); **Core = Node.js** → the migration steps map to the declared tool (`prisma migrate deploy` / `migrate-mongo up`) instead of `dotnet ef`. **Core = PHP** → `php artisan migrate --force` (`--force` because the deploy environment is non-interactive; add `--isolated` when several app instances start concurrently, so only one runs the migration), and `php artisan config:cache` / `route:cache` are part of the release step — see [`rules/overrides/framework-php-laravel.md`](../rules/overrides/framework-php-laravel.md) §H for the `config:cache` caveat that makes `env()` return `null` outside `config/`.
 
 > **`/verify` policy:** `/verify` is **step optional · BLOCKING if run** (Gate 11). Strongly recommended before `/deploy` stages the artifact (especially brownfield, or releases with infra/config changes). **Required when `/deploy` is invoked from the `/hotfix` orchestrator** — hotfix Step 4 requires re-verify on the patched digest. If `/verify` runs, `/deploy` may only stage a digest with a VERIFY_REPORT PASS for **that exact digest** (digest match enforced). Run `/verify` with **staging-config** — the same env as `/deploy` ⇒ within the kit's scope the env always matches; differences between staging↔production belong to the manual checklist (RUNBOOK §8).
 
@@ -51,9 +51,10 @@ Execute deployment to the **STAGING** environment (Docker Desktop / staging serv
 - [ ] `security/SCAN_REPORT.md` has zero open P0 / Critical items
 - [ ] `docs/deployment.md` exists (runbook to reference)
 - [ ] `CHANGELOG.md` updated with the version being released
-- [ ] Database migrations reviewed; backup/snapshot point identified
+- [ ] **Database migrations classified** — each migration in this release is **non-destructive** (additive: new nullable column / new table / new index) **or destructive** per the "never in one step" list in [`rules/database.md`](../rules/database.md) §Expand-contract (`RENAME`/`DROP COLUMN`, `NOT NULL` without default, narrowing a type, unique index over existing data). **Any destructive one ⇒ image-tag rollback is NOT available** — record the real fallback here and in RUNBOOK §4 before deploying. Backup/snapshot point identified either way.
 - [ ] Previous image tag noted (for rollback)
 - [ ] **Every service in `docker compose config --services` has a `HEALTHCHECK`** (verify with `docker compose config | grep -c healthcheck` ≥ number of services). Services WITHOUT a healthcheck must be in the `DEPLOY_SERVICES_WITHOUT_HEALTHCHECK` whitelist with an explicit reason — the Step 4 gate uses healthcheck state to distinguish PASS/FAIL.
+- [ ] **Compose self-containment re-checked on the release stack** — same two mechanical checks as `/infra` Gate 9, run over the EFFECTIVE rendered config of the release compose + overlay (`docker compose config`): infra-class endpoints resolve to compose services; every baked-in connection key has an env override. A deploy overlay can reintroduce a leak `/infra` already fixed — check the rendered view, never just the base file.
 ```
 
 ---
@@ -254,6 +255,8 @@ docker compose ps
 
 ### Step 5: Apply Migrations (if needed)
 
+> **Before running this: a migration can void the rollback promise.** The Quick Rollback below restores the *previous image* — i.e. the **old code** — while the schema stays migrated. If this release contains any operation from the "never in one step" list ([`rules/database.md`](../rules/database.md) §Expand-contract), the old code **cannot run against the new schema** and rollback-by-tag will fail at startup. Such a change must either follow **expand-contract** (Expand → Backfill → Switch → Contract across releases, so both versions run against the same schema) or carry an **ADR + a stated downtime window**. There is no third option — "we'll restore the backup" is a data-loss event, not a rollback.
+
 ```bash
 # Run migrations against containerized database
 dotnet ef database update \
@@ -269,6 +272,8 @@ docker compose exec api dotnet ef database update
 ## Rollback Procedures
 
 > **Target: < 1 minute.** Rollback restarts containers with the *previously tagged image* — it never rebuilds from source. If you find yourself needing `git checkout` + rebuild, the deploy did not produce a proper tag and the audit trail is broken.
+
+> **What makes "< 1 minute" true:** the schema currently in the database must still be **backward-compatible with the previous image**. That is exactly what expand-contract buys (Step 5 note). If this release shipped a destructive migration, the procedure below is **not applicable** — go to §Database Rollback and expect data loss or downtime, and say so plainly in the incident record.
 
 ### Quick Rollback (< 1 min) — image-tag based
 
@@ -489,10 +494,21 @@ All boxes must be ticked. A deploy with any box open is **not done** and produce
 - [ ] Smoke pack passes (DEPLOY_RUNBOOK §3): `/health`, `/health/ready`, version endpoint + 1–2 happy-path calls
 - [ ] Every image carries a semver tag `:vX.Y.Z` — no service running `:latest`
 - [ ] Digest promoted == digest verified (`reports/verify-artifact.lock`) — if `/verify` was run (Gate 11)
-- [ ] `reports/DEPLOY_RUNBOOK.md` complete (all 7 sections)
-- [ ] `reports/RELEASE_NOTES_v<X.Y.Z>.md` complete (all 5 sections, correct Status)
+- [ ] `reports/DEPLOY_RUNBOOK.md` complete (all 8 sections — §8 is the manual-promote handoff: authored now, executed later)
+- [ ] `reports/RELEASE_NOTES_v<X.Y.Z>.md` complete (§1–5 filled, correct Status; §6 stays empty until the manual promote)
 - [ ] `CHANGELOG.md` has an entry for this release
-- [ ] Rollback path ready: previous image tags recorded (runbook §1), procedure (§4) complete
+- [ ] **Rollback path ready — code AND data**: previous image tags recorded (runbook §1), procedure (§4) complete; **if this release migrated the schema**, RUNBOOK §4 states which path actually applies — image-tag rollback (schema still backward-compatible), or expand-contract phase in flight (name the phase), or backup-restore (state the RTO and the data-loss window). A destructive migration with no stated fallback = **not STAGED**.
+- [ ] **As-is refresh (KB sync)** — same sweep as `/infra` Gate 9, scoped to `` `/deploy` ``: grep the backticked command name across `architecture/ARCHITECTURE.md` + `architecture/diagrams/*`; rewrite the as-is statements this deploy invalidated (e.g., "runs dev-only", "TLS termination pending") with an update note, resolve/re-tag `§Open Questions` rows owned by `/deploy`; `adr/` exempt (supersede path). Mechanical check: zero `` pre-`/deploy` `` remains outside `adr/`.
+
+### Service board (MANDATORY presentation)
+
+Declaring `STAGED` MUST end with a live service board in the final message — read from the REAL `docker compose ps` output the Exit-Criteria re-run just produced (never from the sub-agent's report):
+
+| Service | Image:tag | State | Host port | URL |
+|---------|-----------|-------|-----------|-----|
+| api | myapp-api:v1.2.0 | Up (healthy) | 5050 | http://\<staging-host\>:5050 |
+
+Plus the smoke-verified URL list (`/health`, `/health/ready`, version endpoint, app URL — each with its real HTTP status). The host comes from wherever the staging compose actually runs (localhost or the server address in `.env`) — derive, never hardcode. The per-service detail table already lives in `DEPLOY_RUNBOOK.md §3` — the board points there instead of duplicating it.
 
 ---
 
@@ -526,7 +542,7 @@ Invoke: **Release Manager**
 
 ```text
 "As Release Manager, build, deploy and verify the application with staged rollout.
-Output language: Vietnamese for prose/artifacts, English for code and technical identifiers
+Output language: <Output Language from Project Profile> for prose/artifacts, English for code and technical identifiers
 (see .claude/CLAUDE.md → Output Language)."
 ```
 

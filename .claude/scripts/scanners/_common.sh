@@ -104,18 +104,18 @@ detect_stacks() {
         stacks+=("java")
     fi
 
-    # Go — có go.mod
-    if [ -f go.mod ]; then
+    # Go — có go.mod (maxdepth 4: service nằm ở thư mục con vẫn phải được quét)
+    if find . -maxdepth 4 -name "go.mod" -not -path "*/vendor/*" -not -path "*/node_modules/*" 2>/dev/null | head -1 | grep -q .; then
         stacks+=("go")
     fi
 
     # Ruby — có Gemfile
-    if [ -f Gemfile ]; then
+    if find . -maxdepth 4 -name "Gemfile" -not -path "*/vendor/*" -not -path "*/node_modules/*" 2>/dev/null | head -1 | grep -q .; then
         stacks+=("ruby")
     fi
 
-    # PHP — có composer.json
-    if [ -f composer.json ]; then
+    # PHP — có composer.json (Laravel ở backend/ là ca multi-stack kit hỗ trợ chính thức)
+    if find . -maxdepth 4 -name "composer.json" -not -path "*/vendor/*" -not -path "*/node_modules/*" 2>/dev/null | head -1 | grep -q .; then
         stacks+=("php")
     fi
 

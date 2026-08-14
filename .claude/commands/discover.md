@@ -28,7 +28,7 @@ This is **Phase A** of the brownfield pipeline: `/discover` → `/spec` (reverse
 
 ## Boundary — READ-ONLY
 
-`/discover` **does not modify source code, does not add/upgrade dependencies or install new global tooling, and does not run migrations that write to the DB**. Restoring the project's *already-declared* dependencies to build/test for observation is fine. It only reads, builds/tests to observe, and produces documentation. All code changes belong to flow B.
+`/discover` **does not modify source code, does not add/upgrade dependencies or install new global tooling, and does not run migrations that write to the DB**. *(One narrow exception, added deliberately: installing a database **client CLI** during the §Phase 1b ladder — only after the exact command has been shown and the user has explicitly approved it, and only once the no-machine-change paths have failed. It is recorded in the health snapshot because the machine changed.)* Restoring the project's *already-declared* dependencies to build/test for observation is fine. It only reads, builds/tests to observe, and produces documentation. All code changes belong to flow B.
 
 > Also does NOT do work that belongs to other commands: does not run a full `/scan` (independent, recommended separately), does not run a full `/review` Five-Axis (per-change). `/discover` only takes a **light health snapshot** sufficient to assess initial risk.
 
@@ -41,41 +41,74 @@ This is **Phase A** of the brownfield pipeline: `/discover` → `/spec` (reverse
 Runs once, BEFORE Phase 1: decide whether this session root is ONE repo (default) or a workspace parent of several repos — never guess silently.
 
 1. **Detect** — trigger when the root Profile already declares `Mode: workspace`, OR the root has no business code of its own AND ≥ 2 direct subfolders are git repos (`.git` present). Signal-based and one-time — later commands read the declaration instead of re-detecting (declare-once, step 3).
-2. **Confirm with the user** (never proceed on detection alone): list the candidate repos → ask (a) is this a workspace? (b) which repo(s) to discover now — one, several, or all sequentially? Propose a kebab-case `Service id` per repo (from the folder name) for approval.
-3. **Declare** — write/update the root `.claude/PROJECT_PROFILE.md`: `Mode: workspace` + the `Repos:` registry. Adding a repo later → re-run `/discover` to update the registry.
-4. **Run per repo** — for each selected repo, run Phases 1–4 below **unchanged**, with ALL outputs written inside that repo (`<repo>/.claude/PROJECT_PROFILE.md`, `<repo>/docs/CODEBASE_MAP.md`). The per-repo Profile carries the approved `Service id`.
+2. **Confirm with the user** (never proceed on detection alone): list the candidate repos → ask (a) is this a workspace? (b) which repo(s) to discover now — one, several, or all sequentially? (c) the product's `Output Language` — asked ONCE for the whole workspace (one product = one artifact language; propose the language the user is conversing in). Propose a kebab-case `Service id` per repo (from the folder name) for approval.
+3. **Declare** — write/update the root `.claude/PROJECT_PROFILE.md`: `Mode: workspace` + `Output Language` + the `Repos:` registry. Adding a repo later → re-run `/discover` to update the registry.
+4. **Run per repo** — for each selected repo, run Phases 1–4 below **unchanged**, with ALL outputs written inside that repo (`<repo>/.claude/PROJECT_PROFILE.md`, `<repo>/docs/CODEBASE_MAP.md`). The per-repo Profile carries the approved `Service id` + the workspace-wide `Output Language` (identical in every member repo).
 
 Single repo detected (or the user says "not a workspace") → skip; Phases 1–4 run at the session root exactly as before.
 
 ### Phase 1 — Stack & structure inventory
 
-- List languages, frameworks, runtime versions (read `*.csproj`, `global.json`, `package.json`, lockfiles).
+- List languages, frameworks, runtime versions (read `*.csproj`, `global.json`, `package.json`, `composer.json` — plus the `artisan` file → Laravel — and lockfiles).
 - Map the structure: number of projects/modules, layering (Clean Architecture? N-tier? monolith?), entry points, main folders.
 - Identify peripheral technologies: database engine, cache, message broker, logging/observability backend, auth.
-- **Detect DB-resident logic** — scan the tree for database DDL by TWO signals: (a) file type — `*.sql`, `*.sqlproj`, migration/DDL folders; (b) **content** — any file (C#/TS migration, embedded resource, XML…) containing DDL statements (`CREATE|ALTER TABLE`, `CREATE PROCEDURE|PROC`, `CREATE TRIGGER`, `CREATE INDEX`, `CREATE FUNCTION|VIEW`, e.g. `migrationBuilder.Sql("CREATE PROCEDURE …")`). The location is **not fixed** (`db/`, `src/db/`, `backend/db/`, inside migrations…) — detect by signal, not by path. If the app calls stored procedures / triggers / DB functions, these in-repo scripts are the only readable source of that logic. **Never connect to a live database** (not even via a connection string found in config) — the in-repo snapshot is the only evidence source; see the DB-object inventory in Output.
+- **Detect DB-resident logic** — scan the tree for database DDL by TWO signals: (a) file type — `*.sql`, `*.sqlproj`, migration/DDL folders; (b) **content** — any file (C#/TS migration, embedded resource, XML…) containing DDL statements (`CREATE|ALTER TABLE`, `CREATE PROCEDURE|PROC`, `CREATE TRIGGER`, `CREATE INDEX`, `CREATE FUNCTION|VIEW`, e.g. `migrationBuilder.Sql("CREATE PROCEDURE …")`). The location is **not fixed** (`db/`, `src/db/`, `backend/db/`, inside migrations…) — detect by signal, not by path. If the app calls stored procedures / triggers / DB functions, these in-repo scripts are the only readable source of that logic. **Document databases (MongoDB) have no DDL — but they DO hold behavior-critical structure**, so detect the equivalent signals: migration frameworks (`migrate-mongo`, `Mongo.Migration`) and, in code, `createIndex` · `schema.index(` · `expireAfterSeconds` · `$jsonSchema` · `collMod` · `createView` · any Atlas App Services client. What lives in the cluster there = collection **validators** · **views** (stored aggregation pipelines) · **indexes** — above all **TTL** (documents auto-delete on their own) and **unique** (duplicate-key ⇒ the app's 409 path) — none of which is visible when reading application code; **Atlas Triggers/Functions/Search** live outside the database entirely (separate service + credentials). **Never connect to a live database as a side effect** (not even via a connection string found in config) — the in-repo snapshot is the only evidence source. This holds **even when the session has a database MCP tool available**: an MCP server is a standing capability, not a licence — its output lives in the conversation, not in the repo, so it may never be the source of SPEC/ARCH content, and **the kit does not use it as an export path at all** (rationale in §Phase 1b). When the repo has no DDL for objects the code calls, the remedy is an **explicitly approved, per-connection schema export** (§Phase 1b) whose output is committed into the repo — the evidence stays repo-resident and re-verifiable either way; see the DB-object + Connection inventories in Output.
+- **Detect external-structure dependencies** — same two-signal discipline (package/client refs + call-sites, never a fixed path): message-broker clients (Confluent.Kafka / kafkajs / amqp…), cache clients (StackExchange.Redis / ioredis / predis…), schedulers (Hangfire / node-cron / Laravel scheduler / hosted workers), outbound HTTP clients to third-party APIs. **The code side is the evidence** (what this repo produces/consumes/schedules + the classes it serializes); external-side config/state is NEVER read from live systems (same never-connect rule as the database) — it becomes a **named red-flag/OQ only when code behavior semantics depend on it** (see the inventory notes in Output). Also detect **config-read mechanisms outside repo files** — `Registry.GetValue`/`Microsoft.Win32`, ODBC `DSN=`, `machine.config`/IIS config reads, vault/secret-manager SDKs: each becomes a red-flag **`Config source outside repo`** (the VALUE is a named blind spot — the isolation nets cannot know it statically; vault is the healthy variant but still recorded, since a local run without a token fails fast and that behavior must be a documented finding, not a surprise).
+
+### Phase 1b — Guided schema export (opt-in, per-connection consent)
+
+Runs **only when** Phase 1 found DB-resident logic the repo cannot show (`DB-resident logic not in repo`) **or** a data-centric app with no schema evidence at all. The orchestrator **offers**; the user decides. Flow:
+
+1. **Present the Connection inventory** — DB rows only, with `engine · host · database · user · source file:line`, credentials masked, plus an environment signal (`⚠️ production-looking` when the source file or host matches prod markers: `appsettings.Production.json`, `prod`, `-prd`, a non-private IP…).
+2. **Ask per connection** (`AskUserQuestion`) — **default NO, no "approve all"**. A row flagged production-looking requires the user to state the environment in their answer, not just accept.
+3. **Run the approved export**: `.claude/scripts/export-db-schema.sh --from-config <file> --key <config key> --engine <sqlserver|mysql|postgres|mongodb|oracle> --out db/schema-snapshot/<name>` — the script reads the connection **from the config file itself**, so the secret never appears in a command line, a chat message, or a log. **Schema-only** (DDL + routine/trigger/view/function definitions; MongoDB: `getCollectionInfos()` + `getIndexes()` metadata, which also emits a `BEHAVIOR-CRITICAL.md` listing TTL/unique indexes, validators and views): **zero data rows** in every engine. **Atlas Triggers/Functions/Search are NOT reachable through a database connection** — they stay a named blind spot; remedy = `appservices pull` by hand + commit.
+   **Transport ladder — diagnose the obstacle and exhaust the faithful paths BEFORE falling back** (each step only when the one above is genuinely impossible):
+
+   1. **Engine CLI on the machine** — the default; byte-exact, replayable DDL.
+   2. **Engine CLI inside a container** — no install needed and the client version matches the server: `docker run --rm --network <net> -e PGPASSWORD postgres:16-alpine pg_dump …` (same for `mysqldump`, `mongosh`); when the database itself runs locally in Docker, `docker exec <db-container> …` works too. Still the traditional path — full fidelity, deterministic — so it ranks far above MCP. Put a thin wrapper on `PATH` and this script runs unchanged. *(Verified in practice: all three engines exported completely this way with zero client installed locally.)*
+   3. **Same-fidelity alternative for that engine** — e.g. SQL Server: no `mssql-scripter` → `sqlcmd` (the script already does this, marking the snapshot PARTIAL); reachability: the DB sits on a Docker network → run the client **on that network** instead of declaring it unreachable.
+   4. **Same-fidelity path that needs a human, not a new mechanism** — run the export where a client already exists (a jump host, the DB server itself, a colleague's machine, CI) and commit the resulting file; or ask the DBA for the CREATE scripts. The output is identical in kind — a committed, replayable DDL snapshot — so this still ranks above giving up.
+
+   Steps 1–3 change nothing on the machine — work through them **without interrupting the user**; step 4 needs the user.
+
+   **Only then, ONE informed notification** stating the real cause + the options:
+   - **(a) Install the engine CLI** — show the **exact command** for the platform's standard package manager (`brew install libpq` · `mongosh` · `mysql-client`, Oracle Instant Client…) and ask for approval; **on explicit approval the kit runs it** (this is the §Boundary exception). Guardrails: package manager only — never `curl | sh`, never a sudo-piped installer, never edits to `PATH`/shell profiles; default NO; the install is recorded in the health snapshot (the machine changed); if it fails, do **not** retry with elevated privileges or another source — report and offer (b).
+   - **(b) Export elsewhere** — step 4 above: someone runs the same CLI where it exists and commits the file.
+   - **(c) Skip** — no snapshot: keep the red-flag and record the blind spot honestly. A missing snapshot documented as missing beats an incomplete one presented as complete — **this, not a lesser tool, is the correct end of the ladder.**
+
+   **Obstacles that are NEVER auto-"fixed":** auth/permission failure → **STOP and report** — never try another credential, another user, or the same one again (Oracle `FAILED_LOGIN_ATTEMPTS`, SQL Server, rate-limited auth turn a retry into an outage of the real application). Missing privilege (e.g. Oracle `DBMS_METADATA` needing catalog rights) → ask for a read-only grant, do not work around it. Network/firewall → report; never "fix" the environment.
+
+   **Why there is no MCP rung on this ladder (decided on measured evidence, 2026-08-07):** a database MCP server was evaluated as a fallback transport and **rejected**. ① *Safety is not guaranteed and drifts between releases* — DBHub 1.2.0 has **removed** its `--readonly` flag and, by default, exposes an `execute_sql` tool with full write power (proven on a throwaway database: `CREATE TABLE` then `DROP TABLE` both succeeded); MongoDB MCP Server v2.0.0 still filters writes under `--readOnly`, so the guarantee depends on which server and which version happens to be installed. ② *Fidelity is names, not DDL* — DBHub `search_objects` returns `{"name":"users","schema":"public"}` where `pg_dump` returns a replayable `CREATE TABLE …`; MongoDB `collection-indexes` fails outright off Atlas, so the TTL/unique layer never arrives. ③ *Coverage is uneven* — DBHub covers Postgres/MySQL/SQL Server/SQLite/MariaDB but **not Oracle or MongoDB**, so for some engines the rung would not even exist. A fallback the kit must depend on cannot be that unstable: if the ladder is exhausted, **record the blind spot** (option c) rather than commit an unverifiable snapshot. *(An MCP tool present in the session is still never a source for KB content — see §Phase 1 never-connect.)*
+4. **Commit the snapshot** — output carries a banner (`GENERATED by export-db-schema.sh · source: <engine>@<host>/<db> · <date> · approved by user`); add a row to the DB-object inventory pointing at it. Evidence is now repo-resident and re-verifiable by anyone.
+5. **Not resolvable → skip, keep the flag** — `placeholder` / `outside repo` connections: the kit does not guess the value; ask the user to supply one or skip, and the red-flag stays.
+
+**Scope of the approval:** it authorizes **this one export action only**. It never becomes a standing exception — `/test`'s tripwire, `/infra`'s self-containment check, and every other command keep treating live infrastructure as off-limits.
+
+The user may of course run the script themselves (CI, or simply preferring the agent not to touch it) and just commit the result — Phase 1b is the paved road, not the only road.
 
 ### Phase 2 — Build & run verification
 
 - Run the build (`dotnet build` / `npm run build` …) — record the result, warnings/errors.
-- Run the existing test suite if present (`dotnet test` …) — **measure, do not verify**: does the suite pass? how many tests?
+- Run the existing test suite if present — **measure, do not verify**: does the suite pass? how many tests? **Pre-flight inspection is MANDATORY before any test command runs** (the legacy suite's own fixtures/config may point at shared infrastructure — the kit's isolation templates are not in play here): read the test projects' config first (`appsettings*.json` under test projects, hardcoded strings in fixtures, `phpunit.xml` `<env>`, jest setup / `.env.test`) and classify every endpoint host — loopback / repo-compose service names / TestContainers = SAFE; anything else = SHARED/UNKNOWN. Any SHARED/UNKNOWN host on a test path → **do NOT run that portion of the suite** (run a unit-only subset if categories allow); record the finding *"suite not run — its own config points at shared infra (host, file:line)"* + red-flag. Do NOT "fix" it by overriding hosts to placeholders — the tests would fail for the wrong reason and poison the measurement. If the suite does run → capture its full output and apply the §connection tripwire (Gate-6 rule in `test.md`) to it.
 - Confirm the app can start (or explicitly record blockers if it cannot).
 - **Sanitized startup (brownfield caution):** a legacy app may auto-connect — or auto-migrate (`context.Database.Migrate()`) — against the real DB / Kafka / Redis the moment it boots with its shipped config. Start it with a **sanitized environment** (env-var overrides pointing at throwaway containers, or placeholder connection strings) — never against the real shared infrastructure just to "see it run". Overrides are runtime-only (env vars / an uncommitted local file, removed afterwards) — the repo's config files are NOT edited (read-only guarantee). "Cannot start without real infra" is itself a finding to record, not a reason to point at production.
 
 ### Phase 3 — Health snapshot (light — measure, not verify)
 
 Only signals **independent of the spec** (per `rules/brownfield.md` §Measure-vs-Verify):
-- Existing coverage (if measurable) — baseline number, no judgment.
+- Existing coverage (if measurable) — baseline number, no judgment. *(Measuring coverage executes the suite → the Phase 2 pre-flight inspection + tripwire apply here unchanged.)*
 - Coarse complexity / hotspots (abnormally large files, high churn if git history exists).
 - Obvious security red-flags: hardcoded secrets, clearly outdated dependencies, dangerous patterns (string-concat SQL, no-auth endpoint). **Does not replace `/scan`** — just flag them for `/scan` to dig into later.
 
 ### Phase 4 — Generate Project Profile
 
-Generate / update **`.claude/PROJECT_PROFILE.md`** (the CONFIG layer, user-owned — see `CLAUDE.md` §Kit Layering; an old repo layout that does not yet have this file → update the `## Project Profile` block in `CLAUDE.md` as before):
+Generate / update **`.claude/PROJECT_PROFILE.md`** (the CONFIG layer, user-owned — see `CLAUDE.md` §Kit Layering; an old repo layout that does not yet have this file → update the `## Project Profile` block in `CLAUDE.md` as before). **`Output Language`:** ask the user once (propose the language they are conversing in as the default); a value already set in an existing Profile is kept as-is; workspace → the value comes from Phase 0, do not re-ask per repo:
 
 ```markdown
 ## Project Profile
 - Mode: brownfield
-- Core: <core language/framework from inventory — C#/ASP.NET Core (base), or Node.js → rules/overrides/lang-nodejs.md + framework-nodejs-web.md + test-nodejs.md>
+- Output Language: <Vietnamese | English | … — see CLAUDE.md §Output Language>
+- Core: <core language/framework from inventory — C#/ASP.NET Core (base) · Node.js → rules/overrides/lang-nodejs.md + framework-nodejs-web.md + test-nodejs.md · PHP → rules/overrides/lang-php.md + framework-php-laravel.md + test-php.md; multi-stack → declare ALL, scoped by path (see note below the block)>
 - Database: <engine> → <rules/overrides/* if different from default, or "base database.md">
 - Observability: <Serilog/ELK/Grafana…> → <override if needed>
 - Structure: <Clean Architecture | N-tier | monolith | …>
@@ -84,6 +117,8 @@ Generate / update **`.claude/PROJECT_PROFILE.md`** (the CONFIG layer, user-owned
 - Notes: <red-flags, blockers, risk areas>
 ```
 
+> **Multi-stack repo (Phase 1 found > 1 backend language/framework):** declare them ALL in `Core:` — each scoped by path, the dominant one first (e.g. `C# 12 + ASP.NET Core 8 (src/ — dominant) + Python 3.11 (tools/etl/ — worker jobs)`); each stack activates its own override set for its own area, while the base rules' agnostic principles apply everywhere. **Never pick-one-drop-one** — that silently drops half the codebase from every downstream gate (the endpoint inventory, characterization scope, and `/scan` already handle multiple stacks; the Profile must match). Two frameworks of the SAME language side by side (Express + NestJS, .NET Framework + .NET Core) → describe **as-is** + red-flag `⚠️ dual framework — migration in progress?` + an Open Question for the team (finish the strangler-fig, or a stalled migration to close out?).
+
 ---
 
 ## Output
@@ -91,34 +126,42 @@ Generate / update **`.claude/PROJECT_PROFILE.md`** (the CONFIG layer, user-owned
 - `.claude/PROJECT_PROFILE.md` (fully filled in) — the **most important artifact**.
 - `docs/CODEBASE_MAP.md` — **REQUIRED** (consumed as the navigation index by `/spec` REVERSE and `/arch` reverse, so they do not re-survey the tree). Must contain at minimum:
   - Module / layering summary + entry points.
-  - **Endpoint inventory** — a table `route + method → controller/handler → service` covering every externally reachable entry point. This is the skeleton `/spec` REVERSE turns into as-is user stories.
+  - **Endpoint inventory** — a table covering EVERY externally reachable entry point, not only HTTP: `route + method → controller/handler → service` for HTTP · `topic/queue + consumer group → handler` for message consumers · `schedule → job class` for scheduled jobs (Hangfire/cron/hosted workers) · `command → handler` for CLI. This is the skeleton `/spec` REVERSE turns into as-is user stories (a consumer/job story's actor = the upstream system/scheduler). An entry point with **no in-repo caller and no in-repo schedule** (e.g. a job-like endpoint hit by a server crontab) → red-flag `Caller not in repo — suspected external trigger`.
   - **Red-flag list** — the Phase 3 findings with `file:line` locations, so `/spec` REVERSE carries them over as `⚠️ suspicious behavior` instead of re-detecting.
-  - **DB-object inventory** (conditional — REQUIRED when Phase 1 detected DDL in the repo OR the code calls DB-resident logic via `EXEC` / `FromSqlRaw` / raw SQL): a table `object (table / proc / trigger / index / function / view) → defining file (actual path — locations vary per repo) → called from (file:line)`. This table is the index `/spec` REVERSE and characterization tests use to reach DB-resident behavior. Any object the code **calls** whose defining DDL is **not** in the repo → add to the red-flag list as `DB-resident logic not in repo` (blind spot; remedy = the user/DBA exports the CREATE script into the repo — the kit never auto-connects to a database to fetch it).
-- Health snapshot (build/test status, coverage baseline, red-flags) — input for deciding whether `/scan` is urgently needed.
+  - **Connection inventory** (conditional — REQUIRED when any outbound connection config exists): one row per configured connection — `logical name → engine/type → host + database/topic/keyspace (credentials MASKED) → source (file:line) → used by → status`. Status ∈ `resolved` (literal value in a repo file) · `placeholder` (env var / `${…}` — value outside the repo) · `outside repo` (Registry / ODBC DSN / vault — see the `Config source outside repo` red-flag). **Never print or store credentials** — mask the password segment in the table and in every message. This single list is consumed three ways: the human reads it to approve a schema export (§Phase 1b), `/test`'s connection tripwire uses it as its known-host source, and `/infra`/`/deploy` compose self-containment uses it as the key list that must be overridden.
+  - **DB-object inventory** (conditional — REQUIRED when Phase 1 detected DDL in the repo OR the code calls DB-resident logic via `EXEC` / `FromSqlRaw` / raw SQL): a table `object (table / proc / trigger / index / function / view — MongoDB: collection validator / view / index (TTL & unique first) / Atlas trigger·function) → defining file (actual path — locations vary per repo) → called from (file:line)`. This table is the index `/spec` REVERSE and characterization tests use to reach DB-resident behavior. Any object the code **calls** whose defining DDL is **not** in the repo → add to the red-flag list as `DB-resident logic not in repo` (blind spot; remedy = commit the CREATE script into the repo — by hand, or via the guided export in §Phase 1b, which the user approves per connection; the kit never connects on its own initiative).
+  - **Messaging inventory** (conditional — REQUIRED when Phase 1 detected a message-broker client): a table `topic/queue → direction (produce/consume) → message type (serialized class, file:line — or schema-registry ref) → consumer group`. The serialized class in the repo IS the schema evidence; a schema living only in an external registry (Avro/Protobuf) → red-flag **`Message schema not in repo`** (remedy: export the `.avsc`/`.proto` into the repo — same discipline as the DB CREATE script).
+  - **Cache-structure inventory** (conditional — REQUIRED when Phase 1 detected a cache client): a table `key pattern → data type → TTL → written by / read by (file:line)` derived from call-sites. A key this code READS but nothing in this repo writes → red-flag **`External structure not in repo`** (another system owns it — an integration contract, not a private cache).
+  - **External-side config = conditional blind spot, not a collection target.** Broker/cache/server config no code line defines (topic partitions/retention/compaction, Redis eviction/persistence policy, schema-registry versions, server crontab / SQL Server Agent jobs) is NOT harvested from live systems. It gets a red-flag/OQ **only when code behavior semantics depend on it** — logic assumes message ordering or replay (→ partition/retention matters) · Redis treated as a durable store (→ eviction/persistence matters) · an entry point with no in-repo caller (→ external scheduler suspected). Remedy stays human-in-the-loop: export a snapshot into the repo (`kafka-topics --describe` output, `CONFIG GET maxmemory-policy`, the Agent-job script) or answer the OQ.
+- **Health snapshot** — a `§Health snapshot` section **inside `docs/CODEBASE_MAP.md`** (build/test status + coverage baseline; red-flags stay in their own `§Red-flag list` — do not repeat them here) — input for deciding whether `/scan` is urgently needed. Deliberately **not** a separate file: one fewer artifact to name, and the read-only whitelist below stays exactly checkable.
 
 ## Quality Gate — Phase A Kickoff
 
 Run the §Orchestrator disk-check (below) first, then review.
 
-- [ ] `Project Profile` fully filled in: Mode, Core, Database, Observability, Structure
+- [ ] `Project Profile` fully filled in: Mode, Output Language, Core, Database, Observability, Structure
 - [ ] `docs/CODEBASE_MAP.md` written, containing the **endpoint inventory** + **red-flag list** (the index `/spec` REVERSE / `/arch` reverse consume)
 - [ ] Build status confirmed (pass / fail + reason)
 - [ ] Test suite status measured (pass count / coverage or "no tests")
 - [ ] Obvious security/technical red-flags listed (for `/scan` to dig into)
 - [ ] DDL detected in repo (by file type or content) → **DB-object inventory** present in `CODEBASE_MAP.md`; every code-called DB object missing its defining DDL → listed as `DB-resident logic not in repo` red-flag
+- [ ] **Connection inventory** present when any outbound connection config exists — every row has source `file:line` + status (`resolved`/`placeholder`/`outside repo`), **no credential printed anywhere**; any schema export performed is recorded with its banner (source host/db + date + approved-by-user)
+- [ ] Broker/cache client detected → **Messaging / Cache-structure inventory** present; every consumed schema or read-only key whose definition is not in the repo → listed under `Message schema not in repo` / `External structure not in repo`; behavior-semantic external config (ordering/replay/eviction assumptions) → red-flag/OQ, never silently assumed
 - [ ] No code modifications (read-only guarantee)
 - [ ] (workspace) Registry in the root Profile matches the actual folders — no unregistered git subfolder, no registry row without a folder
 - [ ] (workspace) Every artifact written inside its repo — nothing new at the workspace root except `.claude/` and `architecture/system/`
-- [ ] (workspace) `git status` per member repo shows only the expected new files (Profile, CODEBASE_MAP, health snapshot)
+- [ ] (workspace) `git status` per member repo shows only the expected new files — **the same three-path whitelist as the disk-check below** (Profile, CODEBASE_MAP, and `db/schema-snapshot/` when Phase 1b ran)
 
 ### Orchestrator disk-check (run BEFORE presenting the Phase A kickoff)
 
 A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.md` §Verification After Delegation, applied at artifact level:
 
-- [ ] **Read-only guarantee, verified** — `git status`: no tracked file modified; the only additions are `docs/CODEBASE_MAP.md`, `.claude/PROJECT_PROFILE.md`, and the health-snapshot doc (build/test byproducts like `bin/`/`coverage/` are gitignored, not committed). A modified source/config file = the read-only boundary was broken — revert and surface it.
-- [ ] **Profile complete** — every field filled (Mode / Core / Database / Observability / Structure — no `<…>` placeholder left).
-- [ ] **CODEBASE_MAP sections present** — module summary, the endpoint inventory table, the red-flag list (with `file:line`); DB-object inventory present when Phase 1 detected DDL or `EXEC`/raw-SQL calls.
+- [ ] **Read-only guarantee, verified** — `git status`: no tracked file modified; the additions are **exactly these three paths** — `docs/CODEBASE_MAP.md` (health snapshot included as a section), `.claude/PROJECT_PROFILE.md`, and `db/schema-snapshot/**` *(only when Phase 1b ran — there it is a **required** output, never an unexpected addition)*. Build/test byproducts (`bin/`, `coverage/`) are gitignored, not committed. Anything else added, **or** any tracked source/config file modified = the read-only boundary was broken — revert and surface it.
+- [ ] **Profile complete** — every field filled (Mode / Output Language / Core / Database / Observability / Structure — no `<…>` placeholder left).
+- [ ] **CODEBASE_MAP sections present** — module summary, the endpoint inventory table, the red-flag list (with `file:line`); DB-object inventory present when Phase 1 detected DDL or `EXEC`/raw-SQL calls; Messaging / Cache-structure inventories present when Phase 1 detected broker/cache clients (grep the client packages yourself — don't trust the report's "no broker").
+- [ ] **No credential leaked** — grep the produced artifacts (`CODEBASE_MAP.md` — health snapshot included as a section, `.claude/PROJECT_PROFILE.md`, any `db/schema-snapshot/**`) for password-like segments (`Password=`, `pwd=`, `:.*@` in URIs): masked everywhere. A leaked secret in a committed artifact is worse than the blind spot it was meant to close.
 - [ ] **Build/test status recorded as observed** — the snapshot quotes real command output (exit code, test counts), not a summary adjective.
+- [ ] **Suite-run decision recorded with evidence** — either the SAFE host classification that allowed the run (+ its output passed the connection tripwire), or the *"suite not run — shared infra (host, file:line)"* finding + red-flag. A suite that ran with no recorded pre-flight = gate FAIL.
 - [ ] **(workspace) Placement verified** — diff each member repo's `git status` yourself; any artifact at the workspace root that belongs to a repo = placement bug — move it before presenting.
 
 Any mismatch → fix on disk first.
@@ -133,7 +176,8 @@ Invoke: **Systems Architect** (leads the stack & structure survey), preparing to
 
 ```text
 "As Systems Architect, run /discover on this legacy repo and produce the Project Profile.
-Output language: Vietnamese for prose/artifacts, English for code and technical identifiers
+(workspace) Target repo: <path> · approved Service id: <id> — Phase 0 decisions the sub-agent must not re-derive.
+Output language: <Output Language from Project Profile — or the value the user just chose in Phase 0/4> for prose/artifacts, English for code and technical identifiers
 (see .claude/CLAUDE.md → Output Language)."
 ```
 

@@ -13,7 +13,7 @@ Systematically diagnose and fix errors. Stop feature work, preserve evidence, fi
 
 > **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
 
-> **Stack Profile note:** the `dotnet` commands, triage trees, error catalog, and §Debugging Tools below use the **default profile**. **Core = Node.js** → map accordingly (`npm test` / `npx vitest --reporter=verbose`, `node --inspect`, Prisma `log: ['query']` instead of EF Core logging) — the .NET error catalog is default-stack illustration only.
+> **Stack Profile note:** the `dotnet` commands, triage trees, error catalog, and §Debugging Tools below use the **default profile**. **Core = Node.js** → map accordingly (`npm test` / `npx vitest --reporter=verbose`, `node --inspect`, Prisma `log: ['query']` instead of EF Core logging) — the .NET error catalog is default-stack illustration only. **Core = PHP** → `php artisan test` / `vendor/bin/pest --filter <name>`, **Xdebug** for step-debugging, `DB::enableQueryLog()` / Laravel Telescope instead of EF Core query logging (`rules/overrides/lang-php.md` idioms apply).
 
 ## Agent
 
@@ -26,9 +26,9 @@ Invoke based on the layer where the error occurs:
 | Test failure (flaky, intermittent) | 🧪 **Test Engineer** |
 | Security-related error | 🔒 **Security Auditor** |
 
-> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+> Sub-agent prompt MUST include: "Output language: \<declared language — resolve from Project Profile → Output Language\> for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 
-> Sub-agent prompt MUST also include: "Ambiguity policy: implementation details → decide per rules, never ask; non-blocking behavior/contract gaps → implement the most conservative interpretation and add an Assumptions-log entry (`A-xx` — it joins the running `/build` phase's log, dispositioned at Gate 5); blocking or expensive-if-wrong gaps → stop and return early with the question (see `rules/principles-and-practices.md` §2.5)."
+> Sub-agent prompt MUST also include: "Ambiguity policy: implementation details → decide per rules, never ask; non-blocking behavior/contract gaps → implement the most conservative interpretation and add an Assumptions-log entry (`A-xx` — when a `/build` phase is running it joins that phase's log, dispositioned at Gate 5; with **no running phase** — standalone debug, or a `/test`/`/review` context — the user dispositions it **before this debug closes**, same mechanism as `/fix-issue`); blocking or expensive-if-wrong gaps → stop and return early with the question (see `rules/principles-and-practices.md` §2.5). Return every `A-xx` entry (or 'Assumptions: none') in your completion report — the orchestrator routes it: into the running `/build` phase's log (Gate 5), or to the user's immediate disposition when no phase is running."
 
 ---
 
@@ -355,6 +355,7 @@ catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx)
 | "It works on my machine" | Environment differences are bugs |
 | "It's just flaky" | Flaky tests have root causes |
 | "Let's just retry" | Retries hide real problems |
+| "The assertion is too strict" | Weakening an assert to green a test deletes the only witness. Changing an expectation is a **behavior decision** — source it from the spec scenario (`@US-XXX-Snn`) or record an `A-xx`; an E2E assert also answers to the E2E assertion contract (`verify.md` §Phase 3) — never drop the reload re-assert to "fix" flakiness |
 | "It's a third-party issue" | Still need to handle gracefully |
 | "We'll fix it later" | Tech debt compounds |
 
@@ -377,6 +378,7 @@ Per `CLAUDE.md` §Verification After Delegation, the **orchestrator re-runs the 
 - [ ] Regression test added and passing
 - [ ] All existing tests passing
 - [ ] No new warnings introduced
+- [ ] **Every `A-xx` recorded is dispositioned** — at Gate 5 when resuming `/build`, or directly by the user when no phase is running; an approved behavior-changing assumption flows back into `specs/` as an AC amendment — no behavior decision lives only in the commit (`principles-and-practices.md` §2.5)
 
 ---
 

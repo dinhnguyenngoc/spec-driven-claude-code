@@ -13,7 +13,7 @@ Create Docker infrastructure for local development and deployment on Docker Desk
 
 > **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
 
-> **Stack Profile note:** read `Project Profile` first. **Core = Node.js** → the Dockerfile swaps the dotnet images for a `node:20-alpine` multi-stage (`npm ci && npm run build` → pruned runtime via `npm ci --omit=dev`; same §4 must-haves apply: non-root, HEALTHCHECK, pinned tags — the icu-libs/invariant-mode block in the template is **.NET-only**, do not copy it into a node image), and the EF-migration notes map to the declared ORM's equivalent (`prisma migrate deploy` via a startup flag or migrator container). **Database** → the DB service follows the Profile: SQL Server default (arm64: Azure SQL Edge) · Oracle / MySQL / PostgreSQL / MongoDB → corresponding image + healthcheck per `rules/overrides/database-*.md` (MongoDB: mind the replica-set requirement for transactions — override §F). Observability ELK → Elasticsearch/Kibana instead of Grafana/Prometheus (`rules/overrides/monitoring-elk.md`).
+> **Stack Profile note:** read `Project Profile` first. **Core = Node.js** → the Dockerfile swaps the dotnet images for a `node:20-alpine` multi-stage (`npm ci && npm run build` → pruned runtime via `npm ci --omit=dev`; same §4 must-haves apply: non-root, HEALTHCHECK, pinned tags — the icu-libs/invariant-mode block in the template is **.NET-only**, do not copy it into a node image), and the EF-migration notes map to the declared ORM's equivalent (`prisma migrate deploy` via a startup flag or migrator container). **Core = PHP** → pick ONE of the two sanctioned container shapes in [`rules/overrides/framework-php-laravel.md`](../rules/overrides/framework-php-laravel.md) §J and keep it for the whole repo: **php-fpm + nginx sidecar** (two compose services — the nginx container carries the `/health` HEALTHCHECK, fpm uses a FastCGI ping) or **FrankenPHP / Octane single container** (HEALTHCHECK hits `/health` directly). `.dockerignore` additionally excludes `vendor/`, `.env`, `storage/logs`; the EF-migration notes map to `php artisan migrate --force` (startup command or a one-shot migrator service); same §4 must-haves apply — non-root, pinned tags, HEALTHCHECK — and the icu-libs/invariant-mode block is **.NET-only**, never copied into a PHP image. **Database** → the DB service follows the Profile: SQL Server default (arm64: Azure SQL Edge) · Oracle / MySQL / PostgreSQL / MongoDB → corresponding image + healthcheck per `rules/overrides/database-*.md` (MongoDB: mind the replica-set requirement for transactions — override §F). Observability ELK → Elasticsearch/Kibana instead of Grafana/Prometheus (`rules/overrides/monitoring-elk.md`).
 
 > **Brownfield-aware:** When `Project Profile → Mode: brownfield`, the skill runs in **REVERSE-BOOTSTRAP** mode (no Dockerfile/compose yet) or **CONFORMANCE-CHECK** mode (already present) — see §Brownfield Mode. The default template below applies only to greenfield.
 
@@ -91,6 +91,10 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
+    # Named + parameterized tag: /deploy runs `IMAGE_TAG=vX.Y.Z docker compose build` to tag
+    # the release; unset → :dev for local work. Digest lock + quick rollback BOTH depend on
+    # this line (deploy.md §IMAGE_TAG requirement).
+    image: myapp-api:${IMAGE_TAG:-dev}
     ports:
       - "5000:8080"
     environment:
@@ -261,6 +265,23 @@ Before proceeding to `/docs`:
 - [ ] **No secrets committed** — only `.env.example` shipped; `.env` is gitignored
 - [ ] **Image runs as non-root** (`USER appuser` in Dockerfile; verify with `docker exec <c> whoami`)
 - [ ] **All images pinned** to specific tags or digests — NO `:latest` anywhere (standing `/scan` rule)
+- [ ] **App-built images carry `image: <name>:${IMAGE_TAG:-dev}`** — the parameterized tag that `/deploy`'s tagging, digest-lock and quick-rollback mechanics all depend on (`deploy.md` §IMAGE_TAG requirement); third-party images stay pinned to exact tags per the item above. Catch it HERE — discovered at deploy time it sends the user back to re-run `/infra`.
+- [ ] **As-is refresh (KB sync)** — infrastructure state just changed, so sweep `architecture/ARCHITECTURE.md` + `architecture/diagrams/*` for statements this run invalidated: grep the backticked command name (`` `/infra` ``) and disposition EVERY hit — rewrite the statement to the new as-is (append an update note: date + `/infra`) or confirm it still holds; every `§Open Questions` row owned by `/infra` → resolved (date) or re-tagged with a reason. `adr/` is **exempt** — ADRs are decision records whose Context is historical (a state change that fires a v2-trigger takes the ADR-supersede path, never an in-place edit). Mechanical check: `` grep -rn "pre-`/infra`" architecture/ --exclude-dir=adr `` returns **0** after the sweep.
+- [ ] **Compose self-containment** — run `docker compose config` (the rendered, env-interpolated view) and check two lists mechanically: ① every infra-class endpoint value (`ConnectionStrings__*`, `*_HOST`, `KAFKA*`, `REDIS*`, `DB_*`…) resolves to a compose service name or loopback — an external host in this class needs a documented exception; third-party API URLs (mail, storage…) are listed in the report, not failed; ② **override completeness** — every connection-class key in `docs/CODEBASE_MAP.md` §Connection inventory (or, when absent, derived from the production config baked into the image — `appsettings*.json`, `.env`) has a corresponding env override in the compose; a missing override means the container **silently falls back to the real endpoint inside the image**.
+
+### Post-gate presentation (MANDATORY)
+
+Gate 9 verification already brought the stack up (`docker compose up -d`) — **leave it running**: the whole point of `/infra` is a usable local environment, so don't tear down what the user is about to use. The orchestrator's final message MUST then present — from the REAL `docker compose ps` output and the port mappings in `docker-compose.yml`, never from memory:
+
+1. **Stack state** — one line: services are UP and healthy right now (or the explicit exception list).
+2. **Service & URL table**:
+
+   | Service | State | Host port | URL | Health |
+   |---------|-------|-----------|-----|--------|
+   | api | Up (healthy) | 5000 | http://localhost:5000 | `/health` · `/health/ready` |
+
+   Derive host ports mechanically from the compose file; list `/swagger` only when the running environment actually exposes it (`ASPNETCORE_ENVIRONMENT=Development`).
+3. **Quick operations block** — the three commands the user needs next: `docker compose logs -f` (watch), `docker compose down` (stop), `docker compose up -d` (start again); everything else → §Common Commands below.
 
 ---
 
@@ -370,7 +391,7 @@ Invoke: **Backend Developer** (DevOps mode)
 
 ```text
 "Setup Docker infrastructure for the project.
-Output language: Vietnamese for prose/artifacts, English for code and technical identifiers
+Output language: <Output Language from Project Profile> for prose/artifacts, English for code and technical identifiers
 (see .claude/CLAUDE.md → Output Language)."
 ```
 

@@ -1,6 +1,6 @@
 # AI SDLC Kit — version marker (CORE, kit-owned)
 # Semver theo release tag của repo kit. Đọc bởi người + script upgrade (Phase 2).
-version: 1.5.0
-released: 2026-07-19 (sau v1.4.0 2026-07-16; gồm: Workspace Mode — một kit ở thư mục cha multi-repo dùng chung N repo con: §Workspace Mode + scope-resolution, /discover Phase 0 detect→confirm→declare→loop per repo, /spec workspace precondition, /discover-system đọc registry, Pattern C, khối chuẩn 16 lệnh)
+version: 1.6.0
+released: 2026-08-13 (sau v1.5.0 2026-07-19; gồm: Output Language cấu hình per-Profile (thiếu → Vietnamese, backward-compat) · /spec thêm Goals & Success Metrics + Permission Matrix + class tag ✅❌⚠️ · lệnh mới /export-docs — render artifact thành tài liệu chuẩn công ty, transform ID 1:1 ổn định qua TRACE_MAP, template công ty ở EXTENSION .claude/local/doc-templates/ · bộ override PHP/Laravel đủ bộ · gia cố toàn kit qua 3 vòng audit 20/20 lệnh — chi tiết: CHANGELOG [1.6.0])
 # Phase 2 (chưa làm): bổ sung manifest — danh sách file CORE + sha256 để script upgrade
 # chỉ thay file thuộc kit, cảnh báo file core bị sửa local (đối chiếu local/KIT_DEVIATIONS.md).

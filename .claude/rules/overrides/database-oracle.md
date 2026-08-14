@@ -50,6 +50,12 @@ var user = await _conn.QueryFirstOrDefaultAsync<User>(sql, new { Email = email }
 - TestContainers (`/test`): use `gvenzl/oracle-xe` (some arm64-supported tags) or `container-registry.oracle.com/database/free`. Replace `MsSqlBuilder` → Oracle image, port 1521, healthcheck TCP/listener.
 - License note: use Oracle XE/Free for dev/test.
 
+## Reverse-engineering (brownfield): PL/SQL living in the DB is the classic blind spot
+
+Oracle legacy systems typically push **a lot of logic into the database** — packages/procedures/functions/triggers, materialized views, sequences. The code calls `EXEC pkg.proc(...)` but the PL/SQL itself is **not in the repo** → `/discover` raises the red-flag `DB-resident logic not in repo`.
+
+**Remedy (per kit discipline):** guided export — `commands/discover.md §Phase 1b`: run `export-db-schema.sh --engine oracle` (uses **`DBMS_METADATA.GET_DDL`** → client-side text DDL; **not** Data Pump — a `.dmp` file is binary and lands on the DB server, useless for committing) → snapshot into `db/schema-snapshot/` → **commit** so the evidence lives in the repo. Objects owned by a schema other than the connecting user → add `--owner <SCHEMA>`. No `sqlplus`/SQLcl on the machine → follow the §Phase 1b transport ladder (client in a container, or export where a client exists and commit the file — there is **no MCP rung**; rationale in `discover.md`).
+
 ## Unchanged (still follows base `database.md`)
 
 Parametrized query, `AsNoTracking()` for reads, projection, transaction via `BeginTransactionAsync`, eager loading `Include`, batch `ExecuteUpdate/Delete` (EF Core 7+), compiled query, **no string-concat SQL**, no logging of sensitive data.

@@ -50,8 +50,13 @@ ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+# Probe binary must EXIST in the image: the .NET runtime images ship NO `curl` at all;
+# the Debian-based tags ship no `wget` either, alpine has only busybox `wget`. Install what
+# you probe with (`apk add --no-cache wget` / `apt-get install -y curl`) or the healthcheck
+# fails silently and the container never reaches `healthy`. start-period must outlast
+# .NET startup + EF migrations — 5s is not enough.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 ENTRYPOINT ["dotnet", "MyApp.Api.dll"]
 ```
@@ -129,6 +134,11 @@ services:
 ```dockerfile
 # ✅ Use slim/alpine variants
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine
+# ⚠️ Alpine .NET defaults to invariant-globalization mode → SqlClient/Npgsql CRASH on
+#    connect. Any image with a DB driver MUST add BOTH lines below (see commands/infra.md
+#    §Phase 1 for the full runtime stage):
+#      RUN apk add --no-cache icu-libs
+#      ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
 # ❌ Avoid full images when not needed
 FROM mcr.microsoft.com/dotnet/sdk:8.0
@@ -141,8 +151,10 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0
 ### In Dockerfile
 
 ```dockerfile
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+# Probe binary must exist in the image, and start-period must outlast startup + migrations
+# (rationale in §Multi-Stage Build above).
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 ```
 
 ### In docker-compose
@@ -152,11 +164,11 @@ services:
   api:
     image: myapp:latest
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 5s
+      start_period: 20s
 ```
 
 ### Health Check Endpoints
@@ -254,10 +266,11 @@ services:
         delay: 5s
         max_attempts: 3
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 20s
     logging:
       driver: "json-file"
       options:

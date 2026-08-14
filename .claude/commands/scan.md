@@ -42,7 +42,7 @@ Comprehensive security scan of completed code **before deployment**. Detect vuln
 bash .claude/scripts/scan-all.sh
 ```
 
-> **Script architecture:** Phase 1 inventory + **auto-detect stack** → Phase 2 universal (secrets) → Phase 3 **dispatch per-stack** via `scripts/scanners/{dotnet,nodejs,python,docker}.sh` → Phase 4 summarize. The list below is the **union** of scans that may run; any step that does not match the detected stack is skipped automatically.
+> **Script architecture:** Phase 1 inventory + **auto-detect stack** → Phase 2 universal (secrets) → Phase 3 **dispatch per-stack** via auto-discovered plugins in `scripts/scanners/*.sh` (currently dotnet, nodejs, python, php, docker — extend by adding `scanners/<stack>.sh` with a `scan_<stack>()` function) → Phase 4 summarize. The list below is the **union** of scans that may run; any step that does not match the detected stack is skipped automatically.
 
 The script does automatically:
 1. **Tool inventory** → `security/sast-results/tooling-availability.txt`
@@ -51,8 +51,9 @@ The script does automatically:
 4. **Roslyn analyzers** (`dotnet build /p:RunAnalyzers=true -warnaserror`)
 5. **Semgrep** (csharp + security-audit + owasp-top-ten configs, if available)
 6. **Frontend** — `npm audit` (prod + full), `eslint --max-warnings=0`, XSS pattern grep (if `web/` exists)
-7. **Container** — `trivy image` (if the image is built) + `trivy fs` + `hadolint` (if a Dockerfile exists)
-8. **Summarize** → `security/SCAN_SUMMARY.json` with findings normalized by severity
+7. **PHP** — `composer audit`, dangerous-pattern grep + project-local PHPStan (if `composer.json` exists)
+8. **Container** — `trivy image` (if the image is built) + `trivy fs` + `hadolint` (if a Dockerfile exists)
+9. **Summarize** → `security/SCAN_SUMMARY.json` with findings normalized by severity
 
 **Compensating control matrix** — the script writes it into `SCAN_SUMMARY.json §compensating_controls` automatically when a tool is missing. The agent does NOT need to build the matrix itself.
 
@@ -159,6 +160,7 @@ The agent writes `security/SCAN_REPORT.md` itself from these inputs:
 - STRIDE re-eval matrix (Phase 2 above)
 - Live verification results (Phase 3 above)
 - OWASP Top 10 checklist (already covered in `OWASP_TEMPLATE.md §A` from `/secure`)
+- `reports/CODE_REVIEW.md §6 Compliance Check` (if `/review` ran) — a rule already **PASS with an `Evidence` citation** is not re-derived here; a **WARNING/FAIL row is a lead** this scan must verify against the code. This is the hand-off `/review` §6 promises when it says it "frees `/scan` from re-checking rule compliance".
 
 The template is in §Scan Report Template below.
 
@@ -279,6 +281,7 @@ Run the §Orchestrator disk-check (below) first, then review.
 - Security Lead has not approved
 - **STRIDE Re-evaluation matrix is missing** when `security/THREAT_MODEL.md` exists — every threat ID must have a `Verified / Partial / Deferred / Not implemented` status with file:line evidence
 - A compensating control in `SCAN_SUMMARY.json §compensating_controls` has `must_add_to_pipeline: true` but is not flagged in the report
+- **An unscanned stack is not disclosed** — `SCAN_SUMMARY.json.stacks_unscanned` is non-empty (a stack was detected in the repo but the kit ships no scanner for it) and `SCAN_REPORT.md` does not name those stacks. The kit cannot ship a scanner for every language; what it must guarantee is that **"not scanned" is never read as "nothing found"** — same discipline as the `sast_scope` disclosure below.
 - **A diff-scoped scan is not disclosed** — if `SCAN_SUMMARY.json.sast_scope` ≠ `"whole-repo"` but the report does NOT state the scope, OR this release has no recent full whole-repo baseline scan (newly-reachable code not yet covered)
 
 ### Orchestrator disk-check (run BEFORE presenting for Gate 8 sign-off)
@@ -288,6 +291,7 @@ A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.m
 - [ ] **Read the machine truth yourself** — open `security/SCAN_SUMMARY.json` and read `totals` / `tools_missing` / `sast_scope` directly; the report's numbers must MATCH the JSON (a report saying 0 Critical while the JSON says 1 = gate FAIL, whatever the narrative says).
 - [ ] **STRIDE/RC set-check** — every threat ID in `THREAT_MODEL.md` and every `RC-N` in `PRE_DEV_REVIEW.md` has a status row in the re-eval matrix (diff the sets — no ID silently dropped).
 - [ ] **Scope disclosure** — `SCAN_REPORT.md §Summary` states the same `sast_scope` as the JSON; a diff-scoped run names its base.
+- [ ] **Coverage surfaced** — `stacks_unscanned` from the JSON appears verbatim in `SCAN_REPORT.md §Summary`; and `stacks_scanned` is not empty while the repo obviously has code (empty = `stack-coverage.txt` was never written, i.e. `scan-all.sh` did not run to completion) → re-run, do not sign off.
 - [ ] **Compensating controls surfaced** — every JSON entry with `must_add_to_pipeline: true` appears in the report.
 - [ ] **Live verification rows** — each Phase-3 surface whose trigger condition matched has a row with a real test file + pass count (no triggered surface left blank).
 - [ ] **No template residue** — no unfilled `[…]`/`<…>` placeholders in `security/SCAN_REPORT.md`.
@@ -314,11 +318,13 @@ Invoke: **Security Auditor**
 ```text
 "As Security Auditor, perform security scan.
 1. Run: bash .claude/scripts/scan-all.sh
+   (brownfield per-change → prepend SCAN_DIFF_BASE=<merge-base, e.g. origin/main> — resolved by the
+   orchestrator per §Brownfield Mode; baseline/release run → no diff base, whole-repo)
 2. Read: security/SCAN_SUMMARY.json
 3. Do the STRIDE re-eval matrix (Phase 2) — verify every threat ID in THREAT_MODEL.md
 4. Identify the live verification tests needed (Phase 3) for high-risk surfaces
 5. Compose security/SCAN_REPORT.md per the template
-6. Output language: Vietnamese for prose, English for technical identifiers
+6. Output language: <Output Language from Project Profile> for prose, English for code and technical identifiers
    (see .claude/CLAUDE.md → Output Language)."
 ```
 

@@ -303,6 +303,8 @@ builder.Services.AddHttpClient<IInventoryService, InventoryService>()
 - [ ] Runbook drafted
 ```
 
+> **Last 3 items — on-request only:** fill cost / team-capability from real data the user provided, otherwise mark `N/A — no data`; **never fabricate numbers**. The release runbook is `/deploy` territory (RUNBOOK_RELEASE template) — here "drafted" means at most a pointer, not a document.
+
 ---
 
 ## Red Flags

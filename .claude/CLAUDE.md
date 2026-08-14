@@ -8,74 +8,88 @@ This project uses Claude AI as an intelligent development agent with structured 
 
 ## Output Language (MANDATORY)
 
-> **Áp dụng cho mọi lệnh, mọi agent, mọi sub-agent — không có ngoại lệ trừ khi user yêu cầu rõ ràng bằng ngôn ngữ khác.**
+> **Applies to every command, every agent, every sub-agent — no exception unless the user explicitly requests another language ad hoc.**
 
-### Ngôn ngữ tiếng Việt — bắt buộc
+### Language resolution
 
-Mọi nội dung sau đây **PHẢI** được viết bằng **tiếng Việt**:
-
-- **Hội thoại với user** — mọi câu trả lời, giải thích, câu hỏi xác nhận
-- **Artifact của workflow SDLC**:
-  - `specs/` — SPEC.md, user stories, acceptance criteria
-  - `architecture/` — ARCHITECTURE.md, ADRs, mô tả diagram
-  - `plans/` — sprint plans, plan.md, todo.md (tiêu đề task)
-  - `security/` — THREAT_MODEL.md, PRE_DEV_REVIEW.md, SCAN_REPORT.md
-  - `reports/` — CODE_REVIEW.md và các báo cáo khác
-  - `docs/` — getting-started, deployment, troubleshooting, hướng dẫn
-- **Báo cáo, summary, status update**
-- **Commit message body** (phần mô tả chi tiết sau dòng tiêu đề)
-- **PR description, release notes**
-- **Comment giải thích logic nghiệp vụ** trong code (WHY)
-
-### Giữ nguyên tiếng Anh — không dịch
-
-Những thành phần sau **PHẢI giữ nguyên tiếng Anh** để đảm bảo tính chuẩn và khả năng tra cứu:
-
-- **Code** — tên biến, hàm, class, interface, namespace, file name
-- **Identifier kỹ thuật** — route URL, cache key, DB table/column, env var, Kafka topic
-- **Keyword kỹ thuật / thuật ngữ chuẩn** — REST, JWT, OAuth2, Clean Architecture, SOLID, TDD, CQRS, CAP, RFC 7807, OWASP, STRIDE, EF Core, Dapper, v.v.
-- **Tên công nghệ, framework, thư viện** — ASP.NET Core, Next.js, SQL Server, Redis, Kafka, Docker, Prometheus, Grafana
-- **HTTP method, status code label** — `GET`, `POST`, `200 OK`, `404 Not Found`
-- **Conventional Commit type** — `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
-- **Tiêu đề commit (dòng đầu tiên)** — theo Conventional Commits, viết bằng tiếng Anh
-- **Code comment giải thích cú pháp / kỹ thuật thuần** — giữ tiếng Anh nếu là khái niệm chuẩn
-
-### Quy tắc trộn ngôn ngữ
-
-Khi viết artifact tiếng Việt có chứa thuật ngữ kỹ thuật, **không dịch** thuật ngữ — giữ nguyên trong ngữ cảnh tiếng Việt:
+The working language is declared in the **Project Profile**:
 
 ```markdown
-✅ Đúng:
+- Output Language: Vietnamese
+```
+
+- **Value** = the English name of the language (`Vietnamese`, `English`, `Japanese`, …).
+- **Field missing / no Profile → defaults to `Vietnamese`** — backward compatibility: the field postdates repos configured under the older Vietnamese-only rule, and a kit upgrade must never silently flip an ongoing project's artifact language.
+- **Workspace Mode:** one product = one artifact language — `/discover` Phase 0 asks once and writes the same value into the root + every member repo Profile; commands resolve it from the **target repo's** Profile.
+- **`Output Language: English`** → write everything in English; the mixing rules below become moot.
+
+### Content written in the declared language
+
+When the declared language is NOT English, ALL of the following MUST be written in the declared language:
+
+- **Conversation with the user** — every answer, explanation, confirmation question
+- **User-visible tool metadata** — the description labels the chat window renders next to tool calls (Bash `description`, Agent `description`, TodoWrite items). The command text itself, tool output, and file contents are NOT in scope (they are code/output by nature)
+- **SDLC workflow artifacts**:
+  - `specs/` — SPEC.md, user stories, acceptance criteria
+  - `architecture/` — ARCHITECTURE.md, ADRs, diagram descriptions
+  - `plans/` — sprint plans, plan.md, todo.md (task titles)
+  - `security/` — THREAT_MODEL.md, PRE_DEV_REVIEW.md, SCAN_REPORT.md
+  - `reports/` — CODE_REVIEW.md and other reports
+  - `docs/` — getting-started, deployment, troubleshooting, guides
+- **Reports, summaries, status updates**
+- **Commit message body** (the detailed description after the title line)
+- **PR descriptions, release notes**
+- **Code comments explaining business logic** (the WHY)
+
+### Always English — never translate
+
+The following MUST stay in English regardless of the declared language, for standards compliance and searchability:
+
+- **Code** — variable, function, class, interface, namespace, file names
+- **Technical identifiers** — route URLs, cache keys, DB tables/columns, env vars, Kafka topics
+- **Technical keywords / standard terms** — REST, JWT, OAuth2, Clean Architecture, SOLID, TDD, CQRS, CAP, RFC 7807, OWASP, STRIDE, EF Core, Dapper, etc.
+- **Technology, framework, library names** — ASP.NET Core, Next.js, SQL Server, Redis, Kafka, Docker, Prometheus, Grafana
+- **HTTP methods, status code labels** — `GET`, `POST`, `200 OK`, `404 Not Found`
+- **Conventional Commit types** — `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
+- **Commit title (first line)** — Conventional Commits, written in English
+- **Code comments explaining pure syntax / technique** — keep English when it is a standard concept
+
+### Language-mixing rule
+
+When an artifact in the declared language contains technical terms, do **NOT** translate the terms — keep them as-is inside the surrounding prose. Example with `Output Language: Vietnamese`:
+
+```markdown
+✅ Correct:
 - Sử dụng pattern Repository để tách biệt tầng truy cập dữ liệu.
 - Áp dụng JWT Bearer authentication với refresh token expire sau 7 ngày.
 - Endpoint `POST /api/v1/users` trả về `201 Created` kèm Location header.
 
-❌ Sai:
+❌ Wrong:
 - Sử dụng mẫu Kho lưu trữ để tách biệt tầng truy cập dữ liệu.
 - Áp dụng xác thực Mã thông báo Web JSON với mã thông báo làm mới hết hạn sau 7 ngày.
 ```
 
-### Khi sub-agent được spawn
+### When a sub-agent is spawned
 
-Khi orchestrator delegate task cho sub-agent (qua tool `Agent`), prompt gửi cho sub-agent **PHẢI** chỉ thị rõ ràng:
-> "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+When the orchestrator delegates a task to a sub-agent (via the `Agent` tool), it MUST first resolve the declared language from the Project Profile, then state it explicitly in the prompt sent to the sub-agent:
+> "Output language: **\<declared language\>** for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 
-Để đảm bảo sub-agent không vô tình xuất tiếng Anh do prompt training mặc định.
+This prevents sub-agents from accidentally emitting English due to default prompt-training bias.
 
 ---
 
 ## Output Clarity (MANDATORY)
 
-> **Áp dụng cho mọi artifact của mọi lệnh/agent.** Bổ trợ cho §Output Language (quy định *ngôn ngữ*) — mục này quy định *độ rõ ràng*. Hai thứ kết hợp: vừa **đúng ngôn ngữ**, vừa **mạch lạc, dễ hiểu**.
+> **Applies to every artifact of every command/agent.** Complements §Output Language (which governs *the language*) — this section governs *clarity*. Combined: the right **language** AND **coherent, easy to follow**.
 
-Mọi artifact SDLC (`specs/`, `architecture/`, `plans/`, `security/`, `reports/`, `docs/`…) PHẢI viết **rõ ràng cho đúng đối tượng đọc**:
+Every SDLC artifact (`specs/`, `architecture/`, `plans/`, `security/`, `reports/`, `docs/`…) MUST read **clearly for its intended audience**:
 
-- **Mở đầu bằng tóm tắt ngôn-ngữ-thường** (*cái gì / vì sao / cho ai*) trước khi vào chi tiết.
-- **Viết cho người đọc:** SPEC / wireframe / release-notes → stakeholder (ngôn ngữ thường nhất); ARCHITECTURE / ADR / report → engineer (kỹ thuật nhưng vẫn rõ + giải thích *why*); runbook / troubleshooting → operator (từng bước, rõ ràng).
-- **Giải thích thuật ngữ & viết tắt** ở lần đầu; **nêu lý do một dòng** cho mỗi quyết định + con số/ngưỡng; phân tầng nội dung (tóm tắt → chi tiết → tham chiếu); câu ngắn, bảng/list thay cho khối văn dày; **bôi đậm quyết định then chốt**.
-- Rõ ràng **không** đồng nghĩa với đơn-giản-hoá-sai — giữ độ chính xác + tên định danh/standard (theo §Output Language).
+- **Open with a plain-language summary** (*what / why / for whom*) before any detail.
+- **Write for the reader:** SPEC / wireframe / release notes → stakeholder (plainest language); ARCHITECTURE / ADR / report → engineer (technical but still clear + explains *why*); runbook / troubleshooting → operator (step-by-step, unambiguous).
+- **Define terms & acronyms** on first use; **one-line rationale** for every decision + number/threshold; layer the content (summary → detail → reference); short sentences, tables/lists over dense prose; **bold the key decisions**.
+- Clarity does **NOT** mean dumbing down — keep precision + identifier/standard names (per §Output Language).
 
-> Chuẩn đầy đủ + anti-pattern + self-check: [`rules/output-style.md`](rules/output-style.md). Đây là tiêu chí **kiểm được** ở DoR và `/review`.
+> Full standard + anti-patterns + self-check: [`rules/output-style.md`](rules/output-style.md). These are **checkable** criteria at DoR and `/review`.
 
 ---
 
@@ -99,7 +113,7 @@ A sub-agent's internal output (the `Agent` tool) **does NOT stream to the user's
 
 **A sub-agent's "green" report is NOT ground truth.** Before declaring a gate/step PASS, the orchestrator **MUST re-run the *gate-deciding* checks on disk itself** and read the real result — do not blindly trust the sub-agent's summary:
 
-1. **Re-run the canonical gate-deciding command** (only the commands that decide pass, not everything): `dotnet build -c Release` + `dotnet test` · `npm run typecheck && npm test && npm run build` · `docker compose up` + healthcheck + smoke. Read the **real exit code / test count / health**.
+1. **Re-run the canonical gate-deciding command** (only the commands that decide pass, not everything): `dotnet build -c Release` + `dotnet test` · `npm run typecheck && npm test && npm run build` · `php artisan test` / `vendor/bin/pest` · `docker compose up` + healthcheck + smoke. Read the **real exit code / test count / health**.
 2. **Cross-check the key invariants on disk**: the artifact file exists in the right place, the digest matches the lock, no production file was modified out of scope, scenario coverage matches the numbers.
 3. **On any mismatch** between the report and disk → trust the disk, surface it immediately, and fix it before moving on.
 
@@ -129,7 +143,8 @@ This kit supports **two per-repo modes** (plus a **workspace meta-mode** for mul
 ```markdown
 ## Project Profile
 - Mode: greenfield | brownfield
-- Core: C# 12 + ASP.NET Core 8 + EF Core 8 (base) | Node.js → rules/overrides/lang-nodejs.md + framework-nodejs-web.md + test-nodejs.md
+- Output Language: Vietnamese | English | <language name in English> — prose/artifact & conversation language; code + identifiers always English (§Output Language). Missing → Vietnamese
+- Core: C# 12 + ASP.NET Core 8 + EF Core 8 (base) | Node.js → rules/overrides/lang-nodejs.md + framework-nodejs-web.md + test-nodejs.md | PHP → rules/overrides/lang-php.md + framework-php-laravel.md + test-php.md — multi-stack repo (e.g. C# API + Python worker): declare ALL, scoped by path, dominant first (`C# (src/) + Python (tools/etl/)`); each stack's overrides govern its own area — never pick-one-drop-one
 - Database: SQL Server (base) | Oracle → rules/overrides/database-oracle.md | MySQL → rules/overrides/database-mysql.md | PostgreSQL → rules/overrides/database-postgres.md | MongoDB → rules/overrides/database-mongodb.md
 - Observability: Serilog/Grafana (base) | ELK → rules/overrides/monitoring-elk.md
 - Structure: Clean Architecture | N-tier | monolith
@@ -156,6 +171,8 @@ myproject/                          # thin git repo (platform repo): version-con
 ├── .claude/                        # the ONLY full kit (commands, rules, hooks, this CLAUDE.md)
 │   └── PROJECT_PROFILE.md          # Mode: workspace + repo registry
 ├── architecture/system/            # /discover-system output
+├── specs/system/                   # /discover-system output — generated requirements views
+├── exports/                        # /export-docs — system-target renders (System Spec/SDD)
 ├── repo1/                          # independent git repo
 │   ├── .claude/PROJECT_PROFILE.md  # CONFIG only (generated by /discover) — no commands/CLAUDE.md
 │   └── specs/ · architecture/ · …  # per-repo artifacts, committed into repo1
@@ -180,7 +197,7 @@ myproject/                          # thin git repo (platform repo): version-con
 4. **Cross-repo feature:** settle the contract first, then execute **provider → consumer** (API → gateway → web); each touched repo runs the full per-repo flow and receives its own outputs.
 
 **Workspace disk-check** (append to every gate while this mode is active):
-- No new artifact at the workspace root except `.claude/logs/` and `architecture/system/`.
+- No new artifact at the workspace root except `.claude/logs/`, `architecture/system/`, `specs/system/` (generated views — `/discover-system`), and `exports/` (system-target renders — `/export-docs`).
 - `git status` of every NON-target repo is clean.
 
 **Conventions:** one product, one model — with a workspace kit, member repos carry no full kit (CONFIG only) and sessions open at the workspace root. Single-repo products keep the kit inside the repo as before.
@@ -324,6 +341,7 @@ Legend: * = Optional (other commands are required)
 | `/simplify` | Reduce complexity without changing behavior — code simplification |
 | `/fix-issue` | Analyze and fix a reported bug or issue systematically (dev-time → `/review`; if the bug was found by `/verify`/`/hotfix`, the caller re-verifies the patched digest instead) |
 | `/hotfix` | Restore a live/released system — triage rollback vs fix-forward, patch, re-verify, redeploy with audit trail (incident-time) |
+| `/export-docs` | **Company-doc export** — compile kit artifacts (SPEC / ARCHITECTURE / security / reports) into company-standard documents (e.g. PRD/SDD) via fill-only templates + a mapping manifest in `.claude/local/doc-templates/` (EXTENSION layer). Read-only on sources; outputs `exports/` + a bidirectional ID trace map |
 
 > **`/fix-issue` vs `/hotfix`:** `/fix-issue` fixes code during the dev cycle (not yet released, ends at `/review`). `/hotfix` is a **thin orchestrator** for an artifact that is **already live** — it triages rollback-vs-fix-forward, then reuses `/fix-issue` (the fix) + `/verify` (proves the patch on the real artifact) + `/deploy` (promotes rollback-ready), along with patch versioning + a post-incident runbook. See [`.claude/commands/hotfix.md`](commands/hotfix.md).
 
@@ -552,14 +570,16 @@ project-root/
 │   ├── deployment.md
 │   └── troubleshooting.md
 │
+├── exports/                        # /export-docs output — company-standard renderings (e.g. PRD.md, SDD.md) + TRACE_MAP.md
+│
 └── .claude/                        # AI Agent Configuration
     ├── agents/
     ├── commands/
     ├── rules/
     ├── skills/
     ├── references/
-    ├── templates/                  # fill-only boilerplates: STRIDE/OWASP (/secure,/scan) · TEST_REPORT (/test) · VERIFY_REPORT (/verify) · CODE_REVIEW (/review) · RUNBOOK_RELEASE (/deploy) · wireframes (/spec) · system (/discover-system)
-    ├── scripts/                    # scan-all.sh + scan-summarize.py for /scan
+    ├── templates/                  # fill-only boilerplates: STRIDE/OWASP (/secure,/scan) · TEST_REPORT (/test) · VERIFY_REPORT (/verify) · CODE_REVIEW (/review) · RUNBOOK_RELEASE (/deploy) · wireframes (/spec) · system (/discover-system) · export-docs (/export-docs mapping-manifest schema)
+    ├── scripts/                    # scan-all.sh + scanners/ + scan-summarize.py for /scan · export-db-schema.sh for /discover Phase 1b (guided DB-schema export)
     └── CLAUDE.md
 ```
 

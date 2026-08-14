@@ -7,6 +7,12 @@
 
 ---
 
+> I've been there myself — let AI code for me, super fast, super satisfying, a real wow moment — then two weeks later the bugs surface, fixing one thing breaks another, and I can't answer "has this been tested? is it secure?" Vibe-coding wins on speed, but it trades away the one thing real engineering can't afford to lose: control.
+>
+> I built this kit to take back that control — without losing the speed.
+
+---
+
 ## What is this?
 
 This is **not** an application. It is a **`.claude/` configuration kit** you drop into any project so that Claude Code stops being a clever autocomplete and starts behaving like a disciplined engineering team.
@@ -21,7 +27,7 @@ The result is the same discipline you'd expect from a real software team — req
 
 In short, the kit is a **[harness](https://walkinglabs.github.io/learn-harness-engineering/en/)** — a layer of explicit rules and verification loops that forces every SDLC command to follow the same standards and stay reproducible, instead of the model improvising differently on each run.
 
-> 💡 **Inspired by** the agentic-workflow philosophy of [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD), adapted into a strict, gate-driven SDLC for **C# / ASP.NET Core 8** (with first-class **Node.js / Next.js** overrides).
+> 💡 **Inspired by** the agentic-workflow philosophy of [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD), adapted into a strict, gate-driven SDLC for **C# / ASP.NET Core 8** (with first-class **Node.js / Next.js** and **PHP / Laravel** overrides).
 
 ---
 
@@ -129,7 +135,7 @@ Open [plans/todo.md](plans/todo.md) anytime to see what's done (`- [x]`) and wha
 <sub>⃰ = optional step, but **blocking if run** (security gates are non-negotiable).</sub>
 
 **Optional parameters (so you know they exist):**
-- **`/spec`** — for UI products, **ASCII wireframes are produced by default**; add **`--prototype`** (or say *"with prototype"*) to also generate a clickable HTML prototype for stakeholder click-through sign-off.
+- **`/spec`** — for UI products, **ASCII wireframes are produced by default**; add **`--prototype`** (or say *"with prototype"*) to also generate a clickable HTML prototype for stakeholder click-through sign-off. For a **brownfield REVERSE baseline** wireframes are waived by default — add **`--wireframes`** to opt in **as-is** wireframes documented from the shipped UI (works post-hoc on an approved baseline too).
 - **`/arch`** — Rejection ADRs (intentionally-excluded stack components) default to **one consolidated table**; add **`--adr=per-component`** (or say *"a separate ADR per component"*) to emit one full ADR per excluded component (e.g. audit/compliance).
 
 ### Supporting commands
@@ -143,6 +149,7 @@ Open [plans/todo.md](plans/todo.md) anytime to see what's done (`- [x]`) and wha
 | `/simplify` | Reduce complexity without changing behavior |
 | `/fix-issue` | Analyze and fix a reported bug during the dev cycle (ends at `/review`) |
 | `/hotfix` | Restore a **live** system — triage rollback vs fix-forward, patch, re-verify, redeploy |
+| `/export-docs` | **Company-doc export** — compile kit artifacts (SPEC / ARCHITECTURE / reports) into your company's own PRD/SDD templates: fill-only, with a bidirectional ID trace map (`exports/`); templates live in `.claude/local/doc-templates/` |
 
 ---
 
@@ -168,12 +175,14 @@ Each command invokes a specialist with its own playbook (in [.claude/agents/](.c
 
 ## Two modes: Greenfield & Brownfield
 
-The kit auto-detects which situation you're in (see the `## Project Profile` block in [.claude/CLAUDE.md](.claude/CLAUDE.md)):
+The kit auto-detects which situation you're in (declared in [.claude/PROJECT_PROFILE.md](.claude/PROJECT_PROFILE.md), cross-checked against the actual repo state):
 
 | Mode | When | How to start |
 |------|------|--------------|
 | 🌱 **Greenfield** | Building from scratch, no code yet | `/spec <your idea>` → walk the 12 steps |
 | 🏚️ **Brownfield** | Legacy code already exists / runs in production | `/discover` first → reverse-`/spec` → reverse-`/arch` → then iterate |
+
+> 🧭 **First time? Follow the step-by-step first-run checklist for your mode:** [getting-started-greenfield.md](getting-started-greenfield.md) · [getting-started-brownfield.md](getting-started-brownfield.md) (covers the one-time Phase A onboarding vs the per-feature Phase B loop, and single-repo vs multi-repo install).
 
 **Brownfield discipline** (auto-activated): characterization tests before touching untested legacy code, backward-compatibility by default, ADR required to change architecture, and the strangler-fig pattern for upgrades. See [.claude/rules/brownfield.md](.claude/rules/brownfield.md).
 
@@ -206,15 +215,18 @@ Every line of code obeys the **mandatory rules** in [.claude/rules/](.claude/rul
 
 ## Customizing for your stack
 
-The kit ships with a **default stack** (C# 12 + ASP.NET Core 8 + EF Core 8 + SQL Server + Next.js). To use a different peripheral technology, edit the `## Project Profile` in [.claude/CLAUDE.md](.claude/CLAUDE.md) and the matching **override** kicks in automatically:
+The kit ships with a **default stack** (C# 12 + ASP.NET Core 8 + EF Core 8 + SQL Server + Next.js). To use a different peripheral technology, edit [.claude/PROJECT_PROFILE.md](.claude/PROJECT_PROFILE.md) (the user-owned CONFIG layer — kit upgrades never touch it) and the matching **override** kicks in automatically:
 
 | Want… | Declare in Profile | Override file |
 |-------|--------------------|---------------|
 | PostgreSQL / MySQL / Oracle / MongoDB | `Database: PostgreSQL` | [.claude/rules/overrides/database-*.md](.claude/rules/overrides/) |
 | Node.js backend (Express/NestJS/Fastify) | `Core: Node.js + …` | [.claude/rules/overrides/lang-nodejs.md](.claude/rules/overrides/) |
+| PHP backend (Laravel) | `Core: PHP + Laravel + …` | [.claude/rules/overrides/lang-php.md](.claude/rules/overrides/) |
 | ELK observability | `Observability: ELK` | [.claude/rules/overrides/monitoring-elk.md](.claude/rules/overrides/) |
 
 Overrides only replace the dialect/backend-specific parts — all agnostic principles (parameterized queries, structured logging, TDD…) stay the same.
+
+The Profile also declares the artifacts' **`Output Language`** (default: `Vietnamese`) — set `English` (or any language name) and every artifact and conversation renders in that language, while code, identifiers, and standard technical terms always stay English.
 
 ---
 
@@ -223,18 +235,18 @@ Overrides only replace the dialect/backend-specific parts — all agnostic princ
 ```
 .claude/
 ├── CLAUDE.md          # The brain — pipeline, gates, Project Profile, rules index
-├── commands/          # 19 slash-command workflows (/spec, /arch, /build, …)
+├── commands/          # 20 slash-command workflows (/spec, /arch, /build, …)
 ├── agents/            # 11 specialized agent playbooks
 ├── rules/             # 17 mandatory engineering rules
-│   └── overrides/     # 8 stack-specific overrides (Postgres, Node.js, ELK, …)
+│   └── overrides/     # 11 stack-specific overrides (Postgres, Node.js, PHP/Laravel, ELK, …)
 ├── skills/            # Reusable techniques (tdd, code-review, …)
 ├── references/        # 10 references/checklists (security, testing, docker, a11y, multi-repo, …)
-├── templates/         # fill-only templates: STRIDE · OWASP · TEST_REPORT · VERIFY_REPORT · CODE_REVIEW · RUNBOOK_RELEASE · wireframes
+├── templates/         # fill-only templates: STRIDE · OWASP · TEST_REPORT · VERIFY_REPORT · CODE_REVIEW · RUNBOOK_RELEASE · wireframes · system (/discover-system) · export-docs (mapping-manifest schema)
 ├── hooks/             # Lifecycle hooks (command stats)
-└── scripts/           # Security scanners (dotnet, nodejs, python, docker)
+└── scripts/           # Security scanners (dotnet, nodejs, python, php, docker) + DB-schema export
 
 # Generated as you work:
-specs/  architecture/  plans/  security/  src/  web/  tests/  reports/  docker/  docs/
+specs/  architecture/  plans/  security/  src/  web/  tests/  reports/  docker/  docs/  exports/
 ```
 
 > 📖 The single source of truth for the whole workflow is [.claude/CLAUDE.md](.claude/CLAUDE.md) — start there if you want the deep dive.
@@ -263,7 +275,10 @@ By the end you'll have a working, tested, documented ASP.NET Core + Next.js app 
 No. Required steps are `/spec`, `/arch`, `/plan`, `/build`, `/test`, `/infra`, `/deploy`. The rest (`/secure`, `/review`, `/scan`, `/docs`, `/verify`) are optional — but if you run them, their gates are blocking. For production, running them all is strongly recommended.
 
 **Can I use it for languages other than C#?**
-Yes — the kit has Node.js / TypeScript overrides today, and the architecture is designed so peripheral tech (DB, observability) swaps via the Project Profile.
+Yes — the kit has Node.js / TypeScript and PHP / Laravel overrides today, and the architecture is designed so peripheral tech (DB, observability) swaps via the Project Profile.
+
+**What language are the generated artifacts in?**
+Whatever `Output Language` declares in [.claude/PROJECT_PROFILE.md](.claude/PROJECT_PROFILE.md) — `Vietnamese` by default (the kit's original audience); change one line to `English` or any other language. Code, identifiers, and standard technical terms always stay English.
 
 **Where do I change the default model or behavior?**
 [.claude/settings.json](.claude/settings.json) (model, permission mode, hooks).

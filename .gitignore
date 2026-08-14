@@ -38,6 +38,10 @@ __pycache__/
 # ─── Claude Code ─────────────────────────────────────────────────
 # settings.json is shared; local/personal settings are not tracked
 .claude/settings.local.json
+# Company-internal assets — never publish to the public repo
+# (.claude/local/README.md + KIT_DEVIATIONS.md stay tracked; only doc-templates/ is ignored)
+.claude/local/doc-templates/
+newdocs/
 
 # ─── OS noise ────────────────────────────────────────────────────
 .DS_Store
@@ -60,7 +64,17 @@ reports/verify-artifacts/**
 !reports/verify-artifacts/report/results.json
 !reports/verify-artifacts/report/phase2-results.json
 !reports/verify-artifacts/report/phase4-nfr.json
+
+# ─── /test run artifacts (.claude/commands/test.md → Run artifacts) ─
+# Same policy as verify-artifacts: ignore heavy binaries, track text results.
+reports/test-artifacts/**
+!reports/test-artifacts/
+!reports/test-artifacts/report/
+!reports/test-artifacts/report/results.json
+!reports/test-artifacts/report/*.trx
 !reports/verify-artifacts/evidence/
 !reports/verify-artifacts/evidence/**
 reports/verify-artifacts/report/html/
 reports/verify-artifacts/runner/
+# Personal/repo-local rules (EXTENSION — never published)
+.claude/local/CLAUDE.local.md

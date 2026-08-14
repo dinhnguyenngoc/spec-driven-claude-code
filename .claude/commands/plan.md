@@ -29,6 +29,7 @@ Transform a specification into an ordered list of small, verifiable tasks. Each 
 3. **Survey the codebase** — Identify relevant files, patterns, and integration points. *(Brownfield: consume `/discover` artifacts as the index — see §Brownfield Mode — do not re-survey the tree.)*
 4. **Review architecture (if exists)** — Check ADRs, API contracts, diagrams
 5. **Map dependencies** — Which components depend on which?
+6. **Write the §Impact Analysis** — synthesize steps 2–5 into the `plans/plan.md` §Impact Analysis section (structure in §required structure below): every change item → affected surface, each cell backed by evidence (`docs/CODEBASE_MAP.md` endpoint/DB-object inventory · `architecture/diagrams/component.md` · `architecture/api/openapi.yaml` · SPEC §Permission Matrix · the `/arch` CONFORMANCE-GATE verdict). This is the **visible output** of Phase 1 — the analysis is not allowed to live only in the planner's head.
 
 > **Do NOT modify code during planning.**
 
@@ -50,6 +51,8 @@ Break work into **vertical slices** — each slice delivers complete functionali
    Task 3: User can mark task complete (DB + API + UI)
 ```
 
+> **One exception to "one slice = one task": a schema change on a live system.** `database.md` §Expand-contract makes it a sequence — expand → backfill → switch → contract — whose whole point is that the phases land **separately** (often in different releases) so old and new code keep working side by side. Plan them as **separate tasks with their ordering stated**, never as a single "migrate" task; collapsing them back into one is exactly the failure the rule exists to prevent.
+
 ### Phase 3: Task Definition
 
 Each task must include:
@@ -60,6 +63,8 @@ Each task must include:
 **User stories**: US-XXX, US-YYY  *(traceability back to specs/SPEC.md — every task must map to at least one story or be flagged as "Foundation" with justification)*
 
 **Scenarios covered**: `@US-XXX-S01`, `@US-XXX-S03`, …  *(list the exact scenario IDs this task delivers — story-level mapping is NOT enough; a sub-behavior cannot hide inside a bundled task. Every `@US-XXX-Snn` must appear under some task or in the Deferred/Waived table — rule: [`references/scenario-traceability.md`](../references/scenario-traceability.md))*
+
+**NFRs covered**: `NFR-xx`, …  *(conditional — only for tasks delivering an NFR mechanism; the join key the Gate-3 NFR reconciliation diffs on — mirror of "Scenarios covered")*
 
 **References**: ADR-NNN (if a decision drives this task), `architecture/api/openapi.yaml#OperationId` (if API task)
 
@@ -133,12 +138,24 @@ The plan document MUST include the following sections, in this order:
 1. **Header — Inputs consumed**
    Bullet list of every source file the plan was derived from: `specs/SPEC.md` (with user-story IDs), `architecture/ARCHITECTURE.md` sections, ADR files, `architecture/api/openapi.yaml`. Lets downstream agents (`/secure`, `/build`) verify nothing was missed.
 
-2. **Build-time testing scope**
+2. **Impact Analysis** — the big picture BEFORE any task detail; every cell evidence-backed (no guessed surface):
+
+   **Blast radius:** N components · M endpoints (x new, y modified) · DB migration: yes/no · Breaking change: yes/no (ADR ref) · Architecture: unchanged per CONFORMANCE-GATE verdict / B5 redesign (ADR ref)
+
+   | Change item (story) | Type | Affected components | Endpoints/contract | Data/DB | Screens | Risk & discipline |
+   |---------------------|------|---------------------|--------------------|---------|---------|-------------------|
+   | US-010 export bookmarks | new | BookmarksController, BookmarkService, +ExportService | +`GET /bookmarks/export` (additive) | none | +Export button on Dashboard | untested area → characterization test first |
+
+   - **Type** = `new` / `modify`. A from-scratch greenfield first pass is all-`new` — the table then reads as the **components-to-create map**; the section stays mandatory in every mode.
+   - **Risk & discipline** wires into the existing disciplines — characterization-test-needed (untested legacy), shared/cross-cutting control touched (auth, rate limiter, error contract → widen `/secure` STRIDE scope), backward-compat AC (B2).
+   - **Downstream consumers:** `/secure` delta surface = this table; `/review` diffs the actual changed files against this blast radius (scope-creep check).
+
+3. **Build-time testing scope**
    Declare which test layers belong to `/build` vs deferred to `/test`, per `.claude/rules/testing.md`. Typical:
    - `/build`: Unit tests (xUnit + Moq) + Integration tests using the **InMemory** `WebApplicationFactory` template (no Docker).
    - Deferred to `/test`: TestContainers + Playwright E2E.
 
-3. **Summary table** — every task in one scan (**projection** of the Task blocks; reuse id + title verbatim, no new detail):
+4. **Summary table** — every task in one scan (**projection** of the Task blocks; reuse id + title verbatim, no new detail):
 
    | # | Task | User story | Estimate | Phase |
    |---|------|------------|---------:|-------|
@@ -148,17 +165,17 @@ The plan document MUST include the following sections, in this order:
 
    End with `**Total ideal points** (S=1, M=2, L=3): N` for rough capacity sizing.
 
-4. **Phases, Checkpoints, and Tasks** *(per the Task template in Phase 3 above)*
+5. **Phases, Checkpoints, and Tasks** *(per the Task template in Phase 3 above)*
 
-5. **Risk register** — table of `(task, risk, mitigation already in plan)`. Each mitigation MUST reference an existing AC or named test in this plan (not a TBD). Example:
+6. **Risk register** — table of `(task, risk, mitigation already in plan)`. Each mitigation MUST reference an existing AC or named test in this plan (not a TBD). Example:
 
    | Task | Risk | Mitigation already in plan |
    |------|------|----------------------------|
    | 2.2 | SSRF mitigation has many ranges; missing one = vulnerability | One unit test per documented IPv4/IPv6 range in `IpRangeCheckerTests` |
 
-6. **Deferred/Waived scenarios** *(only when not 100% covered by tasks)* — table `@US-XXX-Snn | Deferred to (phase/owner) / Waived | Reason`. The union of this table + all tasks' "Scenarios covered" MUST equal the change-set's full scenario set — rule: [`references/scenario-traceability.md`](../references/scenario-traceability.md) §5 (no silent drops).
+7. **Deferred/Waived scenarios** *(only when not 100% covered by tasks)* — table `@US-XXX-Snn | Deferred to (phase/owner) / Waived | Reason`. The union of this table + all tasks' "Scenarios covered" MUST equal the change-set's full scenario set — rule: [`references/scenario-traceability.md`](../references/scenario-traceability.md) §5 (no silent drops).
 
-7. **Out of scope** — explicit list of what later workflow phases own and will NOT be done here:
+8. **Out of scope** — explicit list of what later workflow phases own and will NOT be done here:
 
    - `/test` — TestContainers + Playwright E2E
    - `/scan` — SCA, full STRIDE walk-through
@@ -195,18 +212,20 @@ The plan document MUST include the following sections, in this order:
 
 ## Quality Gate 3 — Task Breakdown
 
-Run the §Orchestrator disk-check (below) first, then review. Before proceeding to `/secure`:
+Run the §Orchestrator disk-check (below) first, then review. **When presenting for Gate 3 review, lead with §Impact Analysis** — the big picture (blast radius + change map) comes before the task breakdown. Before proceeding to `/secure`:
 - [ ] Tasks broken into vertical slices (no horizontal "all DB → all API → all UI" tasks)
 - [ ] Every task traces to a user story (or is flagged "Foundation" with reason)
 - [ ] **Scenario coverage 100% — every `@US-XXX-Snn` from the spec is listed under some task's "Scenarios covered", or in a Deferred/Waived table (reason + owner). No scenario hidden inside a bundled task.**
-- [ ] **NFR coverage — every NFR from the spec and every mechanism in `/arch`'s NFR-mechanism table (e.g. rate limiter on `/auth/login`, Redis cache + indexed read path for a P95 target) is either a task, folded into a task's AC, or listed in Out of scope / Deferred (reason + owner). No NFR drops silently.** This closes the `spec NFR → arch mechanism → plan task` chain — the symmetric counterpart of the scenario-coverage rule above. **Baseline NFR sweep:** also cross-check a baseline set (security headers / CSP / HSTS, CORS, rate-limiting — `security.md`; accessibility — `accessibility-checklist.md`); a baseline NFR absent from *both* spec and arch is **not** silently passed — route it back to `/spec` / `/arch` or record a blocking Open item. Do **not** invent a task (honor No-invented-scope above) — this sweep *exposes* a gap, it does not *fill* it.
+- [ ] **NFR coverage — every NFR from the spec and every mechanism in `/arch`'s NFR-mechanism table (e.g. rate limiter on `/auth/login`, Redis cache + indexed read path for a P95 target) is either a task, folded into a task's AC, or listed in Out of scope / Deferred (reason + owner) — matched **by `NFR-xx` id** (the task's `NFRs covered` line or an AC citing the id), never by paraphrase. No NFR drops silently.** This closes the `spec NFR → arch mechanism → plan task` chain — the symmetric counterpart of the scenario-coverage rule above. **Baseline NFR sweep:** also cross-check a baseline set (security headers / CSP / HSTS, CORS, rate-limiting — `security.md`; accessibility — `accessibility-checklist.md`); a baseline NFR absent from *both* spec and arch is **not** silently passed — route it back to `/spec` / `/arch` or record a blocking Open item. Do **not** invent a task (honor No-invented-scope above) — this sweep *exposes* a gap, it does not *fill* it.
 - [ ] Each task has acceptance criteria
 - [ ] Each task lists explicit **Tests to add** (file + name per AC)
 - [ ] **Each scenario ID → its own test asserting that scenario's *Then* (no conflation); UI-observable scenarios have a UI/E2E-layer test, not an API test alone**
 - [ ] **No invented scope** — every task traces to a spec scenario/NFR; any spec gap or ambiguity was routed back to `/spec` (or asked), not filled by guessing. Spec-readiness pre-check passed (every scenario has an ID + testable AC).
+- [ ] **ADR disposition complete** — every ADR in `architecture/adr/` is **either** referenced by ≥ 1 task (the Task block's `References: ADR-NNN` field) **or** listed in Out of scope / Deferred with a reason. Rejection ADRs and brownfield *inferred* ADRs may be discharged by **one shared line** (e.g. *"ADR-006, ADR-007 — inferred/rejection: no implementation work"*) rather than one entry each. Closes the last gap in the traceability trio: scenario ✓ · NFR ✓ · **decision** — a decision signed off at Gate 2 and never turned into work is how "planned but never built" ships (real case in this repo: an optimistic-concurrency ADR that sat unimplemented until a manual read caught it).
+- [ ] **Impact Analysis evidence-based & consistent with tasks** — every change item maps to affected components/endpoints/data with evidence refs (CODEBASE_MAP / component diagram / openapi); every component/endpoint named in a Task block appears in §Impact Analysis and vice versa (a task touching surface outside the declared blast radius = scope creep caught at the gate)
 - [ ] Dependencies mapped between tasks
 - [ ] Checkpoints inserted between phases
-- [ ] `plans/plan.md` includes: Inputs consumed · Build-time testing scope · Summary table · Phases/Tasks · Risk register · Deferred/Waived scenarios (if any) · Out of scope
+- [ ] `plans/plan.md` includes: Inputs consumed · Impact Analysis · Build-time testing scope · Summary table · Phases/Tasks · Risk register · Deferred/Waived scenarios (if any) · Out of scope
 - [ ] `plans/todo.md` is actionable
 
 ### Orchestrator disk-check (run BEFORE presenting for Gate 3 review)
@@ -215,8 +234,11 @@ A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.m
 
 - [ ] **Scenario set reconciliation** — extract the full `@US-XXX-Snn` set from `specs/` and the union of every task's "Scenarios covered" + the Deferred/Waived table: the two sets must be **equal** (no missing, no unknown IDs). Count + diff yourself — don't trust the report's "100%". *(Brownfield per-change: the spec-side set = the scenarios of THIS change-set — the stories in its DELTA Revision History row — not the whole baseline spec.)*
 - [ ] **Required sections** — `plans/plan.md` contains every section of the §required structure, in order.
+- [ ] **Impact ↔ task reconciliation** — extract the set of components/endpoints named across Task blocks and the set in §Impact Analysis: diff them yourself — a task touching surface absent from the map (or a mapped surface no task touches, without a stated reason) = mismatch.
+- [ ] **NFR set reconciliation** — extract the NFR rows from `specs/SPEC.md §NFR` **and** the mechanism rows from `ARCHITECTURE.md` §Non-Functional Requirements, then diff against what the tasks cover (the task's **`NFRs covered`** line, or an AC citing the `NFR-xx` id) ∪ the Out-of-scope/Deferred lines: every NFR and every mechanism appears in one of them. A mechanism decided at Gate 2 with no task behind it is an NFR nobody will build — the same failure class as an unplanned ADR.
+- [ ] **ADR set reconciliation** — list the ADR filenames in `architecture/adr/` and the ADR ids referenced across Task blocks + the Out-of-scope/Deferred lines: **every ADR appears in at least one of the two**. Diff yourself; an ADR in neither set is a decision nobody planned to honour.
 - [ ] **Projection integrity** — every `todo.md` line and Summary-table row reuses a Task block's id + title verbatim; no orphan row, no task missing from the projections.
-- [ ] **Tests declared** — no task has an empty "Tests to add"; every Risk-register mitigation names an existing AC/test (no `TBD`).
+- [ ] **Task block completeness** — every Task block carries: a **User stories** value (or the `Foundation` flag **with** its justification) · **Scenarios covered** · a non-empty **acceptance criteria** list · a non-empty **Tests to add** list; and every task **id is unique** (`/secure` anchors its mitigations to these ids — a duplicate id silently mis-maps a security control). Every Risk-register mitigation names an existing AC/test (no `TBD`).
 - [ ] **No template residue** — no `TODO` / unfilled placeholders in `plans/`.
 
 Any mismatch → fix on disk first; never present a plan that fails its own gate mechanics.
@@ -240,7 +262,7 @@ Invoke: **Project Manager**
 
 **Phase ownership** — the PM sub-agent cannot converse with the user: a spec gap or ambiguity that blocks decomposition → return early with the question (so the orchestrator routes it back to `/spec` / asks the user); a non-blocking gap → record it as a blocking Open item for the gate. The orchestrator runs the Gate 3 disk-check and presents the plan for review in the main loop.
 
-> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+> Sub-agent prompt MUST include: "Output language: \<declared language — resolve from Project Profile → Output Language\> for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)." **(brownfield)** It MUST also carry the resolved flow (**B1/B2/B5**) and this change's **CONFORMANCE-GATE verdict** — conversation-level facts the sub-agent cannot reliably read from disk (the verdict may live only in the `/arch` report; the flow decides B2's backward-compat ACs vs B5's strangler-fig task split).
 
 ## Next Step
 

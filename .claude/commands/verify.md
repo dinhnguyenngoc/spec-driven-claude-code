@@ -99,7 +99,7 @@ Run E2E via a **real client** (browser for web, real SDK/HTTP client for service
 - Cover behavior only a real client exposes: cross-origin enforcement, auth token storage/refresh, redirect, optimistic update + rollback, modal/focus, responsive breakpoints.
 - Mandatory for products with a UI; for API-only products, Phase 2 is already E2E.
 
-**E2E assertion contract (mandatory per journey).** A journey is PASS only when all four hold — this is what separates "the page rendered" from "the feature works":
+**E2E assertion contract (mandatory per journey).** **Canonical for every E2E test in the kit — `/test`'s Gate-6 suite included** (`test.md` §Testing Strategy points here; never fork a second copy). A journey is PASS only when all four hold — this is what separates "the page rendered" from "the feature works":
 1. **`Given` may be seeded via API; `When` must always go through the UI.** Build *preconditions* (the scenario's `Given` — accounts, existing records, bulk data, states the UI cannot produce such as another user's data / expired token / soft-deleted row) via API for speed and reachability. But the **action under test** (the scenario's `When`) MUST traverse the real control → client → transport → server path — **never** simulate it with an API/DB call (e.g. setting `favorite` via `PATCH` instead of clicking the star). Simulating the `When` = verifying nothing.
 2. **No conditional interaction.** If the control is absent, the test FAILS — never `if (control.exists) act()`. Use exact, unambiguous selectors (role / accessible-name), not broad patterns that can match a sibling.
 3. **Assert the effect, then prove persistence with a round-trip.** After acting, reload (or re-fetch via a fresh client) and assert the new state survived. The round-trip wipes optimistic / in-memory state, so only server-persisted state passes — this catches silent write-failures (wrong method/status, dropped input, unwired handler).
@@ -113,7 +113,7 @@ Capture artifacts on failure: screenshot / video / trace / request log → `repo
 
 ### Phase 4 — NFR verification (measured on the real artifact)
 
-Verify the measurable NFRs in `specs/SPEC.md`:
+Verify the NFRs in `specs/SPEC.md`. **Completeness rule: enumerate EVERY NFR in `specs/SPEC.md §NFR`; each gets its own row in `VERIFY_REPORT.md §4`, keyed by its `NFR-xx` id** with exactly one disposition — **measured** (value vs threshold) · **not runtime-measurable** (name where it *was* verified instead: an `/arch` mechanism row, a `/review` compliance row) · **waived** (owner + reason). Silently omitting an NFR is precisely what this rule blocks: `/arch` and `/plan` already run a set-check over this same NFR list, and `/verify` is the only step that can prove any of them **on the real artifact**. **B4 hotfix scope:** the automated NFR suite re-runs **as-is** (RUN everything — the measurements are scripted, so re-running is the cheap path); a measurement genuinely too heavy for incident time (soak/stress-class) → a **waived** row (owner + reason), recorded in the incident note under the same trim-audit discipline as `hotfix.md` Step 5's staging trim. The sanctioned incident-time shortcut is a **visible waived row — never a silently skipped section**.
 
 - **Performance**: P95/P99 latency below the spec threshold, measured over the real network (e.g., k6, autocannon, wrk).
 - **Accessibility** (if UI exists): automated scan (e.g., axe-core) reaches the spec-required level (WCAG A/AA…), 0 critical violations.
@@ -194,7 +194,7 @@ reports/
 
 > When the pipeline **does not** run `/verify`, Gate 11 does not apply and `/deploy` proceeds with its own precondition. When `/verify` is run (recommended for production promote, **required for `/hotfix`**), every checklist below becomes BLOCKING — fail = Gate 11 not passed.
 
-Per `CLAUDE.md` §Verification After Delegation (its invariant #2 names exactly these), the **orchestrator cross-checks the machine evidence itself** before reading the checklist: `reports/verify-artifacts/report/results.json` pass/fail counts match the report's §1 table; the Phase-5 set-check re-run against `specs/` (scoped per Mode — see the Phase 5 note) matches `VERIFY_MATRIX.md`; and the digest in `verify-artifact.lock` equals the candidate digest `/deploy` will promote. A full suite re-run is NOT required — the runner's machine output is the evidence; a mismatch between it and the report = gate FAIL.
+Per `CLAUDE.md` §Verification After Delegation (its invariant #2 names exactly these), the **orchestrator cross-checks the machine evidence itself** before reading the checklist: `reports/verify-artifacts/report/results.json` pass/fail counts match the report's §1 table; the **Phase-4 NFR set-check** — the NFR list in `specs/SPEC.md §NFR` diffed against §4's rows (no NFR without a row); the Phase-5 set-check re-run against `specs/` (scoped per Mode — see the Phase 5 note) matches `VERIFY_MATRIX.md`; and the digest in `verify-artifact.lock` equals the candidate digest `/deploy` will promote. A full suite re-run is NOT required — the runner's machine output is the evidence; a mismatch between it and the report = gate FAIL.
 
 `/deploy` may only promote when:
 
@@ -203,7 +203,7 @@ Per `CLAUDE.md` §Verification After Delegation (its invariant #2 names exactly 
 - [ ] **Phase 2 API contract** PASS — including cross-origin preflight + security headers + env-gating + error contract
 - [ ] **Phase 3 E2E** PASS — every user story journey (mandatory if a UI exists), each meeting the **E2E assertion contract** (`When` via real control, never simulated · no conditional skip · effect asserted after a reload round-trip · network tripwire)
 - [ ] **≥ 1 zero-seed golden journey** PASS (UI-only, no API seeding, core lifecycle chained with persistence asserted per step) — if a UI exists
-- [ ] **Phase 4 NFR** meets measurable spec thresholds
+- [ ] **Phase 4 NFR** — **set-check**: every NFR in `specs/SPEC.md §NFR` has a row in §4 (measured / not-runtime-measurable / waived), and every **measured** one meets its spec threshold
 - [ ] **Responsive smoke** (if a UI exists) — no horizontal overflow on every screen × each design-system breakpoint
 - [ ] **Phase 5 traceability** — 100% scenario IDs have a verify test **at the required Layer** (UI-observable → E2E-UI, not an API test alone); missing/wrong-layer → signed-off waiver, or FAIL *(brownfield per-change: 100% of the change-set's scenarios; baseline coverage accumulates — see the Phase 5 scope note)*
 - [ ] `reports/VERIFY_REPORT.md` + `VERIFY_MATRIX.md` + `verify-artifact.lock` produced
@@ -213,6 +213,23 @@ Per `CLAUDE.md` §Verification After Delegation (its invariant #2 names exactly 
 - `SUCCEEDED` ⟺ all items above ✓.
 - `PASS WITH CONDITIONS` ⟺ only non-critical failures with explicitly documented waivers → block promotion until closed.
 - `FAILED` ⟺ critical failure or uncovered scenario → do NOT promote; rollback (if a previous version is running) + re-verify after fix.
+
+### Results board (MANDATORY presentation)
+
+Announcing the verdict MUST end with a results board — read from the REAL run outputs (`reports/verify-artifacts/report/results.json`, the NFR measurements), never from the sub-agent's report:
+
+1. **Scenario pass-rate** — `n/m` scenario IDs PROVEN on the real artifact (the `VERIFY_MATRIX` bottom line) + a per-phase table:
+
+   | Phase | Checks | Pass | Fail |
+   |-------|--------|------|------|
+   | 1 Liveness | … | … | … |
+   | 2 API/contract | … | … | … |
+   | 3 E2E | … | … | … |
+   | 4 NFR | … | … | … |
+
+2. **NFR vs threshold** — each measured number against its spec threshold (p95, error rate, …).
+3. **Failed-case table** (when failures exist): `Test | @US-Snn | Input/data | Expected → Actual | Evidence (screenshot/trace path) | Suspected cause` — mirrors `VERIFY_REPORT §3`.
+4. **Drill-down pointers**: `VERIFY_REPORT.md` §3 · `VERIFY_MATRIX.md` · runner HTML report (`reports/verify-artifacts/report/`).
 
 ---
 
@@ -237,8 +254,9 @@ Invoke: **Test Engineer** (owns verification suite design + execution + gate), c
 **Phase ownership** — the Test Engineer sub-agent cannot converse with the user: a scenario that needs a **waiver** (Gate 11 requires reason + a human approver — self-waiving a scenario you failed to cover is fabricated sign-off), or a **PASS WITH CONDITIONS** verdict (accepting conditions is the promoter's decision, per the Release Manager's ownership above) → **return early** with the list instead of deciding alone. The orchestrator obtains the sign-off, cross-checks the machine evidence (pointer above), and presents the gate verdict in the main loop.
 
 ```text
-"As Test Engineer, run /verify against the deployed candidate and gate promotion on full acceptance-criteria coverage.
-Output language: Vietnamese for prose/artifacts, English for code and technical identifiers
+"As Test Engineer, run /verify against the deployed candidate and gate promotion on acceptance-criteria coverage.
+Scope: <greenfield — whole spec | brownfield per-change — this change-set's scenarios (DELTA row: US-xxx…) + accumulated regression net | B4 hotfix — scoped minimum per §Phase 5> — resolved by the orchestrator; honor the Phase 4/5 scope notes for that mode.
+Output language: <Output Language from Project Profile> for prose/artifacts, English for code and technical identifiers
 (see .claude/CLAUDE.md → Output Language)."
 ```
 

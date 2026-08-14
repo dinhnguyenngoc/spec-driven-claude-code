@@ -1,7 +1,7 @@
 # Output Style — Clarity & Readability
 
 > **Scope:** governs **how every SDLC artifact reads** — `specs/`, `architecture/`, `plans/`, `security/`, `reports/`, `docs/`, release notes, and any prose a command emits. Applies to **all commands and agents**, no exception.
-> **Relationship to other rules:** this is about *clarity*; `.claude/CLAUDE.md` § Output Language governs *which language* (Vietnamese prose / English identifiers). The two compose — write clearly **and** in the mandated language.
+> **Relationship to other rules:** this is about *clarity*; `.claude/CLAUDE.md` § Output Language governs *which language* (Profile-declared prose language / English identifiers). The two compose — write clearly **and** in the declared language.
 > **Principle:** an artifact that the intended reader cannot follow has not done its job, even if it is technically correct.
 
 ---

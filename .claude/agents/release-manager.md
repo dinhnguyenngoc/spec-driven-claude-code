@@ -59,6 +59,8 @@ Release Manager runs **last**. Consumes: green CI build, passed security scan, r
 
 ## Deploy Procedure
 
+> Step order and gates are canonical in [`commands/deploy.md`](../commands/deploy.md) §Deployment Workflow (the Step-4 health gate precedes migration application) — the list below is the summary.
+
 ### 1. Tag the release
 
 ```bash
@@ -69,8 +71,8 @@ git push origin v1.2.0
 ### 2. Build and publish artifact
 
 ```bash
-docker build -f docker/Dockerfile -t myapp:v1.2.0 .
-docker push myapp:v1.2.0
+IMAGE_TAG=v1.2.0 docker compose build --pull   # canonical path — the compose `image:` key names the artifact (deploy.md §IMAGE_TAG requirement)
+docker push <registry>/myapp-api:v1.2.0
 # NO :latest tag — never deploy :latest beyond a dev laptop (kit rule — see commands/deploy.md §Required artifacts #4)
 ```
 

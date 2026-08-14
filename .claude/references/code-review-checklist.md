@@ -40,7 +40,8 @@
 - [ ] Unit tests cover happy path
 - [ ] Unit tests cover edge cases
 - [ ] Integration tests for API endpoints
-- [ ] Tests actually assert behavior (not just run)
+- [ ] **Tests actually assert behavior — anti-vacuous** — open the test and ask: *would it still pass if the feature under test were silently removed?* If yes, it proves nothing (canonical: [`../commands/review.md`](../commands/review.md) §Cross-layer conformance)
+- [ ] **Dual-implementation parity** — a rule encoded in ≥ 2 representations (SQL backfill ↔ app logic · FE ↔ BE validation · a key computed in 2 services) has a **differential test** over one shared input table; two green per-side suites do NOT satisfy it (canonical: [`../commands/review.md`](../commands/review.md) §Cross-layer conformance · [`../rules/testing.md`](../rules/testing.md) §Dual-Implementation Parity)
 - [ ] Coverage meets threshold (≥ 80% — per Mode: brownfield gates on **delta coverage + ratchet**, `rules/testing.md §Coverage Thresholds`)
 
 ```csharp

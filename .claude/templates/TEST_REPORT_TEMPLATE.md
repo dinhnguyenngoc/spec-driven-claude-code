@@ -22,6 +22,12 @@
 
 > "PASS WITH CONDITIONS" = baseline green + ≥1 BUG-### filed + no Critical-severity blocker. Conditions must be closed by `/review` before Gate 7 opens.
 
+**Failed cases** (omit the table when everything passes):
+
+| Test | @US-Snn | Input/data | Expected → Actual | Evidence | BUG-### |
+|------|---------|------------|--------------------|----------|---------|
+| ... | ... | payload/arrange values that triggered it | ... → ... | `reports/test-artifacts/runner/<path>` or log excerpt | §8 link or `—` |
+
 ## 2. Backend in-memory suite (re-run baseline)
 Command + per-project pass/fail/skip/duration table. Note any delta vs `/build`-reported counts.
 

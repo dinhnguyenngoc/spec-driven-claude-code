@@ -15,7 +15,7 @@ Consolidate existing documentation and complete missing pieces before deployment
 
 > **Principle**: Don't duplicate — link and reference existing artifacts from `/spec`, `/arch`, `/secure`, `/infra`.
 
-> **Stack Profile note:** read `Project Profile` first. **Core = Node.js** → generate API docs from the framework's OpenAPI tooling (`@nestjs/swagger`, Fastify schema-first — see `rules/overrides/framework-nodejs-web.md`), and the `dotnet`/DocFX commands in Phase 4 & §Auto-Generation Tools map to their npm equivalents. The templates stay default-stack illustration — their "example only" disclaimers apply; DB/observability lines follow the Profile + `rules/overrides/*`.
+> **Stack Profile note:** read `Project Profile` first. **Core = Node.js** → generate API docs from the framework's OpenAPI tooling (`@nestjs/swagger`, Fastify schema-first — see `rules/overrides/framework-nodejs-web.md`), and the `dotnet`/DocFX commands in Phase 4 & §Auto-Generation Tools map to their npm equivalents. **Core = PHP** → API docs come from the Laravel tooling (`scribe` or `l5-swagger`, or `php artisan route:list` cross-checked against `architecture/api/openapi.yaml`), not Swashbuckle/DocFX; the `dotnet` command blocks in Phase 2 (Quick Start) and Phase 6 (Deployment Guide) map to `composer install --no-dev --optimize-autoloader`, `php artisan migrate --force`, and `php artisan serve` / the fpm-nginx or Octane container shape from [`rules/overrides/framework-php-laravel.md`](../rules/overrides/framework-php-laravel.md) §J. The templates stay default-stack illustration — their "example only" disclaimers apply; DB/observability lines follow the Profile + `rules/overrides/*`.
 
 ## Prerequisites
 
@@ -51,6 +51,7 @@ Before creating new docs, review what already exists from previous phases:
 | `security/SCAN_REPORT.md` | Accepted Risks + Findings (F-#) | `docs/deployment.md` Production hardening backlog |
 | `reports/CODE_REVIEW.md` | Findings + carry-forward warnings | `docs/troubleshooting.md`, deployment backlog |
 | `reports/TEST_REPORT.md` | Real bugs discovered (BUG-###) | `docs/troubleshooting.md` Symptom→Diagnostic→Fix entries |
+| `reports/incidents/INC-*.md` (if any hotfix ran) | Real production incidents — root cause, MTTR, affected users, preventive action | `docs/troubleshooting.md` Symptom→Diagnostic→Fix entries — the highest-value entries in the file: these failures actually happened in production |
 | `reports/RELEASE_NOTES_*.md` | Per-release scope + smoke results | `CHANGELOG.md` |
 | `reports/DEPLOY_RUNBOOK.md` | Operator procedures | Link from `docs/deployment.md` |
 | `plans/todo.md` | Bug + hotfix audit trail, backlog | `docs/troubleshooting.md`, `CHANGELOG.md` |
@@ -150,6 +151,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md)
 docs/
 ├── getting-started.md       # Quick start guide
 ├── architecture.md          # Links to architecture/ARCHITECTURE.md
+├── CODEBASE_MAP.md          # brownfield — owned by /discover, NOT by /docs (see note below)
 ├── api/                     # API documentation
 │   ├── README.md            # Overview, links to architecture/api/
 │   ├── openapi.yaml         # Generated from Swagger
@@ -166,6 +168,8 @@ LICENSE                      # License file
 ```
 
 > **Note**: Use links (`[See Architecture](../architecture/ARCHITECTURE.md)`) instead of duplicating content.
+
+> **`docs/CODEBASE_MAP.md` is not ours to manage.** `/discover` writes it and **8 commands read it** — `/spec` REVERSE and `/arch` reverse **STOP** when it is missing. `/docs` may cite and link it; never edit, move, rename, or delete it, and never "tidy it away" for not matching the structure above.
 
 ### Phase 4: API Documentation
 
@@ -277,7 +281,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 \`\`\`bash
 # Build (tag with semver — never deploy :latest beyond a dev laptop, see /deploy)
 export VERSION="v1.0.0"
-docker build -t app:${VERSION} -f docker/Dockerfile .
+IMAGE_TAG=${VERSION} docker compose build    # honors the compose `image:` key — same canonical path as deploy.md Step 2
 
 # Run (docker-compose.deploy.yml lives at repo root, alongside docker-compose.yml)
 IMAGE_TAG=${VERSION} docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
@@ -366,7 +370,7 @@ A sub-agent's "done" report is NOT ground truth — same discipline as `CLAUDE.m
 
 - [ ] **Gate-10 minimum exists** — `README.md`, `docs/getting-started.md`, `docs/api/`, `docs/deployment.md` on disk; `docs/README.md` hub present with its Audience column.
 - [ ] **Run the link check yourself** — `lychee docs/ *.md` (or `markdown-link-check '**/*.md'`) exits 0 over the **whole** set (per the Integrity note — even on an incremental run); don't trust the report's "no broken links".
-- [ ] **Preserve check** — if Phase 0 marked the root `README.md` / `CHANGELOG.md` as framework-level, `git diff` shows them untouched.
+- [ ] **Preserve check** — if Phase 0 marked the root `README.md` / `CHANGELOG.md` as framework-level, `git diff` shows them untouched; and `docs/CODEBASE_MAP.md`, if it existed before this run, is **byte-identical** (`git diff --quiet -- docs/CODEBASE_MAP.md`) — it belongs to `/discover` and 8 commands read it.
 - [ ] **CHANGELOG entry** — this change-set has a row (incremental runs especially).
 - [ ] **No template residue** — no `[…]` placeholders and no carried-forward aspirational components (e.g. a Tech-Stack line for a component the Rejection ADR excluded).
 
@@ -395,7 +399,7 @@ Invoke: **Technical Writer**
 
 ```text
 "As Technical Writer, generate documentation for the project.
-Output language: Vietnamese for prose/artifacts, English for code and technical identifiers
+Output language: <Output Language from Project Profile> for prose/artifacts, English for code and technical identifiers
 (see .claude/CLAUDE.md → Output Language).
 Output clarity: follow rules/output-style.md — audience-first, plain-language summary, register per reader."
 ```

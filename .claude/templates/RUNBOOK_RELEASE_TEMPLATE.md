@@ -22,8 +22,8 @@ Exact build + up commands. Image tagging with `:v<X.Y.Z>` (never `:latest`).
 
 Then: concrete `curl` smoke commands hitting `/health`, `/health/ready`, `/api/v1/version` (or your project's smoke endpoint), and 1-2 happy-path API calls. Each with expected response.
 
-## 4. Rollback (target < 1 minute)
-Stop + restart with previous image tag. Database rollback notes (and pre-deploy backup pointer if migrations are involved). After rollback: re-run §3 smoke pack — rollback is not complete until smoke passes.
+## 4. Rollback (target < 1 minute — valid while the schema stays backward-compatible with the previous image)
+**Rollback path for THIS release (mandatory — `/deploy` Exit Criteria requires it; `/hotfix` Step-1 triage reads it):** image-tag (no schema change / schema backward-compatible) · expand-contract phase in flight (name the phase) · backup-restore (state RTO + the data-loss window). Then: stop + restart with previous image tag (or the stated alternative). Database rollback notes (and pre-deploy backup pointer if migrations are involved). After rollback: re-run §3 smoke pack — rollback is not complete until smoke passes.
 
 ## 5. Common operations
 Logs, restart, shell access, cleanup commands.

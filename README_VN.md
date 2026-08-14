@@ -7,6 +7,12 @@
 
 ---
 
+> Tôi đã từng để AI code hộ, rất nhanh, rất ưng ý, rất wow — xong 2 tuần sau bug lòi ra, sửa chỗ này thì bug chỗ khác, và không trả lời được câu hỏi "cái này test chưa, bảo mật có ổn không". Vibe-coding sướng ở tốc độ nhưng đánh đổi bằng thứ dev thực chiến không được phép mất: kiểm soát.
+>
+> Tôi xây dựng bộ kit này để lấy lại quyền kiểm soát đó — mà không đánh mất tốc độ.
+
+---
+
 ## Đây là gì?
 
 Đây **không phải** một ứng dụng. Đây là một **bộ cấu hình `.claude/`** mà bạn đặt vào bất kỳ dự án nào, để Claude Code không còn là một công cụ autocomplete thông minh, mà hành xử như một **đội kỹ thuật phần mềm có kỷ luật**.
@@ -129,7 +135,7 @@ Mở [plans/todo.md](plans/todo.md) bất cứ lúc nào để xem việc đã x
 <sub>⃰ = bước optional, nhưng **blocking nếu chạy** (security gate là không thể thương lượng).</sub>
 
 **Tham số optional (để bạn biết mà dùng):**
-- **`/spec`** — với sản phẩm có UI, **ASCII wireframes sinh mặc định**; thêm **`--prototype`** (hoặc nói *"kèm prototype"*) để sinh thêm clickable HTML prototype cho stakeholder click-through duyệt.
+- **`/spec`** — với sản phẩm có UI, **ASCII wireframes sinh mặc định**; thêm **`--prototype`** (hoặc nói *"kèm prototype"*) để sinh thêm clickable HTML prototype cho stakeholder click-through duyệt. Với **baseline brownfield REVERSE**, wireframe mặc định được miễn — thêm **`--wireframes`** để vẽ wireframe **as-is** từ UI đang chạy (chạy bổ sung được cả sau khi baseline đã duyệt).
 - **`/arch`** — Rejection ADR (component stack cố ý loại trừ) mặc định gộp **một bảng**; thêm **`--adr=per-component`** (hoặc nói *"ADR riêng cho từng component"*) để mỗi component loại trừ là một ADR đầy đủ (vd audit/compliance).
 
 ### Lệnh hỗ trợ
@@ -143,6 +149,7 @@ Mở [plans/todo.md](plans/todo.md) bất cứ lúc nào để xem việc đã x
 | `/simplify` | Giảm độ phức tạp mà không đổi behavior |
 | `/fix-issue` | Phân tích và sửa bug trong chu kỳ dev (kết thúc ở `/review`) |
 | `/hotfix` | Khôi phục hệ thống **đang chạy** — triage rollback vs fix-forward, vá, re-verify, redeploy |
+| `/export-docs` | **Xuất tài liệu chuẩn công ty** — biên dịch artifact kit (SPEC / ARCHITECTURE / reports) vào template PRD/SDD riêng của công ty bạn: fill-only, kèm trace map ID 2 chiều (`exports/`); template đặt ở `.claude/local/doc-templates/` |
 
 ---
 
@@ -168,12 +175,14 @@ Mỗi lệnh gọi một chuyên gia có playbook riêng (trong [.claude/agents/
 
 ## Hai mode: Greenfield & Brownfield
 
-Kit tự phát hiện bạn đang ở tình huống nào (xem block `## Project Profile` trong [.claude/CLAUDE.md](.claude/CLAUDE.md)):
+Kit tự phát hiện bạn đang ở tình huống nào (khai trong [.claude/PROJECT_PROFILE.md](.claude/PROJECT_PROFILE.md), đối chiếu chéo với hiện trạng thật của repo):
 
 | Mode | Khi nào | Bắt đầu thế nào |
 |------|---------|-----------------|
 | 🌱 **Greenfield** | Xây từ đầu, chưa có code | `/spec <ý tưởng>` → đi 12 bước |
 | 🏚️ **Brownfield** | Đã có code legacy / đang chạy production | `/discover` trước → reverse-`/spec` → reverse-`/arch` → rồi lặp |
+
+> 🧭 **Lần đầu dùng kit? Đi theo checklist từng bước cho đúng mode của bạn:** [getting-started-greenfield.md](getting-started-greenfield.md) · [getting-started-brownfield.md](getting-started-brownfield.md) (phân biệt Phase A onboard chạy-một-lần vs Phase B lặp-mỗi-tính-năng, và cách cài 1-repo vs nhiều-repo).
 
 **Nguyên tắc xử lý brownfield** (kích hoạt tự động): viết characterization test trước khi đụng vào code legacy chưa có test, mặc định backward-compatible, bắt buộc ADR khi đổi kiến trúc, và dùng pattern strangler-fig khi nâng cấp. Xem [.claude/rules/brownfield.md](.claude/rules/brownfield.md).
 
@@ -206,15 +215,18 @@ Mọi dòng code tuân theo các **quy tắc bắt buộc** trong [.claude/rules
 
 ## Tùy biến cho stack của bạn
 
-Kit mặc định dùng **stack** (C# 12 + ASP.NET Core 8 + EF Core 8 + SQL Server + Next.js). Để dùng công nghệ ngoại vi khác, sửa `## Project Profile` trong [.claude/CLAUDE.md](.claude/CLAUDE.md) và **override** tương ứng tự kích hoạt:
+Kit mặc định dùng **stack** (C# 12 + ASP.NET Core 8 + EF Core 8 + SQL Server + Next.js). Để dùng công nghệ ngoại vi khác, sửa [.claude/PROJECT_PROFILE.md](.claude/PROJECT_PROFILE.md) (tầng CONFIG do bạn sở hữu — nâng cấp kit không đụng tới) và **override** tương ứng tự kích hoạt:
 
 | Muốn dùng… | Khai báo trong Profile | File override |
 |------------|------------------------|---------------|
 | PostgreSQL / MySQL / Oracle / MongoDB | `Database: PostgreSQL` | [.claude/rules/overrides/database-*.md](.claude/rules/overrides/) |
 | Backend Node.js (Express/NestJS/Fastify) | `Core: Node.js + …` | [.claude/rules/overrides/lang-nodejs.md](.claude/rules/overrides/) |
+| Backend PHP (Laravel) | `Core: PHP + Laravel + …` | [.claude/rules/overrides/lang-php.md](.claude/rules/overrides/) |
 | Observability ELK | `Observability: ELK` | [.claude/rules/overrides/monitoring-elk.md](.claude/rules/overrides/) |
 
 Override chỉ thay phần dialect/backend-specific — mọi nguyên lý agnostic (parameterized query, structured logging, TDD…) giữ nguyên.
+
+Profile cũng khai **`Output Language`** cho artifact (mặc định: `Vietnamese`) — đổi thành `English` (hoặc tên ngôn ngữ bất kỳ) thì mọi artifact + hội thoại theo ngôn ngữ đó; code, identifier và thuật ngữ kỹ thuật chuẩn luôn giữ English.
 
 ---
 
@@ -223,18 +235,18 @@ Override chỉ thay phần dialect/backend-specific — mọi nguyên lý agnost
 ```
 .claude/
 ├── CLAUDE.md          # Bộ não — pipeline, gate, Project Profile, index rules
-├── commands/          # 19 workflow slash-command (/spec, /arch, /build, …)
+├── commands/          # 20 workflow slash-command (/spec, /arch, /build, …)
 ├── agents/            # 11 playbook agent chuyên biệt
 ├── rules/             # 17 quy tắc kỹ thuật bắt buộc
-│   └── overrides/     # 8 override theo stack (Postgres, Node.js, ELK, …)
+│   └── overrides/     # 11 override theo stack (Postgres, Node.js, PHP/Laravel, ELK, …)
 ├── skills/            # Kỹ thuật tái dùng (tdd, code-review, …)
 ├── references/        # 10 reference/checklist (security, testing, docker, a11y, multi-repo, …)
-├── templates/         # template fill-only: STRIDE · OWASP · TEST_REPORT · VERIFY_REPORT · CODE_REVIEW · RUNBOOK_RELEASE · wireframes
+├── templates/         # template fill-only: STRIDE · OWASP · TEST_REPORT · VERIFY_REPORT · CODE_REVIEW · RUNBOOK_RELEASE · wireframes · system (/discover-system) · export-docs (schema mapping-manifest)
 ├── hooks/             # Lifecycle hook (thống kê lệnh)
-└── scripts/           # Scanner bảo mật (dotnet, nodejs, python, docker)
+└── scripts/           # Scanner bảo mật (dotnet, nodejs, python, php, docker) + export DB schema
 
 # Sinh ra trong quá trình làm việc:
-specs/  architecture/  plans/  security/  src/  web/  tests/  reports/  docker/  docs/
+specs/  architecture/  plans/  security/  src/  web/  tests/  reports/  docker/  docs/  exports/
 ```
 
 > 📖 Nguồn chân lý duy nhất cho toàn bộ workflow là [.claude/CLAUDE.md](.claude/CLAUDE.md) — bắt đầu từ đó nếu bạn muốn tìm hiểu sâu.
@@ -263,7 +275,10 @@ Kit đi kèm một bản brief mẫu, [README1.txt](README1.txt), cho **LinkVaul
 Không. Các bước bắt buộc là `/spec`, `/arch`, `/plan`, `/build`, `/test`, `/infra`, `/deploy`. Phần còn lại (`/secure`, `/review`, `/scan`, `/docs`, `/verify`) là optional — nhưng nếu chạy thì gate của chúng là blocking. Với production, rất khuyến nghị chạy tất cả.
 
 **Có dùng được cho ngôn ngữ khác C# không?**
-Có — kit hiện đã có override Node.js / TypeScript, và kiến trúc được thiết kế để công nghệ ngoại vi (DB, observability) đổi qua Project Profile.
+Có — kit hiện đã có override Node.js / TypeScript và PHP / Laravel, và kiến trúc được thiết kế để công nghệ ngoại vi (DB, observability) đổi qua Project Profile.
+
+**Artifact sinh ra bằng ngôn ngữ gì?**
+Theo field `Output Language` khai trong [.claude/PROJECT_PROFILE.md](.claude/PROJECT_PROFILE.md) — mặc định `Vietnamese`; đổi 1 dòng thành `English` hay ngôn ngữ khác đều được. Code, identifier và thuật ngữ kỹ thuật chuẩn luôn giữ English.
 
 **Đổi model mặc định hoặc behavior ở đâu?**
 [.claude/settings.json](.claude/settings.json) (model, permission mode, hooks).

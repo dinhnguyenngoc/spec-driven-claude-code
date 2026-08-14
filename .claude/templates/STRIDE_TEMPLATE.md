@@ -26,6 +26,8 @@ Common asset types — the agent picks the ones present in the feature and **add
 | Audit log / security event log | High | Cover-up of malicious actions |
 | User-generated content (UGC) | Medium | XSS vector, brand damage |
 | Internal config / feature flags | Medium | Information disclosure |
+| DB-resident logic (stored proc / trigger / function) | High | Dynamic SQL, privilege escalation, business rules bypassed by direct DB access |
+| Message topic & cache key (event payloads, cached records) | High | Tampering/replay of events, cache poisoning, information disclosure |
 
 ### A.2 — Asset table to fill in `THREAT_MODEL.md`
 
@@ -99,7 +101,7 @@ Common asset types — the agent picks the ones present in the feature and **add
 - [ ] [Specific security test name + plan task ID — e.g.: `OrderTests.RejectsForeignUserId` / Task 3.4]
 
 **Required for v1?**: [Yes / Deferred to v2 with trigger: <observable condition> / Accepted: <reason>]
-**Owner task(s)**: plan Task X.X, X.Y  ← EVERY mitigation must map to a task ID that already exists in `plans/plan.md`
+**Owner task(s)**: plan Task X.X, X.Y  ← EVERY mitigation must map to a task ID that already exists in `plans/plan.md` *(per-change run; **baseline run** — no plan yet: cite the evidence id for an implemented control, `Backlog — task id assigned when /plan runs` + a Residual-Risk row for a gap — `secure.md` §Baseline run)*
 **Slot into existing task?**: [Yes — no new task / No — escalate PM, plan change needed]
 ```
 
@@ -217,7 +219,7 @@ Surface types that commonly carry high risk:
 - [ ] Every threat has a unique ID (S1, T1, …) — no duplicates
 - [ ] Every threat has a Risk rating looked up from §C (not self-assigned)
 - [ ] Every Critical/High threat has at least 1 `[Required for v1]` mitigation
-- [ ] Every mitigation maps to an existing `plans/plan.md` task ID
+- [ ] Every mitigation maps to an existing `plans/plan.md` task ID *(per-change run; baseline run → evidence id / `Backlog` + Residual-Risk row per `secure.md` §Baseline run)*
 - [ ] The Phase 3.5 deep-dive table has ≥3 controls (if <3, the surface is not risky enough to be called the "highest")
 - [ ] Every `[NEW]` control is re-listed in `PRE_DEV_REVIEW.md`
 - [ ] STRIDE reference (§B) and Risk matrix (§C) are **not modified** from the template

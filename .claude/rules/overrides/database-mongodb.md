@@ -357,6 +357,22 @@ process.env.MONGO_URL = mongod.getUri();
 
 ---
 
+## §H.1. Reverse-engineering blind spots (brownfield)
+
+> **Why Mongo hides more than SQL:** SQL at least has the convention of keeping DDL in migrations; Mongo is "schema-less", so the index/validator layer is **very often created by ops by hand in `mongosh`** — completely invisible to the code. Reading the code will NEVER reveal these behaviors:
+
+| What lives in the DB | Observable behavior the code does not explain |
+|---|---|
+| **TTL index** (`expireAfterSeconds`) | Documents **disappear on their own** (expired sessions/OTPs/logs) — no line of code deletes them |
+| **Unique / partial index** | Duplicate-key error 11000 → the app returns 409; the index was ops-created → the 409 branch in code looks "unmotivated" |
+| **`$jsonSchema` validator** (`collMod`) | Inserts/updates rejected by the DB under rules that exist nowhere in the repo |
+| **View** (`createView`) | An aggregation pipeline stored in the DB — DB-resident logic in the literal sense |
+| **Atlas Triggers/Functions/Search** | JS running on change events/schedules + search config — **outside the database entirely**; the connection string cannot reach it |
+
+**Handling (per kit discipline):** `/discover` detects the signals (`createIndex`, `expireAfterSeconds`, `$jsonSchema`, `createView`, an Atlas client…) → anything the code does not declare but that affects behavior = red-flag `DB-resident logic not in repo` → remedy: **guided export** (`commands/discover.md §Phase 1b` — `export-db-schema.sh --engine mongodb`, metadata only, **zero documents**, plus a `BEHAVIOR-CRITICAL.md` listing TTL/unique indexes, validators and views) then **commit the snapshot**. Atlas App Services: export by hand with `appservices pull` and commit — the script does not touch it (different auth, different service).
+
+> Mongo has **no** stored procedures in the strict sense (`db.system.js` deprecated since 4.4) and **no** native triggers in self-managed deployments — change streams are the replacement primitive, but their consumers run in app code, so the evidence stays in the repo.
+
 ## §I. Naming convention
 
 | Element | Convention |

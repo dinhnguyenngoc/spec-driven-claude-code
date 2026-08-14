@@ -44,7 +44,7 @@ Grep the question's keywords in `specs/` (`SPEC.md` — and `specs/user-stories/
 
 ### Phase 1 — RECORDS evidence (always runs)
 
-Trace the traceability chain: `specs/SPEC.md` (+ `specs/user-stories/*` in the split layout) → `architecture/` (related ADR) → `plans/` → `reports/TEST_REPORT.md` → `reports/VERIFY_MATRIX.md` (+ digest in `reports/verify-artifact.lock`) → `reports/RELEASE_NOTES_*`. The spec's **Revision History** table is Tier-1 evidence for *when/why* a behavior changed (version · date · flow · approver) — cite its row when the question is about a change over time.
+Trace the traceability chain: `specs/SPEC.md` (+ `specs/user-stories/*` in the split layout) → `architecture/` (related ADR) → `plans/` → `reports/TEST_REPORT.md` → `reports/VERIFY_MATRIX.md` (+ digest in `reports/verify-artifact.lock`) → `reports/DEPLOY_RUNBOOK.md` (ops state — §3 per-service smoke table, §4 the release's declared rollback path) → `reports/RELEASE_NOTES_*`. The spec's **Revision History** table is Tier-1 evidence for *when/why* a behavior changed (version · date · flow · approver) — cite its row when the question is about a change over time.
 
 **MUST rate the evidence** (especially important for brownfield):
 
@@ -53,7 +53,7 @@ Trace the traceability chain: `specs/SPEC.md` (+ `specs/user-stories/*` in the s
 
 ### Phase 2 — CODE evidence (always runs)
 
-Read the specific implementing code — use `docs/CODEBASE_MAP.md` as the index, **DO NOT scan the whole tree** (brownfield's consume-don't-re-scan principle). Cite `file:line` for every assertion. A question that requires a broad scan → spawn **Explore** (read-only).
+Read the specific implementing code — use `docs/CODEBASE_MAP.md` as the index, **DO NOT scan the whole tree** (brownfield's consume-don't-re-scan principle). Cite `file:line` for every assertion. A question that requires a broad scan → spawn **Explore** (read-only). For a **DB-resident object** question (stored proc / trigger / view / index), the index is `CODEBASE_MAP.md` §DB-object inventory → read the **committed DDL under `db/schema-snapshot/`** — that snapshot is the repo-side truth (`rules/database.md` §DB-resident objects are source code); a live probe (Phase 3) never replaces it.
 
 ### Phase 3 — LIVE evidence (only when `--live`)
 
@@ -63,7 +63,10 @@ Probe the running artifact, scope narrowed to exactly the question:
 2. Minimal probe (e.g. 2 curls: POST → 201, duplicate POST → 409).
 3. Discipline:
    - A data-writing probe → use **throwaway data** (prefix `inspect-<timestamp>`), declared explicitly in the answer.
+   - **Write-probes only against a stack the kit/user stood up** (local compose / staging). Target is **production → read-only probes only** (GET/HEAD) — no data-writing probe, throwaway prefix or not; state the limitation in the answer (*"write path not probed — production target"*). `/inspect` is a question-answering command, not an ops tool: the kit never mutates production state (same boundary as `/deploy` stopping at STAGED and rollback being operator-run).
    - DO NOT "fix things to make them run" — anything at all. Stack not running → report back, do not stand it up yourself.
+   - **Database questions** — probe with the engine's own client (locally, or containerised: `docker run --rm …` / `docker exec <db-container> …`), scoped to the single question. The kit does **not** rely on a database MCP server for this (rationale: `discover.md` §Phase 1b — safety guarantees drift between releases and coverage is uneven). If your environment happens to have one configured and you choose to use it, the **only** dependable guard is a **database account restricted to `SELECT`** — never the server's own read-only flag, which has been removed from at least one popular server between minor versions while `execute_sql` stayed write-capable by default.
+   - Whatever the probe, live evidence stays **DESCRIBED/live-at-probe-time** — it never upgrades the evidence rating and never becomes SPEC/ARCH content: KB artifacts are built from the repo.
    - Remember the rate-limit gotcha (`verify.md` §throttle): a repeated probe may hit 429 on itself — recognize it as an artifact of the probe, don't mistakenly conclude it's an app bug.
 
 ### Phase 4 — Verdict + MISMATCH FLAG (the core value)
@@ -74,6 +77,7 @@ Compare the 3 tiers against one another. Any pair that diverges → **⚠️ MIS
 |-----------|-----------|-------|
 | Records say YES ≠ code says NO (or vice versa) | Docs↔code drift | `/spec` DELTA (update the baseline) or `/fix-issue` (code is wrong) |
 | Code says YES ≠ live says NO | Running artifact is old/stale | Check the digest → re-`/deploy` |
+| Snapshot/migrations say X ≠ live DB says Y | **Schema drift** — the database was changed outside migrations (hand edit); a redeploy will NOT fix this | Repo is source of truth (`database.md` §DB-resident objects): investigate, then author the **corrective migration** — and note this is the reverse smell `/review` watches for |
 | PROVEN on digest X, live is running digest Y | Evidence does not apply to the running build | Flag it clearly in the answer — must not borrow evidence across digests |
 
 ## Output contract (MANDATORY — every answer follows this frame, including free-text)
@@ -101,7 +105,7 @@ Compare the 3 tiers against one another. Any pair that diverges → **⚠️ MIS
 
 ## Agent
 
-No dedicated sub-agent — the orchestrator answers inline (a question = targeted read, spawning an agent is wasteful). A question that requires a broad scan → spawn **Explore** (read-only). Output language: Vietnamese for prose, keep technical identifiers as-is (see `.claude/CLAUDE.md` → Output Language).
+No dedicated sub-agent — the orchestrator answers inline (a question = targeted read, spawning an agent is wasteful). A question that requires a broad scan → spawn **Explore** (read-only). Output language: per Project Profile → Output Language for prose, keep technical identifiers as-is (see `.claude/CLAUDE.md` → Output Language).
 
 ## Next Step
 

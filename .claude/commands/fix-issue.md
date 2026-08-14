@@ -13,7 +13,7 @@ Analyze and fix a **reported** bug or issue systematically. This command handles
 
 > **Workspace Mode:** if the session root declares `Mode: workspace` → resolve the target repo per `CLAUDE.md` §Workspace Mode **before anything else**; every path, probe, and gate below is relative to the **target repo**, and the workspace disk-check applies at the gate.
 
-> **Stack Profile note:** the `dotnet` commands and C# examples below use the **default profile**. **Core = Node.js** → map to the npm equivalents (`npm test`, `tsc --noEmit`, `npm run build`; debug tooling per the declared stack) — the Common Issue Patterns are default-stack illustration only (`rules/overrides/lang-nodejs.md` idioms apply).
+> **Stack Profile note:** the `dotnet` commands and C# examples below use the **default profile**. **Core = Node.js** → map to the npm equivalents (`npm test`, `tsc --noEmit`, `npm run build`; debug tooling per the declared stack) — the Common Issue Patterns are default-stack illustration only (`rules/overrides/lang-nodejs.md` idioms apply). **Core = PHP** → `php artisan test` / `vendor/bin/pest` for the suite, `vendor/bin/pint --test` + `vendor/bin/phpstan analyse` for the format/analyzer steps (`rules/overrides/lang-php.md` + `test-php.md` idioms apply).
 
 ## When to Use
 
@@ -94,6 +94,8 @@ grep -rn "MethodName" src/
 - Ensure code follows `.claude/rules/code-style.md`
 - Handle errors per `.claude/rules/error-handling.md`
 
+> **Fix requires a schema change?** The migration follows [`rules/database.md`](../rules/database.md) §Expand-contract — incident pressure is exactly when a one-step `RENAME`/`DROP COLUMN`/`NOT NULL` is most tempting and most dangerous (it voids image-tag rollback — `deploy.md` Step 5 note). And refresh **`db/schema-snapshot/` in the SAME change-set** (re-export from the test container once the migration has applied there — `rules/brownfield.md` checklist): the dev-time exit of this command goes to `/review` **without passing `/test` Task 7**, so nobody downstream will refresh it for you.
+
 ### 6. Verify
 
 ```bash
@@ -163,6 +165,7 @@ Per `CLAUDE.md` §Verification After Delegation, the **orchestrator re-runs the 
 - [ ] Regression test written (fails before fix)
 - [ ] If the bug is a **handoff** (producer→consumer: nav-state key / context / event name / shared prop) → the regression test exercises **both ends together** (`references/scenario-traceability.md` §3) — two sides passing in isolation does not cover the join
 - [ ] Fix implemented
+- [ ] **(schema-touching fix)** migration classified **non-destructive / destructive** per `database.md` §Expand-contract — destructive ⇒ expand-contract phases or ADR + downtime window, never one step under incident pressure; and `db/schema-snapshot/` refreshed **in the same change-set**
 - [ ] All tests pass
 - [ ] Build succeeds
 - [ ] No new warnings
@@ -242,9 +245,9 @@ public async Task<Order> CreateOrderAsync(CreateOrderRequest request)
 
 Invoke: **Backend Developer** or **Frontend Developer** depending on the issue location.
 
-> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+> Sub-agent prompt MUST include: "Output language: \<declared language — resolve from Project Profile → Output Language\> for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 
-> Sub-agent prompt MUST also include: "Ambiguity policy: implementation details → decide per rules, never ask; non-blocking behavior/contract gaps → implement the most conservative interpretation and add an Assumptions-log entry (`A-xx`); blocking or expensive-if-wrong gaps → stop and return early with the question (see `rules/principles-and-practices.md` §2.5)."
+> Sub-agent prompt MUST also include: "Ambiguity policy: implementation details → decide per rules, never ask; non-blocking behavior/contract gaps → implement the most conservative interpretation and add an Assumptions-log entry (`A-xx`); blocking or expensive-if-wrong gaps → stop and return early with the question (see `rules/principles-and-practices.md` §2.5). Return every `A-xx` entry (or 'Assumptions: none') in your completion report — the orchestrator owns the disposition checklist item (both exits) and the `amended @ fix, A-xx` spec flow-back."
 
 ## Next Step
 

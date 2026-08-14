@@ -65,7 +65,7 @@ The first question of an incident is NOT "what's the root cause" but "what's the
 
 | Condition | Recovery action |
 |-----------|-----------------|
-| A recent last-known-good digest exists **and** the bug was caused by the most recent release **and** there's no non-revertable migration involved | **ROLLBACK first** (recovery < 1 minute), then fix-forward calmly afterwards via normal `/fix-issue` |
+| A recent last-known-good digest exists **and** the bug was caused by the most recent release **and** there's no non-revertable migration involved — *non-revertable = any operation on the destructive list in [`rules/database.md`](../rules/database.md) §Expand-contract; don't re-derive this under pressure: the release's own `DEPLOY_RUNBOOK.md` §4 already states which rollback path applies (a `/deploy` Exit-Criteria requirement)* | **ROLLBACK first** (recovery < 1 minute), then fix-forward calmly afterwards via normal `/fix-issue` |
 | Bug has existed for a long time / no good version to revert to / rollback would cause data loss | **FIX-FORWARD** (proceed to Step 2) |
 | Unsure | **ROLLBACK first** (limit damage), investigate later |
 
@@ -95,7 +95,7 @@ The patch must have its own **identity** for audit & rollback:
 **This is where `/hotfix` differs most strongly from `/fix-issue`.** "Tests green locally" is NOT enough — the patch must be proven on the **real rebuilt artifact**:
 
 - Rebuild + retag the artifact with the new version → record the digest in `reports/verify-artifact.lock`.
-- Run `/verify` against the new digest (minimum: liveness + contract suite covering the bug area + scenarios from the related user story).
+- Run `/verify` against the new digest with **`Scope: B4 hotfix`** (the scoped minimum formalized in `verify.md` §Phase 5: liveness + contract suite covering the bug area + the related story's scenarios; heavy NFR measurements → visible **waived rows**, never silently skipped sections).
 - Mandatory addition: a verify test that **reproduces the exact incident scenario** (e.g., for a CORS bug: cross-origin preflight from the actual origin) — to prove the production symptom is gone.
 - Gate 11 must PASS on the new digest before proceeding to Step 5.
 
@@ -123,14 +123,14 @@ The patch must have its own **identity** for audit & rollback:
 | `reports/VERIFY_REPORT.md` | Gate 11 PASS on the new digest (including the incident-reproduction test) |
 | `reports/verify-artifact.lock` | digest verified == digest promoted |
 | `reports/DEPLOY_RUNBOOK.md` (§Troubleshooting) | new failure mode |
-| Incident note — `reports/incidents/INC-<id>.md` (recommended location) **or** folded into the release notes (per Step 6) | timeline + detection→recovery MTTR + root cause + preventive action — **content mandatory; location flexible** |
+| Incident note — `reports/incidents/INC-<id>.md` (recommended location) **or** folded into the release notes (per Step 6) | timeline + detection→recovery MTTR + **affected users** + root cause + preventive action — **content mandatory; location flexible** |
 | Regression test | test that failed-before-fix, now green (in `tests/` — inherited from `/fix-issue`) |
 
 ---
 
 ## Quality Gate — Exit Criteria
 
-Each reused step carries its own verification layer (`/fix-issue` VAD pointer, `/verify` Gate-11 evidence check, `/deploy` exit criteria). Per `CLAUDE.md` §Verification After Delegation, the orchestrator **additionally verifies the hotfix-unique artifacts on disk**: `CHANGELOG.md` has the `vX.Y.(Z+1)` entry, `reports/RELEASE_NOTES_vX.Y.Z+1.md` exists, `git diff` shows `DEPLOY_RUNBOOK.md §Troubleshooting` gained the new failure mode, and the incident note carries all required fields (timeline · MTTR · root cause · preventive action).
+Each reused step carries its own verification layer (`/fix-issue` VAD pointer, `/verify` Gate-11 evidence check, `/deploy` exit criteria). Per `CLAUDE.md` §Verification After Delegation, the orchestrator **additionally verifies the hotfix-unique artifacts on disk**: `CHANGELOG.md` has the `vX.Y.(Z+1)` entry, `reports/RELEASE_NOTES_vX.Y.Z+1.md` exists, `git diff` shows `DEPLOY_RUNBOOK.md §Troubleshooting` gained the new failure mode, and the incident note carries all required fields (timeline · MTTR · affected users · root cause · preventive action).
 
 - [ ] **Deliberate triage** — rollback-vs-fix-forward decided and recorded (do not default to fix-forward)
 - [ ] If fix-forward: regression test **fails before fix, passes after fix**; root cause `file:line` identified
@@ -138,7 +138,7 @@ Each reused step carries its own verification layer (`/fix-issue` VAD pointer, `
 - [ ] **`/verify` Gate 11 PASS on the new digest**, including a test that reproduces the incident scenario
 - [ ] `/deploy` stages the verified digest (`STAGED`), rollback-ready; staging smoke (incl. the incident scenario) passes — the production smoke is re-run and recorded AFTER the manual promote (§8), per Step 5
 - [ ] DEPLOY_RUNBOOK §Troubleshooting updated with the new failure mode
-- [ ] **Incident note recorded** — timeline + detection→recovery (MTTR) + root cause + preventive action, in `reports/incidents/INC-<id>.md` (recommended) or the release notes — do not skip (audit trail is a core deliverable of `/hotfix`)
+- [ ] **Incident note recorded** — timeline + detection→recovery (MTTR) + **affected users** + root cause + preventive action, in `reports/incidents/INC-<id>.md` (recommended) or the release notes — do not skip (audit trail is a core deliverable of `/hotfix`)
 - [ ] Permanent preventive test added at the layer that should-have-caught (not just a regression for this case)
 
 ---
@@ -160,7 +160,7 @@ Invoke: **Release Manager** (incident commander — owns triage, version, rollba
 
 **Phase ownership** — sub-agents cannot converse with the user: any action that **touches production** (rollback / promote — hand the procedure + digest to the human operator instead), and the **level of trimming** of the staging test round (Step 5 — the promoter decides and signs it) → **return early** with the proposed procedure/trim list instead of deciding alone. The orchestrator obtains the operator/promoter confirmation, verifies the hotfix-unique artifacts, and presents the incident status in the main loop.
 
-> Sub-agent prompt MUST include: "Output language: Vietnamese for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
+> Sub-agent prompt MUST include: "Output language: \<declared language — resolve from Project Profile → Output Language\> for prose/artifacts, English for code and technical identifiers (see `.claude/CLAUDE.md` → Output Language)."
 
 ## Next Step
 

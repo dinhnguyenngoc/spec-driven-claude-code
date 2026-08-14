@@ -65,6 +65,21 @@ specs/wireframes/
 
 ---
 
+## REVERSE Mode — As-Is Wireframes (brownfield opt-in)
+
+> Active ONLY when `/spec` runs the brownfield REVERSE baseline with `--wireframes` (during the run, or as the post-hoc supplement over an existing baseline — see `/spec` §Brownfield Mode → Wireframe supplement). Default REVERSE stays wireframe-waived. This mode **documents shipped UI**; it does not design.
+
+Discipline (mirrors `rules/brownfield.md` §Measure-vs-Verify):
+
+- **Source of truth = code, not imagination** — routes (`web/src/app/`), feature components (`web/src/features/*`), shared components (`web/src/components/ui/`). Read the actual JSX/state handling; when `architecture/design-system.md` already exists, reuse its state-matrix evidence instead of re-reading every component.
+- **Draw what exists, flag what doesn't** — a page-level state (empty / loading / error / no-result) with no code path → `⚠️ not observed (as-is gap)` + the file checked; NEVER draw the missing state as if implemented. Shipped UI that looks wrong is drawn as-is and flagged (`⚠️ suspicious behavior`), not fixed.
+- **No beautifying, no redesign proposals** — an improvement idea goes into one footer line per screen file (*"candidate for a future DELTA"*), never into the layout itself.
+- **Mapping tables are the point** — every control maps to its baseline `@US-[ID]-Snn`; a control no scenario covers → `⚠️ no scenario covers this control` (a real traceability gap for the next DELTA to close).
+- **Evidence line per screen** — each `screens/US-*.md` opens with the source components it was derived from (`file:line` list), so a reviewer can audit the drawing against code.
+- **Same artifacts & boilerplate** as forward mode (§Layout above); `prototype/` is NOT produced — the running app is the click-through truth.
+
+---
+
 ## Core Principles
 
 | Principle | Implementation |

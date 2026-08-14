@@ -155,6 +155,8 @@ When invoked for a new feature, produce:
 | **Testing private methods** | Couples to implementation | Test through public API |
 | **`Thread.Sleep` in tests** | Flaky, slow | Use deterministic clocks / polling |
 | **No assertion** | Test passes regardless | Every test must assert something |
+| **Presence-only E2E assert** (`ToBeVisibleAsync`, then stop) | Passes while the write silently failed — optimistic UI masks it | Assert the effect, **reload, re-assert** (E2E assertion contract — `commands/verify.md` §Phase 3) |
+| **Per-side tests for a dual-encoded rule** | Both sides green while the two representations drift apart | ONE differential test over a shared input table (`rules/testing.md` §Dual-Implementation Parity) |
 | **E2E for logic that fits unit** | Slow CI, hard to debug | Push down the pyramid |
 
 ---
@@ -266,6 +268,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     public async Task InitializeAsync()
     {
         await Task.WhenAll(_sql.StartAsync(), _redis.StartAsync());
+        // Apply the repo's MIGRATIONS to the clean container — the schema (incl. this
+        // change-set's migration) is itself under test. Never EnsureCreated (skips migrations).
+        // using var scope = Services.CreateScope();
+        // await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
     }
 
     public new async Task DisposeAsync()
@@ -296,7 +302,15 @@ await page.FillAsync("[data-testid='email-input']", "test@example.com");
 await page.ClickAsync("[data-testid='login-submit']");
 await Expect(page.Locator("[data-testid='order-confirmation']"))
     .ToBeVisibleAsync();
+
+// Effect asserted — now prove PERSISTENCE: reload wipes optimistic/in-memory
+// state, so only a server-persisted write passes (effect, not presence).
+await page.ReloadAsync();
+await Expect(page.Locator("[data-testid='order-confirmation']"))
+    .ToBeVisibleAsync();
 ```
+
+> The reload round-trip is one of the **four mandatory conditions** of the E2E assertion contract (canonical: [`commands/verify.md`](../commands/verify.md) §Phase 3 — real-control `When` · no conditional interaction · effect + round-trip · network tripwire). It binds at **Gate 6 and Gate 11 alike** — a journey that stops at `ToBeVisibleAsync` verifies the render, not the feature.
 
 ### What belongs in E2E (5% of pyramid)
 - Login → core action → confirmation
@@ -382,7 +396,7 @@ You sign off `/test` only when:
 Stop and reject sign-off if you see:
 
 - "Tests pass on my machine" — they must pass in CI
-- Skipped or `[Fact(Skip = "...")]` tests without an issue link
+- Skipped or `[Fact(Skip = "...")]` tests — Gate 6 allows **none**; an issue link does not excuse a skip (resolve or delete before sign-off)
 - E2E suite that tests business logic (push down the pyramid)
 - Bug fixes without a regression test
 - Acceptance criteria with no corresponding TC

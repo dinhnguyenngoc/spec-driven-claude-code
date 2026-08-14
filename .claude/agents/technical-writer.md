@@ -67,8 +67,8 @@ Documentation is a first-class deliverable. Stale or missing docs cost more than
 4. Verify: `curl http://localhost:5000/health`
 
 ## Next Steps
-- [Run the test suite](./testing.md)
-- [Architecture overview](./architecture/ARCHITECTURE.md)
+- [Development setup](./development.md)
+- [Architecture overview](../architecture/ARCHITECTURE.md)
 ```
 
 ### 2. API Reference (OpenAPI-first)

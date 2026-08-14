@@ -9,26 +9,28 @@
 
 ## Project Profile
 
-> Block mặc định do kit ship — **placeholder theo base stack**, chưa mô tả repo nào. `/discover` (brownfield) hoặc bạn (greenfield) thay bằng giá trị thật.
+> **Chưa gắn với dự án nào** — đây là trạng thái mặc định của kit khi vừa đem vào repo. Repo có code sẵn → chạy `/discover` (tự khảo sát và điền toàn bộ block này bằng giá trị thật + red-flags). Repo mới tinh → đổi `Mode: greenfield` và khai stack dự định. Sản phẩm nhiều repo → xem tình huống workspace ở đầu file.
 
-- **Mode:** brownfield
-- **Core:** C# 12 + ASP.NET Core 8 + EF Core 8 — base stack (no override)
-- **Database:** SQL Server → base `rules/database.md` (no override)
-- **Observability:** Serilog + Prometheus + Grafana → base `rules/monitoring.md` (no override)
-- **Structure:** Clean Architecture (Api → Core ← Infrastructure)
-- **Frontend:** <none | khai nếu có>
-- **Service id:** <chỉ multi-repo cần — single-repo bỏ trống>
-- **Notes (red-flags từ /discover):** <brownfield: /discover điền — nợ test, khu vực rủi ro, điểm sáng>
+- **Mode:** brownfield   <!-- mặc định của kit — ca phổ biến nhất là đem kit vào repo sẵn có; xây từ số 0 → đổi `greenfield` -->
+- **Output Language:** Vietnamese   <!-- ngôn ngữ prose/artifact + hội thoại; code & identifier luôn English (CLAUDE.md §Output Language). Đổi sang tên tiếng Anh của ngôn ngữ bạn muốn, vd `English`, `Japanese` -->
+- **Core:** <chưa khai — C# 12 + ASP.NET Core 8 + EF Core 8 (base) | Node.js | PHP + Laravel — xem bảng dưới>
+- **Database:** <chưa khai — SQL Server (base) | Oracle | MySQL | PostgreSQL | MongoDB — xem bảng dưới>
+- **Observability:** <chưa khai — Serilog/Prometheus/Grafana (base) | ELK — xem bảng dưới>
+- **Structure:** <chưa khai — Clean Architecture | N-tier | monolith; brownfield: mô tả as-is, không "sửa" trong profile>
+- **Frontend:** <nếu có — Next.js 14 (site SEO) | React + Vite SPA (admin) | Blade/Livewire/Inertia (Laravel) | …>
+- **Service id:** <chỉ sản phẩm multi-repo — key duy nhất cho /discover-system; single-repo → bỏ trống>
+- **Notes:** <red-flags/blockers — /discover điền cho brownfield; greenfield có thể bỏ trống>
 
 ### Giá trị hợp lệ & override kích hoạt (tham khảo khi điền)
 
 | Trường | Base (mặc định — không cần override) | Khai khác → đọc kèm override |
 |--------|--------------------------------------|------------------------------|
 | Mode | `brownfield` — repo có code đang chạy/đã release → Phase A (`/discover` → `/spec` reverse → `/arch` reverse), luồng B1–B5, `rules/brownfield.md` active | `greenfield` — xây từ số 0 → pipeline 12 bước tuyến tính · `workspace` — CHỈ dùng cho profile ở thư mục cha của sản phẩm multi-repo (meta-mode, kèm `Repos:` registry) → `CLAUDE.md` §Workspace Mode; repo thường KHÔNG dùng giá trị này |
-| Core | C# 12 + ASP.NET Core 8 + EF Core 8 | Node.js → `rules/overrides/lang-nodejs.md` + `framework-nodejs-web.md` + `test-nodejs.md` |
+| Output Language | `Vietnamese` — cũng là mặc định khi thiếu field (backward-compat: repo cấu hình trước khi field ra đời không bị đổi ngôn ngữ giữa dự án) | Tên tiếng Anh của ngôn ngữ bất kỳ (`English`, `Japanese`…) — `English` → mọi thứ English, quy tắc trộn ngôn ngữ tự triệt tiêu. Workspace: 1 sản phẩm = 1 ngôn ngữ, `/discover` hỏi 1 lần và ghi đồng nhất mọi profile |
+| Core | C# 12 + ASP.NET Core 8 + EF Core 8 | Node.js → `rules/overrides/lang-nodejs.md` + `framework-nodejs-web.md` + `test-nodejs.md` · PHP → `rules/overrides/lang-php.md` + `framework-php-laravel.md` + `test-php.md` · **Repo đa-stack** → khai TẤT CẢ kèm scope path, stack chủ đạo trước (vd `C# (src/) + Python (tools/etl/)`) — override áp theo vùng, không chọn-một-bỏ-một; 2 framework cùng ngôn ngữ → as-is + red-flag `dual framework` + OQ |
 | Database | SQL Server 2022 | Oracle → `database-oracle.md` · MySQL → `database-mysql.md` · PostgreSQL → `database-postgres.md` · MongoDB → `database-mongodb.md` |
 | Observability | Serilog + Prometheus + Grafana (+ Jaeger tracing) | ELK → `monitoring-elk.md` |
 | Structure | Clean Architecture | N-tier · monolith — brownfield mô tả **as-is**, không "sửa" trong profile |
-| Frontend | (không có) | Next.js 14 App Router (site SEO) · React + Vite SPA (admin/dashboard) → base `rules/frontend.md` |
+| Frontend | (không có) | Next.js 14 App Router (site SEO) · React + Vite SPA (admin/dashboard) → base `rules/frontend.md` · Blade/Livewire/Inertia (Laravel server-rendered) → `framework-php-laravel.md` §K, brownfield giữ as-is |
 
 > **Nguyên tắc override:** file override chỉ thay phần dialect/backend-specific; nguyên tắc agnostic của rule base (parametrized query, structured logging, correlation id…) **vẫn áp dụng** — xem `rules/tech-stack.md` §Core vs Peripheral. Precedence khi va chạm: `local/` > file này > kit base.

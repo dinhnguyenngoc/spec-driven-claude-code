@@ -55,12 +55,14 @@ Ask these questions before writing any spec:
 - Who experiences this problem?
 - What's the cost of NOT solving it?
 - What does success look like?
+- For each goal: is it a business goal (org outcome) or a product goal (system capability)? Which KPI measures it, what is today's baseline, and when is it measured?
 
 **Users & Personas**
 - Who are the target users?
 - What are their goals and pain points?
 - What's their technical proficiency?
 - Are there different user types with different needs?
+- Which role may perform which action? Any ownership-scoped access (a user sees only their own records)?
 
 **Scope & Constraints**
 - What's the MVP (minimum viable product)?
@@ -86,6 +88,17 @@ Before writing specs:
 
 ---
 
+## Proposed Content (inferred — REVERSE opt-in)
+
+> Active only when the user opted in (`/spec --propose-goals` or the run-time ask). Extends the Assumption mechanism: a proposal is an assumption with a body, awaiting stakeholder confirmation.
+
+- **Scope is closed:** Goals (Business/Product), Business Need, Expected Outcomes, Impact if Not Done — the "why" layer code cannot evidence. Nothing else is ever proposed.
+- **Label every proposal** `📝P-nn` + inference basis (`inferred from US-xxx…: <observed behavior>` — phrased per Output Language) + pending status. Unlabeled inference = fabrication.
+- **Qualitative only** — never invent numbers: KPI values, baselines, timeframes stay `[NEEDS PO]`.
+- **Pair each `📝P-nn`** with one Open Questions row (owner: PO). On confirmation, remove the label via an `Amended` Revision History row citing the resolved `P-nn`.
+
+---
+
 ## User Story Format (BDD)
 
 > Heading levels match the doc structure below: a story is `#### US-[ID]` nested under its `### Epic`, and its sub-sections are `#####`.
@@ -100,14 +113,14 @@ Before writing specs:
 ##### Acceptance Criteria
 
 ```gherkin
-@US-[ID]-S01
+@US-[ID]-S01 @happy
 Scenario: [Descriptive scenario name — happy path]
   Given [initial context/state]
   When [action is performed]
   Then [expected outcome]
   And [additional outcome if needed]
 
-@US-[ID]-S02
+@US-[ID]-S02 @edge
 Scenario: [Edge case or alternative flow]
   Given [context]
   When [action]
@@ -128,6 +141,8 @@ Scenario: [Edge case or alternative flow]
 ````
 
 > **Scenario IDs are mandatory** — every scenario carries a stable `@US-[ID]-Snn` tag (happy = `-S01`, each edge/failure = `-S02`…); these IDs are the canonical acceptance checklist reconciled by every downstream gate. Rule: [`../references/scenario-traceability.md`](../references/scenario-traceability.md).
+>
+> **Class tags are mandatory** — every scenario carries exactly ONE class tag next to its ID: `@happy` (main success path) · `@negative` (error/rejection path) · `@edge` (boundary/alternative). Every story has ≥ 1 `@happy`; a story with zero `@negative`/`@edge` states a one-line reason under its AC block. Tags are machine-checkable at the Gate 1 disk-check and map 1:1 to external doc conventions (✅/❌/⚠️) at export time.
 
 ---
 
@@ -173,6 +188,14 @@ Always capture these explicitly:
 | **Accessibility** | Who must be able to use it? | WCAG 2.1 AA |
 | **Localization** | Multiple languages/regions? | Support EN, VI |
 
+**Artifact shape — the spec document's §NFR renders as a keyed table:**
+
+| ID | Category | Requirement (measurable) | Target / Threshold |
+|----|----------|--------------------------|--------------------|
+| NFR-01 | Performance | API read-path latency | P95 < 200ms |
+
+IDs are `NFR-01, NFR-02…`, **append-only** (same discipline as `G-xx` — never renumber; Category is its own column, so re-classifying an NFR never changes its ID). The table above is elicitation guidance; **this keyed table is what lands in `SPEC.md`**. Three downstream set-checks join on the ID — `/arch` mechanism completeness · `/plan` NFR reconciliation · `/verify` Phase-4 rows — and a name-only NFR list makes those diffs fuzzy: the spec says *"P95 latency < 200ms"*, a report says *"API response time"*, and no machine can match the two.
+
 ---
 
 ## Scope Definition
@@ -217,6 +240,7 @@ Always capture these explicitly:
 | Field | Value |
 |-------|-------|
 | Version | v1.0 (= the latest **Approved** row in Revision History) |
+| Coverage | `full` — or `partial (scoped)` when built by a scoped REVERSE (`/spec --scope`); a partial SPEC MUST also carry §Scope & Coverage below |
 | Mode | greenfield \| brownfield |
 | Status | **Draft** → **Approved** (set to Approved only after Gate 1 sign-off) |
 | Date | YYYY-MM-DD |
@@ -229,16 +253,59 @@ Always capture these explicitly:
 |---------|------|------|------|--------------------|----------------------------|-----------|-------------|
 | v1.0 | YYYY-MM-DD | Baseline | Phase A \| greenfield | [Initial baseline] | US-001…US-0NN | [CODEBASE_MAP / —] | [name] |
 
+## Scope & Coverage
+
+> **Only when `Coverage: partial (scoped)`** (a scoped REVERSE — `/spec --scope`). Omit this section entirely when the SPEC covers the whole system. Both lists are **derived from `docs/CODEBASE_MAP.md` §Endpoint inventory**, never hand-written: their union must equal the inventory exactly (checked at Gate 1).
+
+**Covered:** [N]/[M] entry points — [selector(s)] → US-001…US-0NN
+
+| Entry point | Type | Story |
+|-------------|------|-------|
+| `GET /api/v1/bookmarks` | HTTP | US-004 |
+
+**NOT covered yet:** [M−N] entry points — these exist in the system but are **not described anywhere in this SPEC**; a change touching them must run a scoped REVERSE first (`spec.md` Phase 0).
+
+| Entry point | Type | Known red-flags (from `/discover`) |
+|-------------|------|------------------------------------|
+| `POST /api/v1/orders` | HTTP | ⚠️ no authz observed |
+| `order.events` / `order-svc-consumer` | Consumer | — |
+
 ## Executive Summary
 [2-3 sentences: what, why, for whom]
 
 ## Objective
 [Specific, measurable goal]
 
+## Goals & Success Metrics
+
+> Business goal = what the organization gains; Product goal = what the product must do to achieve it.
+> Post-release business-tracking measures — NOT pipeline gate criteria. Pipeline-verifiable
+> thresholds belong in §Non-Functional Requirements (measured at Gate 11 by /verify).
+
+| ID | Type | Goal | Metric / KPI | Baseline | Timeframe |
+|----|------|------|--------------|----------|-----------|
+| G-01 | Business | [What the org gains] | [Measurable KPI] | [Current value or —] | [e.g. 6 months post go-live] |
+| G-02 | Product | [What the product must deliver] | [Measurable KPI] | [—] | [—] |
+
 ## Target Users
 | Persona | Description | Primary Goal |
 |---------|-------------|--------------|
 | [Name] | [Brief desc] | [What they achieve] |
+
+## Permission Matrix (role × action)
+
+> Required whenever the product has ≥ 2 roles or any authenticated area; single-role/public
+> products write `N/A — <reason>` instead of the table. Business-level authorization — what the
+> stakeholder signs off; technical enforcement (RBAC policies, resource × action) is derived
+> downstream: /secure (authz requirements, IDOR threats) → /arch → design docs.
+
+| Action / Feature area | [Role A] | [Role B] | [Guest] |
+|-----------------------|----------|----------|---------|
+| [View schedule]       | ✅       | ✅       | ✅      |
+| [Place a bet]         | ✅       | —        | —       |
+| [Trigger settlement]  | —        | ✅       | —       |
+
+Legend: ✅ full access · 🔒 conditional (ownership/scope-limited — footnote the condition) · — no access.
 
 ## User Stories
 
@@ -314,15 +381,20 @@ Before handoff to `/arch`, verify:
 - [ ] All stories have Given/When/Then acceptance criteria
 - [ ] **Every scenario has a stable ID (`@US-[ID]-Snn`) and a concrete, assertable observable outcome (*Then*)**
 - [ ] **Every user-facing action has a user-perspective (observable) scenario** — not only an API-transport scenario
+- [ ] **Every scenario carries exactly one class tag** (`@happy` / `@negative` / `@edge`) **and every story has ≥ 1 `@happy`** — a story with zero `@negative`/`@edge` states a one-line reason under its AC block; scoped to stories authored/modified by this change-set (never retag untouched legacy stories)
+- [ ] **Goals & Success Metrics table filled** — ≥ 1 Business + ≥ 1 Product goal, each with a measurable KPI + timeframe (REVERSE baseline: evidence-based, explicit `N/A`, or `📝P-nn` labeled proposals — see §Proposed Content)
+- [ ] **Every `📝P-nn` proposal is disciplined** — carries its inference basis, contains no invented numbers (`[NEEDS PO]` in KPI/baseline/timeframe), and pairs 1:1 with an Open Questions row owned by the PO
+- [ ] **Permission Matrix present** — every story actor appears as a column, every column exists in §Target Users, every 🔒 carries its condition footnote; or explicit `N/A — single role/public` (REVERSE: derived from observed authz evidence; missing authz → `⚠️ no authz observed`, never guessed)
 - [ ] Personas defined for all user types
 - [ ] Priority assigned (Must / Should / Could / Won't)
 - [ ] Out of Scope explicitly documented
-- [ ] Non-Functional Requirements identified, including project-mandatory NFRs from `.claude/rules/*`
+- [ ] Non-Functional Requirements identified **as keyed `NFR-xx` rows** (§NFR artifact shape), including project-mandatory NFRs from `.claude/rules/*`
 - [ ] Open questions resolved or explicitly deferred (every item is in `Resolved` with a date, or in `Open` with a target command/owner)
 - [ ] **No unconfirmed assumptions** — every gap is either asked & `Confirmed (date)`, or an `Open` item with owner; no unconfirmed guess embedded as a "default"
-- [ ] **Every user-facing screen has a wireframe (ASCII/Mermaid) + states (empty / loading / error / no-result) in `specs/wireframes/`, with each UI region mapped to its `@US-[ID]-Snn`** (skip for headless / API-only products; brownfield REVERSE baseline: waived — wireframes are produced per-change for the screens each change touches, see /spec §Brownfield Mode)
+- [ ] **Every user-facing screen has a wireframe (ASCII/Mermaid) + states (empty / loading / error / no-result) in `specs/wireframes/`, with each UI region mapped to its `@US-[ID]-Snn`** (skip for headless / API-only products; brownfield REVERSE baseline: waived — wireframes are produced per-change for the screens each change touches, or opted in as-is via `--wireframes` (documentation supplement — visual sign-off stays waived), see /spec §Brownfield Mode)
 - [ ] **The visual UI is signed off by stakeholder + PO (record date + name) — blocking before `/arch`** (UI products only). Sign-off is done on the ASCII wireframes; the clickable HTML prototype (`specs/wireframes/prototype/`) is an **opt-in aid (default OFF)** — generate it only when requested or when the stakeholder needs to click through to sign off confidently (intent-level fidelity, no real backend). *Waived for the brownfield REVERSE baseline — the as-is UI already shipped; baseline approval = the spec sign-off.*
 - [ ] Stakeholder sign-off obtained — spec `Status` is `Approved`, not `Draft`
+- [ ] **(scoped REVERSE) `Coverage` declared** — header field reads `partial (scoped)` and §Scope & Coverage lists covered AND uncovered entry points, both derived from `docs/CODEBASE_MAP.md` (their union = the inventory, exactly)
 - [ ] **Revision History has an append-only row for the current change-set** — correct Type + version bump per §Revision History semantics; `Breaking` → ADR cited in Reference; every extended/superseded story carries its one-line marker
 - [ ] Glossary includes all domain terms
 
