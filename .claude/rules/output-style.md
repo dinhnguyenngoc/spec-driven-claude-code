@@ -12,7 +12,7 @@ Name who reads each artifact and pitch the register to them. Clarity ≠ one ton
 
 | Artifact | Primary reader | Register |
 |----------|----------------|----------|
-| `SPEC.md`, wireframes, `RELEASE_NOTES` | Stakeholder / PO / everyone | **Plainest** — minimal jargon; every term defined |
+| `SPEC.md` + user stories/AC, wireframes, `RELEASE_NOTES`, PRD-class `/export-docs` renders | **Non-specialist stakeholder / PO** — fluent with computers, not with software engineering | **Non-specialist floor — §10** (checkable rules, not "plainest") |
 | `ARCHITECTURE.md`, ADRs, `CODE_REVIEW`, `TEST_REPORT`, `SCAN_REPORT` | Engineers | Technical **allowed**, but still lead with a summary and explain *why* |
 | `troubleshooting.md`, `DEPLOY_RUNBOOK` | Operator / on-call | Step-by-step, unambiguous, action-first |
 
@@ -33,7 +33,8 @@ Structure top-down: the conclusion/decision first, supporting detail next, deep 
 
 ## 4. Plain-language mechanics
 
-- **Short sentences, one idea each.** Prefer active voice and concrete subjects ("The service rejects the request" not "Requests are subject to rejection").
+- **Short, complete sentences — one idea each.** Full subject-verb sentences, not telegram-style fragments: brevity comes from cutting ideas and filler, never from dropping the sentence's grammar. Prefer active voice and concrete subjects ("The service rejects the request" not "Requests are subject to rejection").
+- **Arrow chains are notation, not grammar** — `A → B → C` is welcome when it depicts a real ordered flow (a command pipeline, a traceability chain `spec → code → test`, a uniform cause→effect column in a list). It becomes a telegram fragment only when the arrow replaces the sentence's verb ("task done → tick"). Keep the surrounding sentence complete; the chain sits inside it as a noun.
 - **Scannable structure** — headings, tables, and lists beat dense paragraphs. **Bold the key decision/outcome.**
 - **Cut filler** — no throat-clearing ("It should be noted that…"), no restating the heading.
 - **Concrete over abstract** — name the file/endpoint/number, don't gesture vaguely.
@@ -41,6 +42,9 @@ Structure top-down: the conclusion/decision first, supporting detail next, deep 
 ## 5. Define jargon — no unexplained acronyms
 
 - Spell out an acronym/standard on first use, with a 3–8 word gloss: *"RFC 7807 (the standard HTTP error format)"*, *"IDOR (accessing another user's record by its id)"*.
+- **The gloss renders in the artifact's Output Language** when that is not English — *"cổng kiểm soát chất lượng (Quality Gate)"* — while the term itself stays English (§ Output Language).
+- **A term that would need a long gloss → replace it in the prose** with a self-explanatory phrase and keep the term in parentheses: *"a small but complete, end-to-end runnable piece of the feature (vertical slice)"* beats a three-clause explanation. Rename, don't lecture — this keeps §8 intact because the precise term survives in the parentheses.
+- **Kit-internal vocabulary stays internal** — command phase names and gate numbers (`Phase 0`, `Gate 6`) mean nothing to an artifact's reader; name the observable effect (*"`/spec` detects the mismatch itself"*), not the internal step.
 - Keep technical identifiers and standard names **as-is** (per § Output Language) — but the surrounding prose must make them understandable.
 - Maintain a **Glossary** in artifacts that introduce domain terms (already required for `SPEC.md`).
 
@@ -67,7 +71,23 @@ Clear is **not** the same as long. The "add" rules above (§2 summary, §5 gloss
 - **Say it once** — each point lives in exactly one place; elsewhere, link to it instead of repeating.
 - **On collision with §2 / §5 / §6 / §7** — prefer *stop when clear enough* over stacking every "add" mandate.
 
-> Balance, not contradiction: §1–§8 make it *understandable*; §9 keeps it *tight*. A good artifact is the smallest one its reader can fully follow.
+> Balance, not contradiction: §1–§8 and §10 make it *understandable*; §9 keeps it *tight*. A good artifact is the smallest one its reader can fully follow.
+
+## 10. Non-specialist floor — artifacts a stakeholder must be able to act on
+
+**Applies to:** `specs/SPEC.md` + user stories + Acceptance Criteria · `specs/wireframes/` · `RELEASE_NOTES` · the PRD-class renders of `/export-docs` · every **confirmation question and Open Questions row** an agent puts to the user. Also the kit's own onboarding docs (`README*`, `quick-start.md`, `getting-started-*.md`).
+
+**Does NOT apply to** — these keep their §1 register: `architecture/` + ADRs · `reports/` (CODE_REVIEW · TEST_REPORT · SCAN_REPORT · VERIFY_REPORT) · `security/THREAT_MODEL` · `specs/EVIDENCE.md` · `docs/troubleshooting.md` + `DEPLOY_RUNBOOK`.
+
+**The reader:** fluent with computers and the internet for daily work; does **not** know SDLC vocabulary, the kit's command/phase names, code structure, or architecture-pattern names. **Checkable test:** a sentence this reader would have to look up before acting on it must be rewritten.
+
+- **One word, one meaning per artifact.** Never reuse a word for two concepts — an "artifact" meaning *a document the kit generates* in one section and *the build being shipped* in another forces the reader to guess. When the output language lacks two words, coin two and use each consistently throughout.
+- **Name the actor and the action for anything the reader must do.** No passive voice where a person must act ("the architecture has been reviewed" → "**you approve** the architecture Claude presents"), and state the *physical action* ("approve by replying in the chat"), not just the obligation.
+- **Acceptance criteria and gate conditions are measurable, never adjectival.** "Docs are complete" fails; "all 4 docs present: getting-started · API · deploy · troubleshooting" passes. If the reader cannot check it, it is not a criterion.
+- **State the safety net and the red branch.** Where a reader might freeze fearing they broke something, give the real consequence ("skipping this is fine — `/spec` detects the mismatch and asks"). Where an instruction can fail, cover the failure path too ("a red gate means stop: have Claude fix it, then re-run that step").
+- **A kind-noun precedes every identifier** — *the file* `specs/SPEC.md`, *the command* `/spec`, *the folder* `.claude/`. The reader should never have to infer whether a name is a file, a folder, or a command.
+
+> **§9 still arbitrates.** This floor raises *what must be understandable*, not *how much to write*: prefer §5's "rename, don't lecture" over adding explanation, and stop as soon as the reader can act. A SPEC that doubled in length to gloss everything has failed this section, not satisfied it.
 
 ---
 
@@ -84,6 +104,13 @@ Clear is **not** the same as long. The "add" rules above (§2 summary, §5 gloss
 | Same tone for stakeholder & engineer docs | Match register to the audience (§1) |
 | Explaining the obvious / glossing a term the reader knows | Cut it; trust the audience (§9) |
 | Same point repeated in several places | State it once, link from the rest (§9) |
+| Telegram-style fragment ("task done → tick") | Write the full sentence; cut ideas, not grammar (§4); an arrow chain depicting a real ordered flow is notation — keep it |
+| Hard term + a long inline explanation | Swap the prose to a self-explanatory phrase + term in parentheses (§5) |
+| Internal phase/gate name in reader-facing prose | Name the observable effect instead (§5) |
+| One word carrying two meanings in the same artifact | Coin two distinct words, use each consistently (§10) |
+| Obligation stated without the action ("review and approve it") | Name the actor and the physical action (§10) |
+| Criterion stated as an adjective ("complete", "sufficient") | Replace with something countable or checkable (§10) |
+| Bare identifier with no kind-noun | *the file* / *the command* / *the folder* + the name (§10) |
 
 ## Self-check before emitting an artifact
 
@@ -94,4 +121,8 @@ Clear is **not** the same as long. The "add" rules above (§2 summary, §5 gloss
 - [ ] Dense paragraphs broken into headings / tables / lists
 - [ ] Register matches the reader (stakeholder vs engineer vs operator)
 - [ ] Still accurate — no term replaced by a misleading simplification
+- [ ] Full sentences throughout — no telegram fragments; hard terms replaced by self-explanatory phrases (term kept in parentheses), not explained at length
+- [ ] No kit-internal phase/gate names in reader-facing prose
+- [ ] **(stakeholder-tier artifacts, §10)** No word carries two meanings; every action names its actor + physical step; every criterion is countable; identifiers carry a kind-noun
+- [ ] **(stakeholder-tier artifacts, §10)** Safety net stated where the reader could freeze; failure path stated where a step can fail
 - [ ] Nothing can be cut without losing clarity — no filler, no glossing the obvious, no repetition (§9)

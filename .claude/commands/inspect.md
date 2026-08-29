@@ -53,7 +53,7 @@ Trace the traceability chain: `specs/SPEC.md` (+ `specs/user-stories/*` in the s
 
 ### Phase 2 — CODE evidence (always runs)
 
-Read the specific implementing code — use `docs/CODEBASE_MAP.md` as the index, **DO NOT scan the whole tree** (brownfield's consume-don't-re-scan principle). Cite `file:line` for every assertion. A question that requires a broad scan → spawn **Explore** (read-only). For a **DB-resident object** question (stored proc / trigger / view / index), the index is `CODEBASE_MAP.md` §DB-object inventory → read the **committed DDL under `db/schema-snapshot/`** — that snapshot is the repo-side truth (`rules/database.md` §DB-resident objects are source code); a live probe (Phase 3) never replaces it.
+Read the specific implementing code — use `docs/CODEBASE_MAP.md` as the index, **DO NOT scan the whole tree** (brownfield's consume-don't-re-scan principle). For a **story-anchored** question, `specs/EVIDENCE.md` (the REVERSE evidence map, if present) gives the direct `US-ID → file:line` jump — check its `Citations valid as of commit:` sha against HEAD first; a stale sha means line numbers may have drifted, so re-locate the cited symbol instead of trusting the line. Cite `file:line` for every assertion. A question that requires a broad scan → spawn **Explore** (read-only). For a **DB-resident object** question (stored proc / trigger / view / index), the index is `CODEBASE_MAP.md` §DB-object inventory → read the **committed DDL under `db/schema-snapshot/`** — that snapshot is the repo-side truth (`rules/database.md` §DB-resident objects are source code); a live probe (Phase 3) never replaces it.
 
 ### Phase 3 — LIVE evidence (only when `--live`)
 

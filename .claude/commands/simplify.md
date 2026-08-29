@@ -41,7 +41,7 @@ If a **file or class** exceeds ~500 lines, it likely needs splitting. (Methods h
 
 ### Brownfield (Mode: brownfield)
 
-`/simplify` is where the tech-debt backlog lands (per `rules/brownfield.md` §No Gratuitous Refactor). Two extra disciplines apply:
+`/simplify` is where the tech-debt backlog lands (per `rules/brownfield.md` §No Gratuitous Refactor): **`plans/BACKLOG.md` is its inbox** — read it at the start of a run, and tick or remove the lines this run actually resolves. Two extra disciplines apply:
 - **Characterization-test-first** for any untested area is now the general Step 0 (applies to every mode) — brownfield just hits it most often.
 - Stay **within the assigned area** — do not "tidy up" unrelated code in the same pass.
 

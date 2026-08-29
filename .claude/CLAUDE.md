@@ -1,4 +1,4 @@
-# Spec-driven Development with Claude Code
+# SpecGate — Spec-driven SDLC kit for Claude Code
 
 ## Overview
 
@@ -40,6 +40,8 @@ When the declared language is NOT English, ALL of the following MUST be written 
 - **Commit message body** (the detailed description after the title line)
 - **PR descriptions, release notes**
 - **Code comments explaining business logic** (the WHY)
+
+> **Anti-drift (command runs):** the closing summary a command run prints to the chat IS "conversation with the user" — it follows the declared language like any other answer. Known failure mode: after a run whose entire context is English (command definitions, code, sub-agent reports), the final summary drifts to English — re-resolve the declared language BEFORE writing any user-facing message, the final one especially. A slash command invoked with no user prose (`/discover`) is NOT a signal to answer in English; neither is having just written English artifacts or read English rules. **An unresolved `Output Language` is NOT a licence to write English.** Resolution never requires the user: a value in the Profile (including the kit's pre-filled one) is the answer, and a missing field falls back to `Vietnamese` per §Language resolution. So even the question *"which output language do you want?"* is itself written in the resolved language — asking about the language in English while the Profile declares another one is the exact drift this rule forbids.
 
 ### Always English — never translate
 
@@ -85,8 +87,9 @@ This prevents sub-agents from accidentally emitting English due to default promp
 Every SDLC artifact (`specs/`, `architecture/`, `plans/`, `security/`, `reports/`, `docs/`…) MUST read **clearly for its intended audience**:
 
 - **Open with a plain-language summary** (*what / why / for whom*) before any detail.
-- **Write for the reader:** SPEC / wireframe / release notes → stakeholder (plainest language); ARCHITECTURE / ADR / report → engineer (technical but still clear + explains *why*); runbook / troubleshooting → operator (step-by-step, unambiguous).
-- **Define terms & acronyms** on first use; **one-line rationale** for every decision + number/threshold; layer the content (summary → detail → reference); short sentences, tables/lists over dense prose; **bold the key decisions**.
+- **Write for the reader:** SPEC / wireframe / release notes / exported PRD → **non-specialist stakeholder** (they know computers, not software engineering — the checkable floor is [`rules/output-style.md`](rules/output-style.md) §10); ARCHITECTURE / ADR / report → engineer (technical but still clear + explains *why*); runbook / troubleshooting → operator (step-by-step, unambiguous).
+- **Define terms & acronyms** on first use (gloss in the artifact's Output Language) — a term that would need a long gloss is **replaced in the prose by a self-explanatory phrase** + the term in parentheses; **one-line rationale** for every decision + number/threshold; layer the content (summary → detail → reference); **bold the key decisions**.
+- **Short, complete sentences** (no telegram fragments; an arrow chain depicting a real ordered flow — `spec → code → test` — is notation, not a fragment), tables/lists over dense prose; **concrete conditions over abstract adjectives** (*"`Mode: brownfield` does not match an empty repo"*, not *"the Profile is stale"*); **kit-internal vocabulary** (phase names, gate numbers) stays out of reader-facing prose — name the observable effect.
 - Clarity does **NOT** mean dumbing down — keep precision + identifier/standard names (per §Output Language).
 
 > Full standard + anti-patterns + self-check: [`rules/output-style.md`](rules/output-style.md). These are **checkable** criteria at DoR and `/review`.
@@ -130,6 +133,8 @@ This kit supports **two per-repo modes** (plus a **workspace meta-mode** for mul
 | **greenfield** | Building from scratch, no existing code | The 12-step linear pipeline below |
 | **brownfield** | Legacy code already exists / is running in production | **Phase A discovery** (`/discover` → `/spec` reverse → `/arch` reverse) + branched development flows (B1–B5) |
 | **workspace** | Parent folder of a multi-repo product (meta-mode — member repos stay greenfield/brownfield) | §Workspace Mode: scope-resolve → run the per-repo pipeline inside each target repo |
+
+**Mode lifecycle — greenfield ends at the first release.** `greenfield` is a birth phase, not a permanent identity: once the kit-built project ships its first staged release (or per-change work starts on the built code), it graduates to **brownfield** — backward-compat by default and ADR-to-change now apply, because clients and data now rely on what runs. Graduation is cheap and never re-documents: `/discover` detects the kit-built baseline (forward `SPEC.md` Approved + `architecture/`) and runs the inventory-only **§Graduation run** (`commands/discover.md`) — minting `docs/CODEBASE_MAP.md` and flipping `Mode:` with consent. The forward spec/architecture stay the baseline (never REVERSE over them); `/spec` continues in DELTA per its Phase 0.
 
 **Brownfield activates:**
 - `rules/brownfield.md` (legacy discipline: characterization test, backward-compat, ADR-to-change, measure-vs-verify).
@@ -208,7 +213,7 @@ myproject/                          # thin git repo (platform repo): version-con
 
 When the user describes a task in **plain language** ("add feature X", "modify feature Y", "fix bug Z", "there's a production incident", "upgrade <dependency/architecture>", "clean up the tech debt in area W"…), **BEFORE doing anything else**, respond in a 3-part format:
 
-1. **Mode** — if the session root declares `Mode: workspace` → resolve the target repo(s) first (§Workspace Mode), then determine greenfield/brownfield from the **target repo's** Profile + its actual signals (does business source code already exist), **stating the basis explicitly**. If the Profile contradicts the actual state → warn and stop; do not proceed on your own.
+1. **Mode** — if the session root declares `Mode: workspace` → resolve the target repo(s) first (§Workspace Mode), then determine greenfield/brownfield from the **target repo's** Profile + its actual signals (does business source code already exist), **stating the basis explicitly**. If the Profile contradicts the actual state → warn and stop — never proceed on your own; propose the fix (`Mode:` → the resolved value) and update the Profile only with the user's explicit consent (same reconcile-persist discipline as `/spec` Phase 0). A kit-built repo (forward SPEC Approved + `architecture/` present, no CODEBASE_MAP) is NOT a Profile contradiction — it is a pending graduation: route the flow as B1/B2 with `/discover` (§Graduation run) as the first checklist item (§Mode lifecycle above).
 2. **Flow** — name it: greenfield 12-step, or B1 / B2 / B3 / B4 / B5 / B5-lite / `/simplify` (decision tree: [`references/brownfield-pipeline.md`](references/brownfield-pipeline.md)).
 3. **Command checklist in order** + the flow's key discipline (e.g. B2 → characterization test BEFORE changing · B1 exposing an external surface → should run `/secure` · B5 → ADR + strangler-fig · scope: WRITE per delta, RUN the whole suite).
 
@@ -217,6 +222,8 @@ Then **ask the user to choose an execution mode** (by default, do NOT run anythi
 - **Claude-driven** — Claude runs the commands sequentially but **stops at every Quality Gate** for approval; the points that require human sign-off (Gate 1 stakeholder approval, review verdict, promote production) **always** wait — regardless of mode.
 
 > **Exception — current-state questions (not change requests):** when the user *asks* about existing state/features (e.g. *"is a newly added bookmark checked for duplicates?"*, *"how is X configured?"*) → **do NOT route into a B-flow / do not ask for an execution mode**. Answer read-only per the **output contract of [`/inspect`](commands/inspect.md)**: a 3-tier evidence table (records → code → live) + PROVEN/DESCRIBED rank + mismatch flags + citations of `@US-ID`/`file:line`/digest. The live tier is OFF by default (only probe when the user explicitly asks). If the question turns into a change/add request → return to the 3-part routing above.
+>
+> **Scope decides the branch, not the phrasing.** A current-state question about **one feature / one config** → the `/inspect` contract above. A "help me understand the whole repo" request on a codebase with **no `docs/CODEBASE_MAP.md` yet** (*"I just inherited this source code, help me see where it stands"*) is **not** an `/inspect` question — that IS Phase A onboarding: answer with the 3-part routing (Mode · flow = Phase A · checklist starting at `/discover`) and **do NOT survey the repo inline**. `/inspect`'s contract is built for a single feature; using it to describe an entire undocumented codebase produces an ad-hoc survey that `/discover` exists to do properly (and that nothing downstream can consume, because it never writes `CODEBASE_MAP.md`).
 
 ---
 
@@ -381,7 +388,8 @@ Each phase transition has mandatory quality gates:
 │  ✓ Assumptions log reviewed & dispositioned (if any)           │
 │                                                                 │
 │  GATE 6: /test → /review                                        │
-│  ✓ Code coverage ≥ 80%                                         │
+│  ✓ Coverage: line ≥ 80% · branch ≥ 75%                         │
+│  ✓ Every 0%-coverage method listed w/ a test or a reason       │
 │  ✓ All tests pass                                              │
 │                                                                 │
 │  GATE 7: /review → /scan  (Optional)                            │
@@ -520,6 +528,7 @@ project-root/
 │
 ├── specs/                          # /spec output
 │   ├── SPEC.md
+│   ├── EVIDENCE.md                 # brownfield REVERSE only — engineer-facing US-ID → file:line evidence map
 │   ├── user-stories/               # split layout only (> 20 stories / multi-epic)
 │   └── wireframes/                 # UI products: README + screens/ + flows/ (+ prototype/ opt-in)
 │
@@ -532,7 +541,8 @@ project-root/
 ├── plans/                          # /plan output
 │   ├── sprint-*.md                 # optional — on-request PM aid (PM agent §Delivery tracking), not a /plan gate output
 │   ├── plan.md
-│   └── todo.md
+│   ├── todo.md
+│   └── BACKLOG.md                  # out-of-scope findings (§2.5 routing) — NOT a /plan projection; /simplify's inbox
 │
 ├── security/                       # /secure + /scan output
 │   ├── THREAT_MODEL.md
@@ -633,4 +643,5 @@ Quick references in `.claude/references/`:
 10. **Document everything** — If it's not documented, it doesn't exist
 11. **Keep `plans/todo.md` truthful** — Tick every completed task (`- [x]`) before reporting done. When work is delegated to sub-agents, the orchestrator owns the tick and applies it after the sub-agent's success report. A task without its tick is not done.
 12. **Route ambiguity by type (phase-aware)** — In `/spec`/`/arch`, eliciting and resolving ambiguity IS the job: ask freely, present interpretations. In `/build`/`/fix-issue`: implementation details → decide via rules, never ask; non-blocking behavior gaps → most conservative interpretation + Assumptions log, reviewed as a batch at the gate; blocking behavior gaps → stop and escalate. Approved behavior-changing assumptions flow back into `specs/` (canonical: `rules/principles-and-practices.md` §2.5).
-13. **Surgical changes** — every changed line traces to the current request; don't refactor what isn't broken; orphans your change created → remove, pre-existing dead code → report, don't delete (canonical: §2.5).
+13. **Surgical changes** — every changed line traces to the current request; don't refactor what isn't broken; orphans your change created → remove, pre-existing dead code → report, don't delete; **record every out-of-scope finding where §2.5's routing table says it lands — a finding stated only in chat is not recorded** (canonical: §2.5).
+14. **Declare the commit state** — every command either commits the artifacts it produced, or names in its closing summary exactly what it left uncommitted; silence about a dirty working tree is not allowed. Never fold another flow's uncommitted work into your own commit — commit that separately first (titled for *that* flow), or stop and ask when you cannot tell which flow it belongs to. Why: a dirty tree makes `/deploy`'s git tag stop matching the code inside the image, and it lures the next command into merging two logical changes into one commit (canonical: `rules/git-workflow.md` §Commit ownership).

@@ -282,6 +282,14 @@ private const int TokenExpirationBufferMinutes = 5;
 var user = await GetUserByIdAsync(id);
 ```
 
+### A comment asserting third-party behavior is a claim, not a fact
+
+A comment that guarantees how a library behaves ("X returns false instead of throwing") is load-
+bearing: readers skip defensive code because of it. Such a claim must be **backed by a test that
+exercises the exact case the comment describes**, or carry a doc citation — otherwise delete the
+claim and write the defensive code. A wrong guarantee is worse than none: it points the next
+reader away from the crash site.
+
 ### Use XML docs for public APIs
 
 ```csharp

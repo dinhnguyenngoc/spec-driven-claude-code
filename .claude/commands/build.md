@@ -315,6 +315,9 @@ Before proceeding to `/test`:
 - [ ] **(If `web/` exists) Frontend gate green** — `npm run typecheck && npm run lint && npm run build && npm run test` all pass, including `tailwindcss/no-custom-classname` (no undefined breakpoint/variant class)
 - [ ] No red flags present (see Red Flags section)
 - [ ] Git commits are clean and atomic
+- [ ] **Out-of-scope findings recorded, not just narrated** — anything noticed outside the tasks'
+      scope is written where `principles-and-practices.md` §2.5's routing table sends it, and the
+      report cites that location (distinct from the in-scope `A-xx` Assumptions log above)
 
 ### Orchestrator disk-check (run BEFORE declaring Gate 5 passed)
 

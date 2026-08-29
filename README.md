@@ -1,7 +1,8 @@
-# Spec-driven Development with Claude Code
+# SpecGate
 
-> **Turn an idea into production-ready software — one command at a time.**
-> A complete, opinionated SDLC kit for [Claude Code](https://claude.com/claude-code): specialized agents, slash-command workflows, mandatory engineering rules, and quality gates that keep AI honest from `/spec` to `/deploy`.
+> **AI-automated SDLC pipeline with human-controlled quality gates — for [Claude Code](https://claude.com/claude-code).**
+> Turn an idea into production-ready software, one gated command at a time — spec before code, evidence before pass, a human before every stage transition.
+> A complete, opinionated kit: specialized agents, slash-command workflows, mandatory engineering rules, and blocking gates that keep AI honest from `/spec` to `/deploy`.
 
 🌏 **[Tiếng Việt → README_VN.md](README_VN.md)**
 
@@ -15,7 +16,7 @@
 
 ## What is this?
 
-This is **not** an application. It is a **`.claude/` configuration kit** you drop into any project so that Claude Code stops being a clever autocomplete and starts behaving like a disciplined engineering team.
+This is **not** an application. **SpecGate** is a **spec-driven development kit** — a `.claude/` configuration bundle you drop into any project so that Claude Code stops being a clever autocomplete and starts behaving like a disciplined engineering team.
 
 Instead of asking the AI to "build me an app" and hoping for the best, you drive a **12-step pipeline** where each step:
 
@@ -58,11 +59,13 @@ PHASE 1 — REQUIREMENTS & DESIGN        PHASE 2 — DEVELOPMENT & QUALITY      
         plans/ security/                                                         security/ docker/ docs/ reports/
 ```
 
-Each arrow is a **quality gate**. You can't promote a build that fails its tests, and you shouldn't `/deploy` an artifact `/verify` never blessed. (Optional steps are marked in the docs; security gates are blocking.)
+Between every step sits a **quality gate**. You can't promote a build that fails its tests, and you shouldn't `/deploy` an artifact `/verify` never blessed. (Optional steps are marked in the docs; security gates are blocking.)
 
 ---
 
 ## Quick start (the simplest path)
+
+> **Prerequisites:** [Claude Code](https://claude.com/claude-code) installed & signed in · git · **Docker** running from `/test` onward (TestContainers, compose, verify) — `/spec` through `/build` need none.
 
 ### 1. Get the kit into your project
 
@@ -72,11 +75,13 @@ git clone https://github.com/dinhnguyenngoc/spec-driven-claude-code.git my-new-p
 cd my-new-project
 rm -rf .git && git init        # make it your own
 
-# Option B — copy the kit into an existing project
+# Option B — copy the kit into an existing project (clone the kit first, or download the zip)
 cp -r path/to/spec-driven-claude-code/.claude  my-existing-project/.claude
 ```
 
-The only thing that matters is that the **`.claude/`** folder sits at your project root. Open the folder in Claude Code (CLI, VS Code, or JetBrains) and you're ready.
+Option A leaves the kit's own docs in your new project — **only `.claude/` must stay**; `README*`, `quick-start.md`, `getting-started-*.md`, `CHANGELOG.md`, and `examples/` belong to the kit and can be deleted (or replaced by your own README).
+
+The only thing that matters is that the **`.claude/`** folder sits at your project root — for a multi-service product, where each service is its own folder/repo, place the **one** kit at the outermost parent folder. Open the folder in Claude Code (CLI, VS Code, or JetBrains) and you're ready.
 
 ### 2. Tell it what you want to build
 
@@ -85,7 +90,7 @@ The only thing that matters is that the **`.claude/`** folder sits at your proje
 can register, save bookmarks (URL, title, tags), search them, and mark favorites.
 ```
 
-The **Business Analyst** agent will ask clarifying questions, then write `specs/SPEC.md` with User Stories and Acceptance Criteria. **Review and approve it** before moving on.
+The **Business Analyst** agent will ask clarifying questions, then write `specs/SPEC.md` with User Stories and Acceptance Criteria. **Review and approve it** before moving on — approve by replying in the chat (*"looks good, continue"*), or say what to change.
 
 ### 3. Walk the pipeline
 
@@ -105,11 +110,11 @@ Run the commands in order, reviewing each artifact as you go:
 /deploy    → stage the verified artifact → STAGED (production promote = manual, RUNBOOK §8)
 ```
 
-> **That's the whole loop.** For a quick prototype you can run just `/spec → /plan → /build → /test`. For production, walk the full 12 steps.
+> **That's the whole loop.** For a quick prototype you can run just `/spec → /arch → /plan → /build → /test` — skipping the optional steps. For production, walk the full 12 steps.
 
 ### 4. Keep the to-do list honest
 
-Open [plans/todo.md](plans/todo.md) anytime to see what's done (`- [x]`) and what's next. The orchestrator ticks tasks only after they're verified.
+Open `plans/todo.md` (generated as you work) anytime to see what's done (`- [x]`) and what's next. Claude ticks tasks only after they're verified.
 
 ---
 
@@ -182,7 +187,7 @@ The kit auto-detects which situation you're in (declared in [.claude/PROJECT_PRO
 | 🌱 **Greenfield** | Building from scratch, no code yet | `/spec <your idea>` → walk the 12 steps |
 | 🏚️ **Brownfield** | Legacy code already exists / runs in production | `/discover` first → reverse-`/spec` → reverse-`/arch` → then iterate |
 
-> 🧭 **First time? Follow the step-by-step first-run checklist for your mode:** [getting-started-greenfield.md](getting-started-greenfield.md) · [getting-started-brownfield.md](getting-started-brownfield.md) (covers the one-time Phase A onboarding vs the per-feature Phase B loop, and single-repo vs multi-repo install).
+> 🧭 **First time?** Prefer plain language over memorizing commands → [quick-start.md](quick-start.md) *(Vietnamese)*. Or follow the step-by-step first-run checklist for your mode: [getting-started-greenfield.md](getting-started-greenfield.md) · [getting-started-brownfield.md](getting-started-brownfield.md) *(Vietnamese — cover the one-time Phase A onboarding vs the per-feature Phase B loop, and single-repo vs multi-repo install)*.
 
 **Brownfield discipline** (auto-activated): characterization tests before touching untested legacy code, backward-compatibility by default, ADR required to change architecture, and the strangler-fig pattern for upgrades. See [.claude/rules/brownfield.md](.claude/rules/brownfield.md).
 
@@ -235,6 +240,7 @@ The Profile also declares the artifacts' **`Output Language`** (default: `Vietna
 ```
 .claude/
 ├── CLAUDE.md          # The brain — pipeline, gates, Project Profile, rules index
+├── KIT_VERSION        # current kit version (semver) + release summary
 ├── commands/          # 20 slash-command workflows (/spec, /arch, /build, …)
 ├── agents/            # 11 specialized agent playbooks
 ├── rules/             # 17 mandatory engineering rules
@@ -255,10 +261,10 @@ specs/  architecture/  plans/  security/  src/  web/  tests/  reports/  docker/ 
 
 ## A worked example: LinkVault
 
-This kit ships with a sample brief, [README1.txt](README1.txt), for **LinkVault** — a personal bookmark manager (auth, bookmark CRUD, tags, search, simple web UI). It's the perfect first run:
+This kit ships with a sample brief, [examples/linkvault-brief.txt](examples/linkvault-brief.txt), for **LinkVault** — a personal bookmark manager (auth, bookmark CRUD, tags, search, simple web UI). It's the ideal first run to get a feel for the kit:
 
 ```text
-/spec        # paste the LinkVault requirements from README1.txt
+/spec        # paste the LinkVault requirements from examples/linkvault-brief.txt
 /arch        # design the Clean Architecture solution + API
 /plan        # break it into buildable slices
 /build       # implement, test-first
@@ -277,8 +283,11 @@ No. Required steps are `/spec`, `/arch`, `/plan`, `/build`, `/test`, `/infra`, `
 **Can I use it for languages other than C#?**
 Yes — the kit has Node.js / TypeScript and PHP / Laravel overrides today, and the architecture is designed so peripheral tech (DB, observability) swaps via the Project Profile.
 
+**Does it work for a multi-repo / multi-service product?**
+Yes — place the **one** kit at the outermost parent folder and open Claude Code there (Workspace Mode); member repos carry only a thin `.claude/PROJECT_PROFILE.md`, never a second kit. `/discover` sets the structure up, `/discover-system` builds the system-wide map. Details: `.claude/CLAUDE.md` §Workspace Mode.
+
 **What language are the generated artifacts in?**
-Whatever `Output Language` declares in [.claude/PROJECT_PROFILE.md](.claude/PROJECT_PROFILE.md) — `Vietnamese` by default (the kit's original audience); change one line to `English` or any other language. Code, identifiers, and standard technical terms always stay English.
+Whatever `Output Language` declares in [.claude/PROJECT_PROFILE.md](.claude/PROJECT_PROFILE.md) — `Vietnamese` by default (the kit's original audience); change one line to `English` or any other language. Code, identifiers, and standard technical terms always stay English. Very occasionally a command still replies in the chat in English even though the Profile declares another language — measured at **1 run in 9** of the same command. This is a known limitation, not a misconfiguration: tell Claude *"reply in <language>"* and it rewrites the answer immediately.
 
 **Where do I change the default model or behavior?**
 [.claude/settings.json](.claude/settings.json) (model, permission mode, hooks).

@@ -102,6 +102,30 @@ dotnet test  # full suite including integration tests
 - Never commit: `appsettings.*.json` with real secrets, `.env`, `bin/`, `obj/`, `*.user`
 - Always run tests before committing
 
+### Commit ownership (SDLC commands)
+
+**Every command leaves the working tree in a state it has explicitly declared.** A command either
+commits the artifacts it produced, or its closing summary names what it left uncommitted — silence
+about a dirty tree is not an option.
+
+- **Commit your own output, or say what you left behind.** `/spec`, `/arch`, `/plan`, `/secure`,
+  `/build`, `/test`, `/scan`, `/infra`, `/docs`, `/verify` all write files; whichever path a command
+  takes, the user must be able to tell which one from the closing summary alone.
+- **Never fold another flow's uncommitted work into your commit.** Found changes belonging to an
+  earlier flow? Commit them **first, as their own commit**, titled for *that* flow — then commit
+  yours. Cannot tell which flow they belong to → **stop and ask**; do not guess.
+- **A commit's title must describe everything inside it.** A commit titled `fix(auth): …` that also
+  carries an unrelated feature's tests is untraceable — that is precisely what the two rules above
+  prevent.
+
+**Why this matters — two failures it prevents, both observed in a real pipeline:**
+
+- `/deploy` builds the image from the **working tree** but tags the release from **git**. A dirty
+  tree means the tag **does not describe the code inside the image**, so the release cannot be
+  audited afterwards. (`/deploy` blocking on this is correct behavior, not an obstacle.)
+- A later command that meets a dirty tree tends to sweep it into its own commit, silently merging
+  two logical changes — which breaks `git bisect`, review-by-diff, and any clean revert.
+
 ## Tags & Releases
 ```bash
 # Tag a release

@@ -229,7 +229,7 @@ open ./coverage/report/index.html
 |--------|---------|--------|
 | Line coverage | 80% | 90% |
 | Branch coverage | 75% | 85% |
-| Method coverage | 80% | 90% |
+| Methods at 0% | each carries a test or a one-line reason; **no business-logic method without a reason** | zero business-logic methods at 0% |
 
 > Scope per Mode — the table above is the **greenfield whole-repo** gate; brownfield per-change gates on **delta coverage + whole-repo ratchet** instead (`rules/testing.md §Coverage Thresholds`; the Gate 6 item below states which number gates).
 
@@ -275,7 +275,7 @@ Before proceeding to `/review`:
 - [ ] **Every `@US-XXX-Snn` has a test asserting its observable *Then*** (effect, not presence); scenarios needing UI-layer proof and deferred to `/verify` are listed in §9, not counted as covered
 - [ ] **Consumer↔API contract conformance checked** — first-party client/SDK/BFF calls match the contract's method/path/status (no `PUT`-vs-`PATCH`-style drift)
 - [ ] **Dual-implementation parity** — if this change encodes the **same rule in ≥ 2 places** (SQL backfill ↔ app-side computed logic · FE ↔ BE validation · a cache/partition key computed in 2 services · producer format ↔ consumer parser), then either the second representation was **eliminated**, or a **differential test** runs BOTH over the same input table and asserts each output pair matches — with ≥ 1 input per clause of the rule. **Two per-side test suites both passing does NOT satisfy this** — that is exactly how the drift ships (`rules/testing.md` §Dual-Implementation Parity). *Whether this change has ≥ 2 representations is the reviewer's judgment; the item exists to force the question to be asked, not to auto-detect it.*
-- [ ] Code coverage meets the threshold **per Mode** (`rules/testing.md §Coverage Thresholds`): greenfield = whole-repo ≥ 80% · brownfield per-change = **delta-coverage ≥ 80%** (files changed) + whole-repo **does not drop** (ratchet) — TEST_REPORT §Coverage records BOTH numbers + states clearly which one is the gate (with `coverlet.runsettings` scope applied — exemptions documented)
+- [ ] Code coverage meets the threshold **per Mode** (`rules/testing.md §Coverage Thresholds`): greenfield = whole-repo line ≥ 80% · branch ≥ 75% · brownfield per-change = **delta-coverage ≥ 80%** (files changed) + whole-repo **does not drop** (ratchet) — TEST_REPORT §Coverage records BOTH numbers + states clearly which one is the gate (with `coverlet.runsettings` scope applied — exemptions documented); **plus** every 0%-coverage method listed with a test or a reason, none of them business logic without one; **A method shipping code already references needs a test, not a reason.**
 - [ ] No skipped or disabled tests
 - [ ] Bug fixes have reproduction tests
 - [ ] Edge cases covered

@@ -226,7 +226,7 @@ XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-clover coverage/clover.xml
 ## Checklist
 
 - [ ] Every public service/action method has a unit or feature test
-- [ ] Edge cases (null, empty, boundary) tested
+- [ ] Edge cases (null, empty, boundary, **wrong-type** — see `../testing.md` §Wrong-type input) tested
 - [ ] Error paths tested (exceptions, validation failures — status per the repo's documented contract, 400 or brownfield 422)
 - [ ] Feature test for each controller / route
 - [ ] E2E test for the main user journeys, with `retain-on-failure` artifacts under `reports/test-artifacts/`
