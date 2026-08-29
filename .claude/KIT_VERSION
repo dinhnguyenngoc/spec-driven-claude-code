@@ -1,6 +1,6 @@
 # AI SDLC Kit — version marker (CORE, kit-owned)
 # Semver theo release tag của repo kit. Đọc bởi người + script upgrade (Phase 2).
 version: 1.7.0
-released: 2026-08-24 (sau v1.6.0 2026-08-13; gồm: chiến dịch test toàn kit 58 test case trên 9 sandbox thật — 11 lỗi kit (KF-01…KF-12) tìm được, vá và retest chứng minh từng cái · coverage gate đổi hình dạng: bỏ % method, thay bằng luật zero-coverage-methods (hết báo động giả từ auto-property/design-time factory) · thêm lớp test wrong-type input · §Commit ownership: lệnh phải khai trạng thái commit, cấm gộp công việc luồng khác · bảng định tuyến out-of-scope finding + plans/BACKLOG.md · New-call precondition check cho /fix-issue — chi tiết: CHANGELOG [1.7.0])
+released: 2026-08-30 (sau v1.6.0 2026-08-13; gồm: chiến dịch test toàn kit 58 test case trên 9 sandbox thật — 11 lỗi kit (KF-01…KF-12) tìm được, vá và retest chứng minh từng cái · coverage gate đổi hình dạng: bỏ % method, thay bằng luật zero-coverage-methods (hết báo động giả từ auto-property/design-time factory) · thêm lớp test wrong-type input · §Commit ownership: lệnh phải khai trạng thái commit, cấm gộp công việc luồng khác · bảng định tuyến out-of-scope finding + plans/BACKLOG.md · New-call precondition check cho /fix-issue — chi tiết: CHANGELOG [1.7.0])
 # Phase 2 (chưa làm): bổ sung manifest — danh sách file CORE + sha256 để script upgrade
 # chỉ thay file thuộc kit, cảnh báo file core bị sửa local (đối chiếu local/KIT_DEVIATIONS.md).

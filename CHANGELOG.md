@@ -4,7 +4,7 @@ Toàn bộ thay đổi đáng chú ý của **AI SDLC Kit** được ghi tại �
 [Keep a Changelog](https://keepachangelog.com/); phiên bản theo [SemVer](https://semver.org/).
 Các phiên bản trước `v1.3.0` (`v1.0.0`, `v1.1.0`, `v1.2.0`) được đánh dấu bằng git tag tương ứng.
 
-## [1.7.0] — 2026-08-24
+## [1.7.0] — 2026-08-30
 
 > Bản này **không thêm lệnh mới** — toàn bộ thay đổi đến từ một chiến dịch test thật:
 > **58 test case chạy trên 9 sandbox độc lập** (greenfield C#/Next.js, brownfield Node/Express,
