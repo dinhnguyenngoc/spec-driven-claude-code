@@ -1,7 +1,8 @@
-# Spec-driven Development with Claude Code
+# SpecGate
 
-> **Biến một ý tưởng thành phần mềm sẵn sàng production — từng lệnh một.**
-> Bộ kit SDLC hoàn chỉnh, theo quy chuẩn định sẵn cho [Claude Code](https://claude.com/claude-code): các agent chuyên biệt, workflow theo slash-command, các quy tắc kỹ thuật bắt buộc, và các quality gate giữ cho AI làm việc kỷ luật từ `/spec` đến `/deploy`.
+> **Pipeline SDLC tự động hóa bằng AI, con người kiểm soát qua quality gate — cho [Claude Code](https://claude.com/claude-code).**
+> Biến ý tưởng thành phần mềm sẵn sàng production, từng lệnh một qua từng cổng — spec trước code, bằng chứng trước khi pass, con người trước mỗi lần chuyển giai đoạn.
+> Bộ kit hoàn chỉnh, theo quy chuẩn định sẵn: các agent chuyên biệt, workflow theo slash-command, các quy tắc kỹ thuật bắt buộc, và các gate chặn giữ cho AI làm việc kỷ luật từ `/spec` đến `/deploy`.
 
 🌏 **[English → README.md](README.md)**
 
@@ -15,19 +16,19 @@
 
 ## Đây là gì?
 
-Đây **không phải** một ứng dụng. Đây là một **bộ cấu hình `.claude/`** mà bạn đặt vào bất kỳ dự án nào, để Claude Code không còn là một công cụ autocomplete thông minh, mà hành xử như một **đội kỹ thuật phần mềm có kỷ luật**.
+Đây **không phải** một ứng dụng. **SpecGate** là một bộ kit **spec-driven development** — một **bộ cấu hình `.claude/`** mà bạn đặt vào bất kỳ dự án nào, để Claude Code không còn là một công cụ autocomplete thông minh, mà hành xử như một **đội kỹ thuật phần mềm có kỷ luật**.
 
 Thay vì bảo AI "xây cho tôi một app" rồi cầu may, bạn điều phối một **pipeline 12 bước**, trong đó mỗi bước:
 
 - được sở hữu bởi một **agent chuyên biệt** (Business Analyst, Architect, Backend Dev, Security Auditor, …),
 - tạo ra một **artifact cụ thể** (`specs/`, `architecture/`, `plans/`, `src/`, `tests/`, `reports/`…),
-- và phải vượt qua một **quality gate** trước khi bước tiếp theo bắt đầu.
+- và phải vượt qua một **cổng kiểm soát chất lượng (quality gate)** trước khi bước tiếp theo bắt đầu.
 
-Kết quả là tuân thủ đúng trình tự và kỷ luật bạn mong đợi ở một đội ngũ thực thụ — requirements trước code, test trước implementation, security trước deploy — nhưng được thực thi bởi các AI agent mà bạn điều phối chỉ bằng một slash command.
+Kết quả là bạn có đúng trình tự và kỷ luật của một đội ngũ thực thụ — requirements trước code, test trước implementation, security trước deploy — nhưng được thực thi bởi các AI agent mà bạn điều phối chỉ bằng một slash command.
 
 Nói ngắn gọn, kit đóng vai trò một **[harness](https://walkinglabs.github.io/learn-harness-engineering/en/)** — một lớp quy tắc tường minh và vòng lặp kiểm chứng, buộc mọi lệnh SDLC tuân theo cùng một chuẩn và cho kết quả có thể tái lập, thay vì để model tự ứng biến khác nhau mỗi lần chạy.
 
-> 💡 **Lấy cảm hứng từ** triết lý agentic-workflow của [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD), nhưng được xây dựng để trở thành một SDLC chặt chẽ, gate-driven cho **C# / ASP.NET Core 8** (kèm các override **Node.js / Next.js** được hỗ trợ đầy đủ).
+> 💡 **Lấy cảm hứng từ** triết lý agentic-workflow của [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD), nhưng được xây dựng để trở thành một SDLC chặt chẽ, gate-driven cho **C# / ASP.NET Core 8** (kèm các override **Node.js / Next.js** và **PHP / Laravel** được hỗ trợ đầy đủ).
 
 ---
 
@@ -39,7 +40,7 @@ Nói ngắn gọn, kit đóng vai trò một **[harness](https://walkinglabs.git
 | AI tự bịa cấu trúc mỗi lần một kiểu | Mọi dự án theo cùng quy tắc **Clean Architecture** |
 | Test viết sau cùng (hoặc không bao giờ) | **TDD bắt buộc** — test fail trước, gate coverage ≥80% |
 | Bảo mật là chuyện tính sau | **STRIDE threat model** trước khi code, **OWASP scan** trước khi deploy |
-| "Máy tôi chạy được mà" | `/verify` chạy trên **đúng artifact** sẽ ship |
+| "Máy tôi chạy được mà" | `/verify` chạy trên **đúng bản build** sẽ phát hành |
 | Code style không nhất quán giữa các phiên | 17 **quy tắc bắt buộc** áp dụng cho mọi dòng code |
 
 ---
@@ -58,11 +59,13 @@ PHASE 1 — REQUIREMENTS & DESIGN        PHASE 2 — DEVELOPMENT & QUALITY      
         plans/ security/                                                         security/ docker/ docs/ reports/
 ```
 
-Mỗi mũi tên là một **quality gate**. Bạn không thể promote một build fail test, và không nên `/deploy` một artifact mà `/verify` chưa duyệt. (Các bước optional được đánh dấu trong tài liệu; security gate là blocking.)
+Giữa mỗi bước là một **cổng kiểm soát chất lượng**. Bạn không thể đưa một build fail test đi tiếp, và không nên `/deploy` một bản build mà `/verify` chưa duyệt. (Các bước **tùy chọn (optional)** được đánh dấu trong tài liệu; **cổng bảo mật là cổng chặn**.)
 
 ---
 
 ## Bắt đầu nhanh (cách đơn giản nhất)
+
+> **Chuẩn bị:** đã cài & đăng nhập [Claude Code](https://claude.com/claude-code) · git · **Docker** chạy sẵn từ bước `/test` trở đi (TestContainers, compose, verify) — từ `/spec` đến `/build` không cần.
 
 ### 1. Đưa kit vào dự án của bạn
 
@@ -72,11 +75,13 @@ git clone https://github.com/dinhnguyenngoc/spec-driven-claude-code.git my-new-p
 cd my-new-project
 rm -rf .git && git init        # biến nó thành của bạn
 
-# Cách B — copy kit vào dự án có sẵn
+# Cách B — copy kit vào dự án có sẵn (clone kit về trước, hoặc tải zip từ GitHub)
 cp -r path/to/spec-driven-claude-code/.claude  my-existing-project/.claude
 ```
 
-Điều duy nhất quan trọng là thư mục **`.claude/`** phải nằm ở gốc dự án. Mở thư mục đó trong Claude Code (CLI, VS Code, hoặc JetBrains) là bạn đã sẵn sàng.
+Cách A giữ nguyên tài liệu của kit trong dự án mới — chỉ **`.claude/` là phần bắt buộc giữ lại**; các tệp `README*`, `quick-start.md`, `getting-started-*.md`, `CHANGELOG.md`, `examples/` là tài liệu của kit, xoá được (hoặc thay bằng README của chính bạn).
+
+Điều duy nhất quan trọng là thư mục **`.claude/`** phải nằm ở gốc dự án — với sản phẩm nhiều service, khi mỗi service là một folder/repo riêng, đặt **một** bộ kit duy nhất ở thư mục cha ngoài cùng. Mở thư mục đó trong Claude Code (CLI, VS Code, hoặc JetBrains) là bạn đã sẵn sàng.
 
 ### 2. Nói cho nó biết bạn muốn xây gì
 
@@ -85,7 +90,7 @@ cp -r path/to/spec-driven-claude-code/.claude  my-existing-project/.claude
 đăng ký, lưu bookmark (URL, title, tags), tìm kiếm, và đánh dấu favorite.
 ```
 
-Agent **Business Analyst** sẽ hỏi các câu làm rõ, rồi viết `specs/SPEC.md` với User Stories và Acceptance Criteria. **Hãy đọc và duyệt** trước khi đi tiếp.
+Agent **Business Analyst** sẽ hỏi các câu làm rõ, rồi viết `specs/SPEC.md` với User Stories và Acceptance Criteria. **Hãy đọc và duyệt** trước khi đi tiếp — duyệt bằng cách trả lời ngay trong chat (*"đồng ý, tiếp tục"*), hoặc nêu chỗ cần chỉnh.
 
 ### 3. Đi hết pipeline
 
@@ -93,23 +98,23 @@ Chạy các lệnh theo thứ tự, đọc duyệt từng artifact trên đườ
 
 ```text
 /arch      → thiết kế hệ thống, ADR, API contract   → architecture/
-/plan      → chia task thành các vertical slice       → plans/todo.md
-/secure    → STRIDE threat model (optional)           → security/
+/plan      → chia thành các mẩu tính năng hoàn chỉnh   → plans/todo.md
+/secure    → STRIDE threat model (tùy chọn)           → security/
 /build     → implement theo TDD                       → src/ + web/ + tests/
-/test      → QA với dependency thật                   → tests/
+/test      → kiểm thử với database/dịch vụ ngoài thật  → tests/
 /review    → code review năm trục                     → reports/
 /scan      → quét lỗ hổng bảo mật                     → security/
 /infra     → cấu hình Docker                          → docker/ + docker-compose.yml
 /docs      → tài liệu                                 → docs/
-/verify    → exercise trên artifact thật              → reports/VERIFY_REPORT.md
-/deploy    → đưa artifact đã verify lên staging → STAGED (promote production = thủ công, RUNBOOK §8)
+/verify    → kiểm thực tế trên bản build thật         → reports/VERIFY_REPORT.md
+/deploy    → đưa bản build đã verify lên staging → STAGED (đưa lên production = thủ công, RUNBOOK §8)
 ```
 
-> **Đó là toàn bộ vòng lặp.** Để làm prototype nhanh, bạn chỉ cần `/spec → /plan → /build → /test`. Để lên production, đi đủ 12 bước.
+> **Đó là toàn bộ vòng lặp.** Để làm prototype nhanh, bạn chỉ cần `/spec → /arch → /plan → /build → /test` — bỏ qua các bước tùy chọn. Để lên production, đi đủ 12 bước.
 
 ### 4. Giữ to-do list trung thực
 
-Mở [plans/todo.md](plans/todo.md) bất cứ lúc nào để xem việc đã xong (`- [x]`) và việc tiếp theo. Orchestrator chỉ tick task sau khi đã verify.
+Mở `plans/todo.md` (sinh ra trong quá trình làm việc) bất cứ lúc nào để xem việc đã xong (`- [x]`) và việc tiếp theo. Claude chỉ tick task sau khi đã verify.
 
 ---
 
@@ -123,19 +128,19 @@ Mở [plans/todo.md](plans/todo.md) bất cứ lúc nào để xem việc đã x
 | 2 | `/arch` | Systems Architect | Kiến trúc, diagram, ADR, API contract | `architecture/` |
 | 3 | `/plan` | Project Manager | Chia nhỏ thành task có thứ tự phụ thuộc | `plans/` |
 | 4 | `/secure` ⃰ | Security Auditor | Threat model trước phát triển (STRIDE) | `security/PRE_DEV_REVIEW` |
-| 5 | `/build` | Frontend/Backend Dev | Implement theo TDD, vertical slice | `src/`, `web/`, `tests/` |
-| 6 | `/test` | Test Engineer | QA với dependency thật (TestContainers) | `tests/` |
+| 5 | `/build` | Frontend/Backend Dev | Implement theo TDD, từng **mẩu tính năng hoàn chỉnh** (vertical slice) | `src/`, `web/`, `tests/` |
+| 6 | `/test` | Test Engineer | Kiểm thử với **database/dịch vụ ngoài thật** (TestContainers) | `tests/` |
 | 7 | `/review` ⃰ | Code Reviewer | Review năm trục cho thay đổi | `reports/CODE_REVIEW` |
 | 8 | `/scan` ⃰ | Security Auditor | Quét lỗ hổng sau phát triển | `security/SCAN_REPORT` |
 | 9 | `/infra` | Backend Developer | Docker + docker-compose cho local dev | `docker/` |
 | 10 | `/docs` ⃰ | Technical Writer | Getting-started, API, deployment docs | `docs/` |
-| 11 | `/verify` ⃰ | Test Engineer | Exercise mọi feature trên artifact thật | `reports/VERIFY_REPORT` |
-| 12 | `/deploy` | Release Manager | Đưa artifact đã verify lên staging — promote production là bước thủ công (RUNBOOK §8) | Staging (`STAGED`) |
+| 11 | `/verify` ⃰ | Test Engineer | Kiểm thực tế mọi feature trên **bản build** thật | `reports/VERIFY_REPORT` |
+| 12 | `/deploy` | Release Manager | Đưa **bản build** đã verify lên staging — đưa lên production là bước thủ công (RUNBOOK §8) | Staging (`STAGED`) |
 
-<sub>⃰ = bước optional, nhưng **blocking nếu chạy** (security gate là không thể thương lượng).</sub>
+<sub>⃰ = bước **tùy chọn (optional)**, nhưng **đã chạy thì cổng chặn (blocking)** — cổng bảo mật là không thể thương lượng.</sub>
 
 **Tham số optional (để bạn biết mà dùng):**
-- **`/spec`** — với sản phẩm có UI, **ASCII wireframes sinh mặc định**; thêm **`--prototype`** (hoặc nói *"kèm prototype"*) để sinh thêm clickable HTML prototype cho stakeholder click-through duyệt. Với **baseline brownfield REVERSE**, wireframe mặc định được miễn — thêm **`--wireframes`** để vẽ wireframe **as-is** từ UI đang chạy (chạy bổ sung được cả sau khi baseline đã duyệt).
+- **`/spec`** — với sản phẩm có UI, **ASCII wireframes sinh mặc định**; thêm **`--prototype`** (hoặc nói *"kèm prototype"*) để sinh thêm clickable HTML prototype cho stakeholder click thử và ký duyệt. Với **baseline brownfield REVERSE**, wireframe mặc định được miễn — thêm **`--wireframes`** để vẽ wireframe **as-is** từ UI đang chạy (chạy bổ sung được cả sau khi baseline đã duyệt).
 - **`/arch`** — Rejection ADR (component stack cố ý loại trừ) mặc định gộp **một bảng**; thêm **`--adr=per-component`** (hoặc nói *"ADR riêng cho từng component"*) để mỗi component loại trừ là một ADR đầy đủ (vd audit/compliance).
 
 ### Lệnh hỗ trợ
@@ -146,7 +151,7 @@ Mở [plans/todo.md](plans/todo.md) bất cứ lúc nào để xem việc đã x
 | `/discover-system` | **Multi-repo** — gom discovery per-repo thành bản đồ hệ thống (service catalog, call-graph, journey xuyên service); read-only, tài liệu một chiều |
 | `/inspect` | **Hỏi hiện trạng** — trả lời "tính năng X có chưa / Y cấu hình ra sao?" bằng 3 tầng bằng chứng (records → code → live); read-only, không gate |
 | `/debug` | Debug có hệ thống — tìm root cause, không vá triệu chứng |
-| `/simplify` | Giảm độ phức tạp mà không đổi behavior |
+| `/simplify` | Giảm độ phức tạp mà không đổi hành vi |
 | `/fix-issue` | Phân tích và sửa bug trong chu kỳ dev (kết thúc ở `/review`) |
 | `/hotfix` | Khôi phục hệ thống **đang chạy** — triage rollback vs fix-forward, vá, re-verify, redeploy |
 | `/export-docs` | **Xuất tài liệu chuẩn công ty** — biên dịch artifact kit (SPEC / ARCHITECTURE / reports) vào template PRD/SDD riêng của công ty bạn: fill-only, kèm trace map ID 2 chiều (`exports/`); template đặt ở `.claude/local/doc-templates/` |
@@ -182,7 +187,7 @@ Kit tự phát hiện bạn đang ở tình huống nào (khai trong [.claude/PR
 | 🌱 **Greenfield** | Xây từ đầu, chưa có code | `/spec <ý tưởng>` → đi 12 bước |
 | 🏚️ **Brownfield** | Đã có code legacy / đang chạy production | `/discover` trước → reverse-`/spec` → reverse-`/arch` → rồi lặp |
 
-> 🧭 **Lần đầu dùng kit? Đi theo checklist từng bước cho đúng mode của bạn:** [getting-started-greenfield.md](getting-started-greenfield.md) · [getting-started-brownfield.md](getting-started-brownfield.md) (phân biệt Phase A onboard chạy-một-lần vs Phase B lặp-mỗi-tính-năng, và cách cài 1-repo vs nhiều-repo).
+> 🧭 **Lần đầu dùng kit?** Không muốn nhớ lệnh → [quick-start.md](quick-start.md) (mô tả việc bằng câu thường, Claude tự xác định luồng và trả về checklist). Muốn checklist từng bước cho đúng mode → [getting-started-greenfield.md](getting-started-greenfield.md) · [getting-started-brownfield.md](getting-started-brownfield.md) (phân biệt Phase A onboard chạy-một-lần vs Phase B lặp-mỗi-tính-năng, và cách cài 1-repo vs nhiều-repo).
 
 **Nguyên tắc xử lý brownfield** (kích hoạt tự động): viết characterization test trước khi đụng vào code legacy chưa có test, mặc định backward-compatible, bắt buộc ADR khi đổi kiến trúc, và dùng pattern strangler-fig khi nâng cấp. Xem [.claude/rules/brownfield.md](.claude/rules/brownfield.md).
 
@@ -199,7 +204,7 @@ Mọi dòng code tuân theo các **quy tắc bắt buộc** trong [.claude/rules
 - **Lỗi RFC 7807**, quy ước REST, structured logging với correlation ID
 - **Docker baseline** — multi-stage build, non-root user, health check, resource limit, image scanning
 
-### Quality gate (không được bỏ qua các gate blocking)
+### Quality gate (không được bỏ qua các cổng chặn)
 
 ```
 /spec → /arch     PRD đã duyệt · mọi story có acceptance criteria
@@ -208,14 +213,14 @@ Mọi dòng code tuân theo các **quy tắc bắt buộc** trong [.claude/rules
 /test → /review   coverage ≥ 80% · mọi test pass
 /scan → /infra    không có lỗ hổng critical/high (nếu chạy /scan)
 /infra → /docs    docker build được · compose up healthy
-/verify → /deploy artifact đã test == artifact promote (nếu chạy /verify)
+/verify → /deploy bản build đã test == bản build sẽ đưa lên (nếu chạy /verify)
 ```
 
 ---
 
 ## Tùy biến cho stack của bạn
 
-Kit mặc định dùng **stack** (C# 12 + ASP.NET Core 8 + EF Core 8 + SQL Server + Next.js). Để dùng công nghệ ngoại vi khác, sửa [.claude/PROJECT_PROFILE.md](.claude/PROJECT_PROFILE.md) (tầng CONFIG do bạn sở hữu — nâng cấp kit không đụng tới) và **override** tương ứng tự kích hoạt:
+Kit đi kèm một **stack mặc định** (C# 12 + ASP.NET Core 8 + EF Core 8 + SQL Server + Next.js). Để dùng công nghệ ngoại vi khác, sửa [.claude/PROJECT_PROFILE.md](.claude/PROJECT_PROFILE.md) (tầng CONFIG do bạn sở hữu — nâng cấp kit không đụng tới) và **override** tương ứng tự kích hoạt:
 
 | Muốn dùng… | Khai báo trong Profile | File override |
 |------------|------------------------|---------------|
@@ -235,6 +240,7 @@ Profile cũng khai **`Output Language`** cho artifact (mặc định: `Vietnames
 ```
 .claude/
 ├── CLAUDE.md          # Bộ não — pipeline, gate, Project Profile, index rules
+├── KIT_VERSION        # phiên bản kit hiện tại (semver) + tóm tắt release
 ├── commands/          # 20 workflow slash-command (/spec, /arch, /build, …)
 ├── agents/            # 11 playbook agent chuyên biệt
 ├── rules/             # 17 quy tắc kỹ thuật bắt buộc
@@ -255,14 +261,14 @@ specs/  architecture/  plans/  security/  src/  web/  tests/  reports/  docker/ 
 
 ## Ví dụ thực tế: LinkVault
 
-Kit đi kèm một bản brief mẫu, [README1.txt](README1.txt), cho **LinkVault** — trình quản lý bookmark cá nhân (auth, CRUD bookmark, tags, search, web UI đơn giản). Đây là lần chạy đầu tiên hoàn hảo:
+Kit đi kèm một bản brief mẫu, [examples/linkvault-brief.txt](examples/linkvault-brief.txt), cho **LinkVault** — trình quản lý bookmark cá nhân (auth, CRUD bookmark, tags, search, web UI đơn giản). Đây là bài chạy đầu tiên lý tưởng để làm quen kit:
 
 ```text
-/spec        # dán requirements LinkVault từ README1.txt
+/spec        # dán requirements LinkVault từ examples/linkvault-brief.txt
 /arch        # thiết kế solution Clean Architecture + API
-/plan        # chia thành các slice xây được
+/plan        # chia thành các mẩu tính năng xây được
 /build       # implement, test trước
-/test        # chứng minh với dependency thật
+/test        # chứng minh với database/dịch vụ ngoài thật
 ```
 
 Đến cuối bạn sẽ có một app ASP.NET Core + Next.js chạy được, có test, có tài liệu — và cảm nhận được cách cả pipeline vận hành.
@@ -272,19 +278,22 @@ Kit đi kèm một bản brief mẫu, [README1.txt](README1.txt), cho **LinkVaul
 ## Câu hỏi thường gặp (FAQ)
 
 **Có bắt buộc chạy đủ 12 bước không?**
-Không. Các bước bắt buộc là `/spec`, `/arch`, `/plan`, `/build`, `/test`, `/infra`, `/deploy`. Phần còn lại (`/secure`, `/review`, `/scan`, `/docs`, `/verify`) là optional — nhưng nếu chạy thì gate của chúng là blocking. Với production, rất khuyến nghị chạy tất cả.
+Không. Các bước bắt buộc là `/spec`, `/arch`, `/plan`, `/build`, `/test`, `/infra`, `/deploy`. Phần còn lại (`/secure`, `/review`, `/scan`, `/docs`, `/verify`) là tùy chọn — nhưng nếu chạy thì cổng của chúng là cổng chặn. Với production, rất khuyến nghị chạy tất cả.
 
 **Có dùng được cho ngôn ngữ khác C# không?**
 Có — kit hiện đã có override Node.js / TypeScript và PHP / Laravel, và kiến trúc được thiết kế để công nghệ ngoại vi (DB, observability) đổi qua Project Profile.
 
-**Artifact sinh ra bằng ngôn ngữ gì?**
-Theo field `Output Language` khai trong [.claude/PROJECT_PROFILE.md](.claude/PROJECT_PROFILE.md) — mặc định `Vietnamese`; đổi 1 dòng thành `English` hay ngôn ngữ khác đều được. Code, identifier và thuật ngữ kỹ thuật chuẩn luôn giữ English.
+**Có dùng được cho sản phẩm nhiều repo / nhiều service không?**
+Có — đặt **một** bộ kit duy nhất ở thư mục cha ngoài cùng và mở Claude Code tại đó (Workspace Mode); các repo thành viên chỉ mang một tập tin `.claude/PROJECT_PROFILE.md` rút gọn, không bao giờ nhân bản kit thứ hai. `/discover` tự thiết lập cấu trúc, `/discover-system` xây bản đồ toàn hệ thống. Chi tiết: `.claude/CLAUDE.md` §Workspace Mode.
 
-**Đổi model mặc định hoặc behavior ở đâu?**
+**Artifact sinh ra bằng ngôn ngữ gì?**
+Theo field `Output Language` khai trong [.claude/PROJECT_PROFILE.md](.claude/PROJECT_PROFILE.md) — mặc định `Vietnamese`; đổi 1 dòng thành `English` hay ngôn ngữ khác đều được. Code, identifier và thuật ngữ kỹ thuật chuẩn luôn giữ English. Rất thỉnh thoảng một lệnh vẫn trả lời trong chat bằng tiếng Anh dù Profile khai ngôn ngữ khác — đo được **1 lần trong 9 lượt** chạy cùng một lệnh. Đây là giới hạn đã biết, không phải cấu hình sai: bảo Claude *"trả lời bằng tiếng Việt"* là nó viết lại ngay.
+
+**Đổi model mặc định hoặc hành vi ở đâu?**
 [.claude/settings.json](.claude/settings.json) (model, permission mode, hooks).
 
 **Khác nhau giữa `/fix-issue` và `/hotfix`?**
-`/fix-issue` sửa code trong chu kỳ dev (chưa release). `/hotfix` khôi phục thứ **đang chạy live** — bổ sung triage rollback, re-verify, và runbook sự cố.
+`/fix-issue` sửa code trong chu kỳ dev (chưa release). `/hotfix` khôi phục thứ **đang chạy live** — bổ sung việc cân nhắc quay về bản cũ (rollback), kiểm chứng lại bản vá, và runbook sự cố.
 
 ---
 
