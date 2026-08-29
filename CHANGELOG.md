@@ -4,6 +4,65 @@ Toàn bộ thay đổi đáng chú ý của **AI SDLC Kit** được ghi tại �
 [Keep a Changelog](https://keepachangelog.com/); phiên bản theo [SemVer](https://semver.org/).
 Các phiên bản trước `v1.3.0` (`v1.0.0`, `v1.1.0`, `v1.2.0`) được đánh dấu bằng git tag tương ứng.
 
+## [1.7.0] — 2026-08-24
+
+> Bản này **không thêm lệnh mới** — toàn bộ thay đổi đến từ một chiến dịch test thật:
+> **58 test case chạy trên 9 sandbox độc lập** (greenfield C#/Next.js, brownfield Node/Express,
+> workspace 2 repo, repo đã-graduate, 4 fixture chuyên biệt), mỗi kết quả được đối chứng lại
+> trên đĩa thay vì tin báo cáo. Chiến dịch tìm ra **11 lỗi của kit**; 10 lỗi đã vá kèm retest
+> chứng minh bản vá hoạt động, 1 lỗi (drift ngôn ngữ ngẫu nhiên ~15% ở lượt dừng-tiền-kiểm)
+> được ghi nhận là giới hạn đã biết trong FAQ thay vì vá bằng prose không kiểm chứng được.
+> Ba lỗi nặng nhất đều thuộc cùng một lớp: **luật có ở nơi mô tả nhưng thiếu ở nơi thi hành**.
+
+### Changed
+- **Coverage gate đổi hình dạng (KF-06)** — bỏ ngưỡng **% method** khỏi vai gate (trong .NET
+  nó bị chi phối bởi auto-property/record ctor/design-time factory → báo động giả, đồng thời
+  che vài method nghiệp vụ chưa test sau hàng chục auto-property đã cover). Thay bằng luật
+  **zero-coverage methods**: mọi method đo được 0% phải liệt kê trong `TEST_REPORT §Coverage`
+  kèm **một test** hoặc **một dòng lý do**; method **nghiệp vụ** 0% không lý do → GATE FAIL;
+  thành phần cấu trúc chỉ cần nêu loại. Đồng bộ đủ **5 biểu diễn**: `rules/testing.md`,
+  `commands/test.md` (bảng metric + checklist Gate 6), `agents/test-engineer.md` (3 chỗ),
+  `templates/TEST_REPORT_TEMPLATE.md`, `CLAUDE.md` box Quality Gates.
+- **`todo.md` không còn là nơi ghi finding (KF-12)** — đích là `plans/BACKLOG.md` (artifact
+  đơn mục đích, `/simplify` đọc). Lý do: `todo.md` là **pure projection** của `plan.md`, lượt
+  `/plan` kế tiếp sẽ xoá hoặc tự fail gate "no orphan row".
+
+### Added
+- **§Commit ownership (KF-09)** — `rules/git-workflow.md` + `CLAUDE.md` mục #14: mỗi lệnh
+  **hoặc** commit artifact của mình, **hoặc** nêu rõ đã để lại gì chưa commit; **cấm gộp**
+  công việc chưa commit của luồng khác vào commit của mình. Trước đó chỉ 6/20 lệnh có chỉ
+  dẫn commit → `/infra`, `/docs` để cây bẩn, `/deploy` phải chặn vì git tag không khớp image.
+- **Bảng định tuyến out-of-scope finding (KF-10)** — `principles-and-practices.md` §2.5: ba
+  rule bảo "ghi vào backlog" nhưng kit chưa từng định nghĩa backlog ở đâu. Nay định tuyến
+  theo loại (AC ambiguity → SPEC Open Questions · tech debt → `plans/BACKLOG.md` · security →
+  carry-forward row) kèm nguyên tắc **"a finding stated only in chat is not recorded"**.
+- **New-call precondition check (KF-11)** — `commands/fix-issue.md`: khi bản vá thay một
+  biểu thức bằng **lời gọi thư viện trên input từ request**, phải nêu tiền điều kiện của lời
+  gọi mới, chốt chúng ở boundary (**"this enforcement is part of the fix, not out of scope"**),
+  và thêm test gửi giá trị **sai kiểu** qua route thật.
+- **Lớp test wrong-type input** — `rules/testing.md` + 2 override test (Node/PHP): "edge case"
+  hiểu là *giá trị biên* bỏ lọt input **sai kiểu hoàn toàn**.
+- **Luật chú thích về hành vi thư viện** — `rules/code-style.md`: chú thích kiểu *"thư viện X
+  không throw"* là **claim, không phải fact** — phải có test đúng ca đó hoặc doc citation.
+- **§Graduation run + §Mode lifecycle** — greenfield tốt nghiệp sang brownfield sau release
+  đầu; `/discover` chạy chế độ kiểm-kê, không REVERSE đè spec forward, đổi `Mode` phải xin phép.
+- **`specs/EVIDENCE.md`** — tách bản đồ bằng chứng `US-ID → file:line` khỏi `SPEC.md`.
+- **`KIT_TEST_CASES.md`** — bộ 58 test case + toàn bộ nhật ký phát hiện KF-01…KF-12.
+
+### Fixed
+- **KF-01** định tuyến câu "mới nhận source code" → Phase A thay vì khảo sát inline.
+- **KF-02** Revision History trước khi ký duyệt: `Draft` không bao giờ là `Type`.
+- **KF-03/04** `/discover` hỏi lại `Output Language` dù Profile đã khai, kéo theo trả lời
+  tiếng Anh — *"an unresolved Output Language is NOT a licence to write English"*.
+- **KF-05** Permission Matrix REVERSE dán `⚠️` bừa lên mọi endpoint public.
+- **KF-07** method 0% **đã được code đang ship tham chiếu** thì cần **một test, không phải
+  một lý do**.
+
+### Known limitation
+- **KF-08** — drift ngôn ngữ ngẫu nhiên: đo được **1/9 lượt** (2 lần đều ở lượt dừng ở
+  tiền kiểm, 0/6 ở lượt chạy trọn). Ghi nhận trong FAQ hai README; cách xử lý: bảo Claude
+  *"trả lời bằng tiếng Việt"*. Không vá bằng prose vì ở tần suất này **không kiểm chứng được**.
+
 ## [1.6.0] — 2026-08-13
 
 > Bản này gồm 5 nhóm thay đổi: **(1) Output Language cấu hình được** — ngôn ngữ artifact
