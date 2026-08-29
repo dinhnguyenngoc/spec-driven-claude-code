@@ -543,7 +543,7 @@ The gate reads `Project Profile → Mode` to choose the **scope** — the 80/75 
 
 | Mode | GATE (blocking) | Informational (non-blocking, MUST be reported) |
 |------|-------------|-------------------------------------------|
-| **greenfield** | whole-repo: line ≥ 80% · branch ≥ 75% · method ≥ 80% | — |
+| **greenfield** | whole-repo: line ≥ 80% · branch ≥ 75% | **method %** — reported, not gating (see the zero-coverage rule below) |
 | **brownfield per-change** | **delta-coverage** — computed only over the files changed/added in the change-set: line ≥ 80% · branch ≥ 75% | **whole-repo** = baseline debt, plus a **ratchet**: must not DECREASE from the previous measurement |
 
 - **delta-coverage** = coverage filtered by `git diff --name-only <base>..HEAD` (base = merge-base with main / the previous release tag). Filter on the cobertura report or scope coverlet `Include` to the changed files.
@@ -551,6 +551,9 @@ The gate reads `Project Profile → Mode` to choose the **scope** — the 80/75 
 - `TEST_REPORT.md §Coverage` MUST record **both numbers** + the ratchet result, stating clearly which number is the gate.
 - **Prerequisite:** delta needs a base commit for `git diff` → the source must be git-tracked. A repo not yet committed (e.g. a just-onboarded brownfield) → measure delta manually against the file list in `plans/plan.md` and note the measurement method in the TEST_REPORT.
 - Per-file waiver (diff too small / hard to test) → record the reason in TEST_REPORT §Coverage, using the same mechanism as the exclusion-rationale in `coverlet.runsettings`.
+- **Zero-coverage methods (replaces a method-percentage gate):** `TEST_REPORT.md §Coverage` MUST list **every method measured at 0%**, each with either a test added or a one-line reason. A **business-logic** method (Service / Handler / Action / domain method) at 0% with no reason → **GATE FAIL**. Structural members — auto-property, record constructor, compiler-generated equality, design-time factory (`IDesignTimeDbContextFactory`, called only by `dotnet ef`) — need only their kind named as the reason.
+  **Already-shipping test:** a business-logic method at 0% that shipping code already calls, registers, or wires (e.g. a redaction transform registered into the logging pipeline) needs **a test, not a reason** — it is reachable today, so "its caller does not exist yet" does not apply. The reason form is for a method **no shipping code references yet** (a factory for an unbuilt feature, an exception type nothing throws). The two cases are separated by a reference search, so the distinction is checkable.
+  *Why not a method percentage:* in .NET the method count is dominated by structural members, so a percentage produces false red (entities awaiting a later phase, a factory no test can ever call) while simultaneously hiding the real thing — a handful of untested business methods behind a crowd of covered auto-properties. The list-and-justify form catches what the percentage was meant to catch, with no structural noise.
 
 > **Why the split by Mode:** demanding 80% whole-repo on a brownfield with a 0% test baseline forces every per-change PR to retrofit legacy — a direct conflict with `brownfield.md` (WRITE by delta). The gate is meaningful as "is the code I changed covered?"; whole-repo is a debt/trend metric, and the ratchet keeps the direction upward.
 
@@ -599,7 +602,14 @@ public async Task E2ETest() { }
 ## Checklist
 
 - [ ] All public methods have unit tests
-- [ ] Edge cases are covered (null, empty, boundary values)
+- [ ] Edge cases are covered (null, empty, boundary, **wrong-type** values)
+
+> **Wrong-type input is its own test class.** "Edge case" read as *boundary values* misses the
+> input that is the wrong **shape** entirely — an object/array/number where a string is expected.
+> Every externally-reachable path (HTTP body/query, message payload) MUST have at least one test
+> sending a type-violating value through the real route, asserting the documented 4xx — not a
+> crash. This is the test-side twin of the boundary-validation rule (`lang-nodejs.md` §Schema
+> validation at the boundary · FluentValidation · Laravel FormRequest).
 - [ ] Error paths are tested (exceptions, validation failures)
 - [ ] Integration tests cover API endpoints
 - [ ] Tests are independent (no shared state)

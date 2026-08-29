@@ -163,12 +163,26 @@ Per `CLAUDE.md` §Verification After Delegation, the **orchestrator re-runs the 
 - [ ] Expected behavior sourced from spec/tests/report — any assumption made is recorded (`A-xx`)
 - [ ] **Every `A-xx` dispositioned by the user before closing** (same mechanism as `/build` Gate 5): approved → one-line AC amendment on the affected story in `specs/` (marked `amended @ fix, A-xx`) + an `Amended` Revision History row (BA agent §semantics); rejected → the fix returns to rework. No behavior decision may live only in the commit body (`principles-and-practices.md` §2.5) — this applies on BOTH exits (dev-time → `/review`, and verify/hotfix → before the re-verify)
 - [ ] Regression test written (fails before fix)
+- [ ] **New-call precondition check** — the fix replaces an expression with a library/framework
+      call on request-derived input? Then: (1) name the new call's preconditions (type, format,
+      nullability); (2) enforce them at the boundary per the stack's validation rule
+      (`lang-nodejs.md` §Schema validation at the boundary · `api-conventions.md` FluentValidation ·
+      `framework-php-laravel.md` §D) — **this enforcement is part of the fix, not out of scope**:
+      swapping a total operation (`!==` never throws) for a partial one (`bcrypt.compare` throws on
+      non-string) changes the endpoint's input contract, and the fix owns that change; (3) add one
+      test sending a type-violating value (object where a string is expected) through the real route.
 - [ ] If the bug is a **handoff** (producer→consumer: nav-state key / context / event name / shared prop) → the regression test exercises **both ends together** (`references/scenario-traceability.md` §3) — two sides passing in isolation does not cover the join
 - [ ] Fix implemented
 - [ ] **(schema-touching fix)** migration classified **non-destructive / destructive** per `database.md` §Expand-contract — destructive ⇒ expand-contract phases or ADR + downtime window, never one step under incident pressure; and `db/schema-snapshot/` refreshed **in the same change-set**
 - [ ] All tests pass
 - [ ] Build succeeds
 - [ ] No new warnings
+- [ ] **Out-of-scope findings recorded, not just narrated** — anything noticed outside this fix's
+      scope (dead code, a sibling gap, a stale report) is written where `principles-and-practices.md`
+      §2.5's routing table sends it (AC ambiguity → SPEC Open Questions · tech debt → `plans/BACKLOG.md`
+      · security → carry-forward row), and the closing summary cites that location. This is
+      the **out-of-scope** channel — distinct from in-scope assumptions, which follow the `A-xx` log
+      above. A finding stated only in chat is not recorded.
 - [ ] Commit message references issue
 
 ---

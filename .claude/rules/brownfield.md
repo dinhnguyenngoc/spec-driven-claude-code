@@ -107,7 +107,7 @@ Different from greenfield TDD:
 Only refactor **within the scope being touched**, serving the current change:
 
 - Do not "clean up" unrelated code in the same PR (it breaks review + increases regression risk).
-- Tech debt discovered → record it in the backlog (a separate `/simplify`), don't fold it into the feature/fix.
+- Tech debt discovered → record it per [`principles-and-practices.md`](principles-and-practices.md) §2.5 *Where an out-of-scope finding is recorded* (tech debt → `plans/BACKLOG.md`), then handle it in a separate `/simplify`; don't fold it into the feature/fix.
 - Exception: minimal seam-creating refactor to make the code about to be modified testable — must have a characterization test first.
 
 ---

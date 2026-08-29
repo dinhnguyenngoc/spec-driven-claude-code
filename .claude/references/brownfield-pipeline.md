@@ -12,7 +12,7 @@
 |-----------|-----------|
 | **Brownfield** | Working on a codebase that **already exists / is running in production** (as opposed to *greenfield* = building from scratch). |
 | **Legacy code** | Code that is running but **lacks tests / spec / documentation** describing its intent → the biggest risk is "accidentally breaking something that is running". |
-| **Phase A (discovery)** | The stage that **onboards a legacy repo — done ONCE**, read-only on the code, to build the baseline documentation. |
+| **Phase A (discovery)** | The stage that **onboards a legacy repo — done ONCE**, read-only on the code, to build the baseline documentation. A **kit-built project after its first release** skips it: `/discover` runs the inventory-only §Graduation run instead (the forward pipeline already produced the baseline — never reverse over it). |
 | **Phase B** | The **recurring work flows** after onboarding (add/modify features, fix bugs, hotfix, upgrade). |
 | **delta** | **Only the changed part** (a new feature or the modified portion) — not the whole system. |
 | **reverse** (mode of `/spec`, `/arch`) | Runs "in reverse": generates spec/architecture **from existing code**, instead of generating code from a spec. |

@@ -268,6 +268,7 @@ IDs are `NFR-01, NFR-02…`, **append-only** (same discipline as `G-xx` — neve
 | Entry point | Type | Known red-flags (from `/discover`) |
 |-------------|------|------------------------------------|
 | `POST /api/v1/orders` | HTTP | ⚠️ no authz observed |
+| `GET /health` | HTTP | — (public by design) |
 | `order.events` / `order-svc-consumer` | Consumer | — |
 
 ## Executive Summary
@@ -328,6 +329,11 @@ Legend: ✅ full access · 🔒 conditional (ownership/scope-limited — footnot
 ## Out of Scope (Won't)
 - [Explicit list of what we're NOT building]
 
+> Scoped REVERSE: this section holds only what the product genuinely does NOT do.
+> "Not reversed yet" is NOT out of scope — that remainder lives in §Scope & Coverage's
+> uncovered ledger and moves out as coverage grows (canonical: `commands/spec.md`
+> §Scoped REVERSE rule 4; contradiction is checked at Gate 1).
+
 ## Open Questions & Decisions
 
 ### Resolved (YYYY-MM-DD)
@@ -346,6 +352,7 @@ Legend: ✅ full access · 🔒 conditional (ownership/scope-limited — footnot
 
 ## Appendix
 - [Wireframes, mockups, references]
+- [REVERSE mode: code-evidence citations do NOT live here — they go to `specs/EVIDENCE.md` (canonical: `commands/spec.md` §Brownfield Mode → Evidence file); keep the SPEC stakeholder-clean]
 ```
 
 ### Revision History semantics (canonical)
@@ -358,6 +365,7 @@ Legend: ✅ full access · 🔒 conditional (ownership/scope-limited — footnot
 - **One row per approved change-set** — one `/spec` DELTA run (or one approved assumption flow-back batch) = exactly one row, listing every affected story/scenario ID. Not one row per story, not one per file save — keeps the table one-line-per-decision.
 - **A pure bug fix adds NO row** — fixing code that violated the existing spec (B3/B4) leaves the spec unchanged. Only a fix that changes *agreed behavior* produces an `Amended` row. This is what keeps the table growing with product decisions, not with commits.
 - **Header `Version` = the latest Approved row.** While a change-set is under review its row already exists and the header `Status` stays `Draft`; Gate 1 sign-off flips `Status` to `Approved`.
+- **Before sign-off (no Approved row yet) — write the row as it will be approved:** the pending row already carries its **final** `Type` and `Version` (a first baseline is `v1.0 | Baseline`, never `v0.1`), the header carries that same `Version`, and only `Status: Draft` marks it as unsigned. **`Draft` is never a `Type`** — Draft is the document's state, not a kind of change; the `Type` column accepts nothing outside the enum below.
 - **Story-level marker** — a story that is extended or superseded gets exactly **one marker line** under its title (an annotation, not a rewrite — story body and IDs stay untouched): `> Extended by US-020 (v1.2)` · `> Superseded by US-021 (v2.0) — deprecated`.
 
 **Type enum + version bump:**
@@ -384,7 +392,7 @@ Before handoff to `/arch`, verify:
 - [ ] **Every scenario carries exactly one class tag** (`@happy` / `@negative` / `@edge`) **and every story has ≥ 1 `@happy`** — a story with zero `@negative`/`@edge` states a one-line reason under its AC block; scoped to stories authored/modified by this change-set (never retag untouched legacy stories)
 - [ ] **Goals & Success Metrics table filled** — ≥ 1 Business + ≥ 1 Product goal, each with a measurable KPI + timeframe (REVERSE baseline: evidence-based, explicit `N/A`, or `📝P-nn` labeled proposals — see §Proposed Content)
 - [ ] **Every `📝P-nn` proposal is disciplined** — carries its inference basis, contains no invented numbers (`[NEEDS PO]` in KPI/baseline/timeframe), and pairs 1:1 with an Open Questions row owned by the PO
-- [ ] **Permission Matrix present** — every story actor appears as a column, every column exists in §Target Users, every 🔒 carries its condition footnote; or explicit `N/A — single role/public` (REVERSE: derived from observed authz evidence; missing authz → `⚠️ no authz observed`, never guessed)
+- [ ] **Permission Matrix present** — every story actor appears as a column, every column exists in §Target Users, every 🔒 carries its condition footnote; or explicit `N/A — single role/public` (REVERSE: derived from observed authz evidence; a route reachable without a token is labelled **public**, while `⚠️ no authz observed` is reserved for a real gap — user-owned data with no ownership constraint, or the odd one out among authz-carrying siblings; never guess intent — `spec.md` §Brownfield Mode)
 - [ ] Personas defined for all user types
 - [ ] Priority assigned (Must / Should / Could / Won't)
 - [ ] Out of Scope explicitly documented

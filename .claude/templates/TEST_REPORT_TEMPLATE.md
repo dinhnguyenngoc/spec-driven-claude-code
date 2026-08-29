@@ -52,6 +52,7 @@ Setup steps + result + artifact paths (screenshot/video/trace) on failure.
   | Delta coverage (files changed in the change-set) | line \_\_% / branch \_\_% | **GATE** when Mode=brownfield per-change (≥80/≥75) |
   | Whole-repo coverage | line \_\_% / branch \_\_% | **GATE** when greenfield; informational + ratchet when brownfield |
   | Ratchet vs previous measurement | prev \_\_% → now \_\_% (±\_\_) | brownfield: **a decrease = GATE FAIL**; first run = establishes the baseline |
+  | Methods at 0% coverage | \_\_ total → \_\_ structural (kind named) / \_\_ business-logic (each with test-or-reason) | **GATE** — a business-logic method at 0% with no reason fails; one that shipping code already references needs a test, not a reason |
 
 - Per-assembly breakdown
 - Top 5 uncovered files with **rationale** ("acceptable" / "gap-closing test added")

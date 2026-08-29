@@ -88,6 +88,27 @@
     - Every **approved** assumption that changes behavior flows back into `specs/` as a one-line AC amendment **plus an `Amended` row in the spec's Revision History** (semantics: BA agent §Revision History semantics) — no behavior decision may live only in code.
 16. **Simplicity self-checks** (sharpens §1.2 YAGNI/KISS): no error handling for scenarios that cannot occur; no configurability nobody asked for; if 200 lines could be 50, rewrite before presenting. Test: *"Would a senior engineer call this overcomplicated?"*
 17. **Surgical changes — all modes, not only brownfield.** Every changed line must trace to the current request/task. Don't "improve" adjacent code, comments, or formatting; don't refactor what isn't broken; match the existing style. Orphans **your** change created (now-unused imports/variables/functions) → remove in the same change; **pre-existing** dead code → report it (backlog / `/simplify`), never delete unless asked. Brownfield keeps its stricter version ([`brownfield.md`](brownfield.md) §No Gratuitous Refactor).
+
+    (Two channels, do not mix: an **in-scope assumption** — a behavior decision made while doing the
+    requested work — follows #15's Assumptions log; the table below routes **out-of-scope findings**.)
+
+    **Where an out-of-scope finding is recorded — a finding stated only in chat is not recorded.**
+    "Report it" means *write it somewhere durable*, then cite that location in the closing summary.
+    The kit has no separate backlog file; route by kind:
+
+    | Kind of finding | Lands in | Why there |
+    |---|---|---|
+    | Behavior/AC ambiguity — the spec does not say what is correct | an **Open Questions** row in `specs/SPEC.md` (plus an `Amended` Revision-History row once decided) | the decision belongs to the spec, not to code — the same flow-back this section already requires for approved assumptions |
+    | Tech debt · dead code · simplification opportunity | a line in `plans/BACKLOG.md`: `- [ ] <finding> — found by <command>, <date>, <file:line>` (create the file if absent) | a durable, single-purpose store: `/plan` regenerates `todo.md` as a pure projection and would erase anything else in it |
+    | Security finding outside the current change | a carry-forward row in `security/SCAN_REPORT.md` (or `reports/CODE_REVIEW.md` when found during review), marked `not in this diff` | keeps severity + P0/P1/P2 triage together with the other security findings, the way `/review` already carries them forward |
+
+    A finding that is genuinely none of the three (an infrastructure observation, say) goes to
+    `plans/BACKLOG.md` by default — never nowhere.
+
+    **Why not `plans/todo.md`:** that file is a **pure projection** of `plan.md`'s Task blocks
+    (`commands/plan.md` §Projection integrity — "no orphan row"). A finding written there is an
+    orphan row by definition: the next `/plan` either erases it on re-projection, or fails its own
+    gate. Durable records never live inside a regenerated artifact.
 18. **Goal-driven execution.** Already the kit's backbone: turn tasks into verifiable goals (failing test first — TDD; regression test first — `/fix-issue`) and loop until the check passes on disk (`CLAUDE.md` §Verification After Delegation). Listed here so the four disciplines read as one set; details live in [`testing.md`](testing.md) and the `tdd` skill.
 
 ---

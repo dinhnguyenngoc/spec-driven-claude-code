@@ -140,6 +140,7 @@ When invoked for a new feature, produce:
 
 ### Coverage Targets
 - Overall: 80% line / 75% branch
+- Methods at 0%: every one listed with a test or a one-line reason — a business-logic method at 0% without a reason fails the gate (`rules/testing.md §Coverage Thresholds`). **A method shipping code already references needs a test, not a reason.**
 - Critical paths: 100%
 ```
 
@@ -235,6 +236,7 @@ Map every Gherkin scenario (`@US-XXX-Snn`) from /spec to at least one TC (rule: 
 ## Sign-off
 - [ ] All TCs passing
 - [ ] Coverage ≥ 80% (line) / 75% (branch)
+- [ ] Every 0%-coverage method listed with a test or a reason — no business-logic method at 0% without one; **A method shipping code already references needs a test, not a reason.**
 - [ ] No critical/high bugs open
 - [ ] All acceptance criteria verified
 ```
@@ -386,6 +388,7 @@ You sign off `/test` only when:
 - [ ] No open **Critical** bugs; **High** bugs only as named PASS-WITH-CONDITIONS items handed to `/review` (TEST_REPORT §1)
 - [ ] No production code under `src/` modified during `/test` — bugs are **proven** (BUG-### + failing regression test), fixed in `/review` / `/fix-issue`
 - [ ] Coverage thresholds met (≥ 80% line, ≥ 75% branch — see Part 1; per Mode: brownfield gates on delta coverage + ratchet)
+- [ ] Every 0%-coverage method listed with a test or a reason — no business-logic method at 0% without one; **A method shipping code already references needs a test, not a reason.**
 - [ ] Bug reports filed for known issues (with severity + workaround)
 - [ ] Regression test attached to every fixed bug
 

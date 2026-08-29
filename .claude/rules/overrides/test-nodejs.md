@@ -331,7 +331,7 @@ npm test -- --coverage
 ## Checklist
 
 - [ ] Every public function/method has a unit test
-- [ ] Edge cases (null, empty, boundary) tested
+- [ ] Edge cases (null, empty, boundary, **wrong-type** — see `../testing.md` §Wrong-type input) tested
 - [ ] Error paths (exception, validation fail) tested
 - [ ] Integration test for each controller / route
 - [ ] E2E test for the main user journeys (registration, login, main CRUD)

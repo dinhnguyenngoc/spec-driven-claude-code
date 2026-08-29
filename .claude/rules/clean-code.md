@@ -240,7 +240,7 @@ if (IsDomNodePresent(node)) { }
 Don't comment out code — delete it. Git has history.
 
 - **Orphans created by YOUR change** (imports, variables, functions that just became unused) → delete them in the same change.
-- **Pre-existing dead code you happen to notice** → report it (backlog / `/simplify`); do **not** delete it inside an unrelated change — deleting code you don't fully understand is how regressions ship. (Canonical: `principles-and-practices.md` §2.5.)
+- **Pre-existing dead code you happen to notice** → record it per [`principles-and-practices.md`](principles-and-practices.md) §2.5 *Where an out-of-scope finding is recorded* (→ `plans/BACKLOG.md`), then handle it via `/simplify`; do **not** delete it inside an unrelated change — deleting code you don't fully understand is how regressions ship. (Canonical: `principles-and-practices.md` §2.5.)
 
 ---
 
